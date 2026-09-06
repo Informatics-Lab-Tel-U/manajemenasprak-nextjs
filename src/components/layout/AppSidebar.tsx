@@ -187,14 +187,18 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton size="lg" asChild>
-              <Link prefetch={false} href="/">
-                <div className="flex aspect-square bg-white p-0.5 size-10 items-center justify-center rounded-lg text-sidebar-primary-foreground">
+            <SidebarMenuButton
+              size="lg"
+              asChild
+              className="group-data-[collapsible=icon]:!p-0"
+            >
+              <Link prefetch={false} href="/" className="flex items-center gap-2 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:gap-0">
+                <div className="flex aspect-square bg-white p-0.5 size-8 items-center justify-center rounded-lg text-sidebar-primary-foreground shrink-0">
                   <div className="relative w-full h-full overflow-hidden rounded-md">
-                    <Image src="/iflab.png" alt="Logo" fill sizes="40px" className="object-contain" />
+                    <Image src="/iflab.png" alt="Logo" fill sizes="32px" className="object-contain" />
                   </div>
                 </div>
-                <div className="grid flex-1 text-left text-sm leading-tight">
+                <div className="grid flex-1 text-left text-sm leading-tight min-w-0 transition-opacity duration-200 group-data-[collapsible=icon]:opacity-0">
                   <span className="truncate font-semibold">Informatics Lab</span>
                   <span className="truncate text-xs text-muted-foreground">
                     {user.role === 'ADMIN'
