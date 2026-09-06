@@ -12,6 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import {
@@ -112,7 +113,7 @@ export function ApproveRequestModal({
 
     setIsLoading(true);
     try {
-      const app_roles = [
+      const app_roles: { app_slug: string; role: string }[] = [
         { app_slug: 'manajemenasprak', role },
       ];
       if (enableLogbook) {
@@ -151,114 +152,123 @@ export function ApproveRequestModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Setujui Permintaan Akses</DialogTitle>
-          <DialogDescription>
-            Tentukan izin aplikasi dan peran untuk akun <strong>{user.nama_lengkap}</strong> ({user.email}).
+      <DialogContent className="flex max-h-[min(700px,90vh)] flex-col gap-0 p-0 sm:max-w-xl">
+        <DialogHeader className="contents space-y-0 text-left">
+          <DialogTitle className="border-b px-6 py-4">
+            Setujui Permintaan Akses
+          </DialogTitle>
+          <DialogDescription className="sr-only">
+            Form untuk menyetujui permintaan akses akun pengguna
           </DialogDescription>
+          <ScrollArea className="flex flex-col overflow-hidden">
+            <div className="space-y-5 p-6 text-foreground">
+                <p className="text-sm text-muted-foreground">
+                  Tentukan izin aplikasi dan peran untuk akun{' '}
+                  <strong className="text-foreground">{user.nama_lengkap}</strong>{' '}
+                  ({user.email}).
+                </p>
+
+                {/* Section 1: Manajemen Asprak */}
+                <div className="rounded-lg border border-border/70 bg-card p-4 space-y-3">
+                  <div className="border-b border-border/50 pb-2">
+                    <h4 className="text-sm font-semibold">Manajemen Asisten Praktikum</h4>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                      Pilih Peran di Manajemen Asprak
+                    </Label>
+                    <RadioGroup
+                      value={role}
+                      onValueChange={(val) => setRole(val as Role)}
+                      className="gap-2"
+                    >
+                      {ROLE_OPTIONS.map((opt) => (
+                        <FieldLabel key={opt.value} htmlFor={`role-${opt.value}`}>
+                          <Field orientation="horizontal">
+                            <RadioGroupItem value={opt.value} id={`role-${opt.value}`} />
+                            <FieldContent>
+                              <FieldTitle className="text-sm">{opt.label}</FieldTitle>
+                              <FieldDescription className="text-xs">{opt.desc}</FieldDescription>
+                            </FieldContent>
+                          </Field>
+                        </FieldLabel>
+                      ))}
+                    </RadioGroup>
+                  </div>
+
+                  {/* Praktikum picker for ASPRAK_KOOR */}
+                  {role === 'ASPRAK_KOOR' && (
+                    <div className="space-y-2 pt-1 border-t border-border/40">
+                      <Label className="text-sm font-medium">Mata Praktikum Binaan *</Label>
+                      {loadingPraktikum ? (
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground py-2">
+                          <Spinner className="h-4 w-4" /> Memuat...
+                        </div>
+                      ) : (
+                        <Select value={selectedPraktikumId} onValueChange={setSelectedPraktikumId}>
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder="Pilih praktikum..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {filteredPraktikum.map((p) => (
+                              <SelectItem key={p.id} value={p.id}>
+                                {p.nama} ({p.tahun_ajaran})
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Section 2: Intern Logbook */}
+                <div className="rounded-lg border border-border/70 bg-card p-4 space-y-3">
+                  <div className="flex items-center justify-between border-b border-border/50 pb-2">
+                    <h4 className="text-sm font-semibold">Intern Logbook</h4>
+                    <div className="flex items-center gap-2">
+                      <Label htmlFor="toggle-logbook" className="text-xs cursor-pointer text-muted-foreground">
+                        {enableLogbook ? 'Akses Diberikan' : 'Tidak Ada Akses'}
+                      </Label>
+                      <Switch
+                        id="toggle-logbook"
+                        checked={enableLogbook}
+                        onCheckedChange={setEnableLogbook}
+                      />
+                    </div>
+                  </div>
+
+                  {enableLogbook && (
+                    <div className="space-y-2 pt-1 animate-in fade-in-50 duration-200">
+                      <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                        Pilih Peran di Intern Logbook
+                      </Label>
+                      <RadioGroup
+                        value={logbookRole}
+                        onValueChange={(val) => setLogbookRole(val as any)}
+                        className="gap-2"
+                      >
+                        {LOGBOOK_ROLE_OPTIONS.map((opt) => (
+                          <FieldLabel key={opt.value} htmlFor={`logbook-role-${opt.value}`}>
+                            <Field orientation="horizontal">
+                              <RadioGroupItem value={opt.value} id={`logbook-role-${opt.value}`} />
+                              <FieldContent>
+                                <FieldTitle className="text-sm">{opt.label}</FieldTitle>
+                                <FieldDescription className="text-xs">{opt.desc}</FieldDescription>
+                              </FieldContent>
+                            </Field>
+                          </FieldLabel>
+                        ))}
+                      </RadioGroup>
+                    </div>
+                  )}
+                </div>
+              </div>
+          </ScrollArea>
         </DialogHeader>
 
-        <div className="space-y-5 py-2">
-          {/* Section 1: Manajemen Asprak */}
-          <div className="rounded-lg border border-border/70 bg-card p-4 space-y-3">
-            <div className="border-b border-border/50 pb-2">
-              <h4 className="text-sm font-semibold">Manajemen Asisten Praktikum</h4>
-            </div>
-
-            <div className="space-y-2">
-              <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                Pilih Peran di Manajemen Asprak
-              </Label>
-              <RadioGroup
-                value={role}
-                onValueChange={(val) => setRole(val as Role)}
-                className="gap-2"
-              >
-                {ROLE_OPTIONS.map((opt) => (
-                  <FieldLabel key={opt.value} htmlFor={`role-${opt.value}`}>
-                    <Field orientation="horizontal">
-                      <RadioGroupItem value={opt.value} id={`role-${opt.value}`} />
-                      <FieldContent>
-                        <FieldTitle className="text-sm">{opt.label}</FieldTitle>
-                        <FieldDescription className="text-xs">{opt.desc}</FieldDescription>
-                      </FieldContent>
-                    </Field>
-                  </FieldLabel>
-                ))}
-              </RadioGroup>
-            </div>
-
-            {/* Praktikum picker for ASPRAK_KOOR */}
-            {role === 'ASPRAK_KOOR' && (
-              <div className="space-y-2 pt-1 border-t border-border/40">
-                <Label className="text-sm font-medium">Mata Praktikum Binaan *</Label>
-                {loadingPraktikum ? (
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground py-2">
-                    <Spinner className="h-4 w-4" /> Memuat...
-                  </div>
-                ) : (
-                  <Select value={selectedPraktikumId} onValueChange={setSelectedPraktikumId}>
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Pilih praktikum..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {filteredPraktikum.map((p) => (
-                        <SelectItem key={p.id} value={p.id}>
-                          {p.nama} ({p.tahun_ajaran})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* Section 2: Intern Logbook */}
-          <div className="rounded-lg border border-border/70 bg-card p-4 space-y-3">
-            <div className="flex items-center justify-between border-b border-border/50 pb-2">
-              <h4 className="text-sm font-semibold">Intern Logbook</h4>
-              <div className="flex items-center gap-2">
-                <Label htmlFor="toggle-logbook" className="text-xs cursor-pointer text-muted-foreground">
-                  {enableLogbook ? 'Akses Diberikan' : 'Tidak Ada Akses'}
-                </Label>
-                <Switch
-                  id="toggle-logbook"
-                  checked={enableLogbook}
-                  onCheckedChange={setEnableLogbook}
-                />
-              </div>
-            </div>
-
-            {enableLogbook && (
-              <div className="space-y-2 pt-1 animate-in fade-in-50 duration-200">
-                <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                  Pilih Peran di Intern Logbook
-                </Label>
-                <RadioGroup
-                  value={logbookRole}
-                  onValueChange={(val) => setLogbookRole(val as any)}
-                  className="gap-2"
-                >
-                  {LOGBOOK_ROLE_OPTIONS.map((opt) => (
-                    <FieldLabel key={opt.value} htmlFor={`logbook-role-${opt.value}`}>
-                      <Field orientation="horizontal">
-                        <RadioGroupItem value={opt.value} id={`logbook-role-${opt.value}`} />
-                        <FieldContent>
-                          <FieldTitle className="text-sm">{opt.label}</FieldTitle>
-                          <FieldDescription className="text-xs">{opt.desc}</FieldDescription>
-                        </FieldContent>
-                      </Field>
-                    </FieldLabel>
-                  ))}
-                </RadioGroup>
-              </div>
-            )}
-          </div>
-        </div>
-
-        <DialogFooter className="pt-2">
+        <DialogFooter className="border-t px-6 py-4 sm:justify-end">
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isLoading}>
             Batal
           </Button>
