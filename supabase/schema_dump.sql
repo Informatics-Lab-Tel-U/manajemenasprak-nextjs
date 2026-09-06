@@ -399,8 +399,12 @@ CREATE OR REPLACE FUNCTION "public"."is_admin"() RETURNS boolean
     LANGUAGE "sql" STABLE SECURITY DEFINER
     AS $$
   SELECT EXISTS (
-    SELECT 1 FROM public.pengguna 
-    WHERE id = auth.uid() AND role = 'ADMIN' AND deleted_at IS NULL
+    SELECT 1 
+    FROM public.user_app_roles uar
+    JOIN public.apps a ON a.id = uar.app_id
+    WHERE uar.user_id = auth.uid() 
+      AND a.slug = 'manajemenasprak' 
+      AND uar.role = 'ADMIN'
   );
 $$;
 
@@ -412,8 +416,12 @@ CREATE OR REPLACE FUNCTION "public"."is_admin_or_aslab"() RETURNS boolean
     LANGUAGE "sql" STABLE SECURITY DEFINER
     AS $$
   SELECT EXISTS (
-    SELECT 1 FROM public.pengguna 
-    WHERE id = auth.uid() AND role IN ('ADMIN', 'ASLAB') AND deleted_at IS NULL
+    SELECT 1 
+    FROM public.user_app_roles uar
+    JOIN public.apps a ON a.id = uar.app_id
+    WHERE uar.user_id = auth.uid() 
+      AND a.slug = 'manajemenasprak' 
+      AND uar.role IN ('ADMIN', 'ASLAB')
   );
 $$;
 
@@ -508,6 +516,23 @@ $$;
 ALTER FUNCTION "public"."rls_auto_enable"() OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."sync_comment_like_count"() RETURNS "trigger"
+    LANGUAGE "plpgsql"
+    AS $$
+BEGIN
+    IF TG_OP = 'INSERT' THEN
+        UPDATE "public"."logbook_post_comments" SET like_count = like_count + 1 WHERE id = NEW.comment_id;
+    ELSIF TG_OP = 'DELETE' THEN
+        UPDATE "public"."logbook_post_comments" SET like_count = GREATEST(like_count - 1, 0) WHERE id = OLD.comment_id;
+    END IF;
+    RETURN NULL;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."sync_comment_like_count"() OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."sync_intern_from_auth"() RETURNS "trigger"
     LANGUAGE "plpgsql" SECURITY DEFINER
     AS $$
@@ -532,6 +557,40 @@ $$;
 
 
 ALTER FUNCTION "public"."sync_intern_from_auth"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."sync_post_comment_count"() RETURNS "trigger"
+    LANGUAGE "plpgsql"
+    AS $$
+BEGIN
+    IF TG_OP = 'INSERT' THEN
+        UPDATE "public"."logbook_posts" SET comment_count = comment_count + 1 WHERE id = NEW.post_id;
+    ELSIF TG_OP = 'DELETE' THEN
+        UPDATE "public"."logbook_posts" SET comment_count = GREATEST(comment_count - 1, 0) WHERE id = OLD.post_id;
+    END IF;
+    RETURN NULL;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."sync_post_comment_count"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."sync_post_like_count"() RETURNS "trigger"
+    LANGUAGE "plpgsql"
+    AS $$
+BEGIN
+    IF TG_OP = 'INSERT' THEN
+        UPDATE "public"."logbook_posts" SET like_count = like_count + 1 WHERE id = NEW.post_id;
+    ELSIF TG_OP = 'DELETE' THEN
+        UPDATE "public"."logbook_posts" SET like_count = GREATEST(like_count - 1, 0) WHERE id = OLD.post_id;
+    END IF;
+    RETURN NULL;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."sync_post_like_count"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."touch_logbook_updated_at"() RETURNS "trigger"
@@ -564,7 +623,12 @@ ALTER FUNCTION "public"."update_updated_at_column"() OWNER TO "postgres";
 CREATE OR REPLACE FUNCTION "public"."user_role"() RETURNS "public"."roles"
     LANGUAGE "sql" STABLE SECURITY DEFINER
     AS $$
-  SELECT role FROM public.pengguna WHERE id = auth.uid() AND deleted_at IS NULL;
+  SELECT uar.role::public.roles
+  FROM public.user_app_roles uar
+  JOIN public.apps a ON a.id = uar.app_id
+  WHERE uar.user_id = auth.uid() 
+    AND a.slug = 'manajemenasprak'
+  LIMIT 1;
 $$;
 
 
@@ -573,6 +637,21 @@ ALTER FUNCTION "public"."user_role"() OWNER TO "postgres";
 SET default_tablespace = '';
 
 SET default_table_access_method = "heap";
+
+
+CREATE TABLE IF NOT EXISTS "public"."apps" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "slug" "text" NOT NULL,
+    "name" "text" NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"()
+);
+
+
+ALTER TABLE "public"."apps" OWNER TO "postgres";
+
+
+COMMENT ON TABLE "public"."apps" IS 'Registry semua aplikasi yang terhubung ke shared auth & backend.';
+
 
 
 CREATE TABLE IF NOT EXISTS "public"."asprak" (
@@ -817,6 +896,16 @@ CREATE TABLE IF NOT EXISTS "public"."konfigurasi_modul" (
 ALTER TABLE "public"."konfigurasi_modul" OWNER TO "postgres";
 
 
+CREATE TABLE IF NOT EXISTS "public"."logbook_comment_likes" (
+    "comment_id" "uuid" NOT NULL,
+    "user_id" "uuid" NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL
+);
+
+
+ALTER TABLE "public"."logbook_comment_likes" OWNER TO "postgres";
+
+
 CREATE TABLE IF NOT EXISTS "public"."logbook_interns" (
     "id" "uuid" NOT NULL,
     "name" "text" NOT NULL,
@@ -845,6 +934,32 @@ CREATE TABLE IF NOT EXISTS "public"."logbook_media" (
 ALTER TABLE "public"."logbook_media" OWNER TO "postgres";
 
 
+CREATE TABLE IF NOT EXISTS "public"."logbook_post_comments" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "post_id" "uuid" NOT NULL,
+    "user_id" "uuid" NOT NULL,
+    "parent_comment_id" "uuid",
+    "content" "text" NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "like_count" integer DEFAULT 0 NOT NULL,
+    CONSTRAINT "logbook_post_comments_content_check" CHECK ((("char_length"("content") > 0) AND ("char_length"("content") <= 1000)))
+);
+
+
+ALTER TABLE "public"."logbook_post_comments" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."logbook_post_likes" (
+    "post_id" "uuid" NOT NULL,
+    "user_id" "uuid" NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL
+);
+
+
+ALTER TABLE "public"."logbook_post_likes" OWNER TO "postgres";
+
+
 CREATE TABLE IF NOT EXISTS "public"."logbook_post_tags" (
     "post_id" "uuid" NOT NULL,
     "user_id" "uuid" NOT NULL
@@ -864,7 +979,9 @@ CREATE TABLE IF NOT EXISTS "public"."logbook_posts" (
     "is_verified" boolean DEFAULT false NOT NULL,
     "activity_date" "date" NOT NULL,
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "like_count" integer DEFAULT 0 NOT NULL,
+    "comment_count" integer DEFAULT 0 NOT NULL
 );
 
 
@@ -939,7 +1056,7 @@ ALTER TABLE "public"."pelanggaran_status" OWNER TO "postgres";
 CREATE TABLE IF NOT EXISTS "public"."pengguna" (
     "id" "uuid" NOT NULL,
     "nama_lengkap" character varying NOT NULL,
-    "role" "public"."roles" NOT NULL,
+    "role" "public"."roles",
     "deleted_at" timestamp with time zone,
     "created_at" timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     "updated_at" timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
@@ -1012,6 +1129,37 @@ CREATE TABLE IF NOT EXISTS "public"."system_config" (
 
 
 ALTER TABLE "public"."system_config" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."user_app_roles" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "user_id" "uuid" NOT NULL,
+    "app_id" "uuid" NOT NULL,
+    "role" "text" NOT NULL,
+    "granted_at" timestamp with time zone DEFAULT "now"(),
+    "granted_by" "uuid"
+);
+
+
+ALTER TABLE "public"."user_app_roles" OWNER TO "postgres";
+
+
+COMMENT ON TABLE "public"."user_app_roles" IS 'Role user per aplikasi. Satu user bisa punya role berbeda di tiap app.';
+
+
+
+COMMENT ON COLUMN "public"."user_app_roles"."role" IS 'Role string: ADMIN, ASLAB, ASPRAK, ASPRAK_KOOR, INTERN, dll.';
+
+
+
+ALTER TABLE ONLY "public"."apps"
+    ADD CONSTRAINT "apps_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."apps"
+    ADD CONSTRAINT "apps_slug_key" UNIQUE ("slug");
+
 
 
 ALTER TABLE ONLY "public"."asprak_koordinator"
@@ -1099,6 +1247,11 @@ ALTER TABLE ONLY "public"."konfigurasi_modul"
 
 
 
+ALTER TABLE ONLY "public"."logbook_comment_likes"
+    ADD CONSTRAINT "logbook_comment_likes_pkey" PRIMARY KEY ("comment_id", "user_id");
+
+
+
 ALTER TABLE ONLY "public"."logbook_interns"
     ADD CONSTRAINT "logbook_interns_email_key" UNIQUE ("email");
 
@@ -1111,6 +1264,16 @@ ALTER TABLE ONLY "public"."logbook_interns"
 
 ALTER TABLE ONLY "public"."logbook_media"
     ADD CONSTRAINT "logbook_media_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."logbook_post_comments"
+    ADD CONSTRAINT "logbook_post_comments_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."logbook_post_likes"
+    ADD CONSTRAINT "logbook_post_likes_pkey" PRIMARY KEY ("post_id", "user_id");
 
 
 
@@ -1194,6 +1357,16 @@ ALTER TABLE ONLY "public"."konfigurasi_modul"
 
 
 
+ALTER TABLE ONLY "public"."user_app_roles"
+    ADD CONSTRAINT "user_app_roles_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."user_app_roles"
+    ADD CONSTRAINT "user_app_roles_user_id_app_id_key" UNIQUE ("user_id", "app_id");
+
+
+
 ALTER TABLE ONLY "public"."web_config"
     ADD CONSTRAINT "web_config_pkey" PRIMARY KEY ("key");
 
@@ -1224,6 +1397,14 @@ CREATE INDEX "idx_audit_log_pengguna" ON "public"."audit_log" USING "btree" ("id
 
 
 CREATE INDEX "idx_audit_log_table_record" ON "public"."audit_log" USING "btree" ("table_name", "record_id");
+
+
+
+CREATE INDEX "idx_comment_likes_comment_id" ON "public"."logbook_comment_likes" USING "btree" ("comment_id");
+
+
+
+CREATE INDEX "idx_comment_likes_user_id" ON "public"."logbook_comment_likes" USING "btree" ("user_id");
 
 
 
@@ -1291,6 +1472,26 @@ CREATE INDEX "idx_pelanggaran_jadwal" ON "public"."pelanggaran" USING "btree" ("
 
 
 
+CREATE INDEX "idx_post_comments_created_at" ON "public"."logbook_post_comments" USING "btree" ("created_at");
+
+
+
+CREATE INDEX "idx_post_comments_parent_id" ON "public"."logbook_post_comments" USING "btree" ("parent_comment_id");
+
+
+
+CREATE INDEX "idx_post_comments_post_id" ON "public"."logbook_post_comments" USING "btree" ("post_id");
+
+
+
+CREATE INDEX "idx_post_likes_post_id" ON "public"."logbook_post_likes" USING "btree" ("post_id");
+
+
+
+CREATE INDEX "idx_post_likes_user_id" ON "public"."logbook_post_likes" USING "btree" ("user_id");
+
+
+
 CREATE INDEX "idx_presensi_jaga_asprak" ON "public"."presensi_jaga" USING "btree" ("id_asprak");
 
 
@@ -1300,6 +1501,14 @@ CREATE INDEX "idx_presensi_jaga_lookup" ON "public"."presensi_jaga" USING "btree
 
 
 CREATE INDEX "idx_presensi_jaga_tanggal" ON "public"."presensi_jaga" USING "btree" ("tanggal" DESC);
+
+
+
+CREATE INDEX "idx_user_app_roles_app" ON "public"."user_app_roles" USING "btree" ("app_id");
+
+
+
+CREATE INDEX "idx_user_app_roles_user_app" ON "public"."user_app_roles" USING "btree" ("user_id", "app_id");
 
 
 
@@ -1379,7 +1588,23 @@ CREATE OR REPLACE TRIGGER "trg_logbook_media_updated_at" BEFORE UPDATE ON "publi
 
 
 
+CREATE OR REPLACE TRIGGER "trg_logbook_post_comments_updated_at" BEFORE UPDATE ON "public"."logbook_post_comments" FOR EACH ROW EXECUTE FUNCTION "public"."touch_logbook_updated_at"();
+
+
+
 CREATE OR REPLACE TRIGGER "trg_logbook_posts_updated_at" BEFORE UPDATE ON "public"."logbook_posts" FOR EACH ROW EXECUTE FUNCTION "public"."touch_logbook_updated_at"();
+
+
+
+CREATE OR REPLACE TRIGGER "trg_sync_comment_like_count" AFTER INSERT OR DELETE ON "public"."logbook_comment_likes" FOR EACH ROW EXECUTE FUNCTION "public"."sync_comment_like_count"();
+
+
+
+CREATE OR REPLACE TRIGGER "trg_sync_post_comment_count" AFTER INSERT OR DELETE ON "public"."logbook_post_comments" FOR EACH ROW EXECUTE FUNCTION "public"."sync_post_comment_count"();
+
+
+
+CREATE OR REPLACE TRIGGER "trg_sync_post_like_count" AFTER INSERT OR DELETE ON "public"."logbook_post_likes" FOR EACH ROW EXECUTE FUNCTION "public"."sync_post_like_count"();
 
 
 
@@ -1451,6 +1676,16 @@ ALTER TABLE ONLY "public"."jadwal_pengganti"
 
 
 
+ALTER TABLE ONLY "public"."logbook_comment_likes"
+    ADD CONSTRAINT "logbook_comment_likes_comment_id_fkey" FOREIGN KEY ("comment_id") REFERENCES "public"."logbook_post_comments"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."logbook_comment_likes"
+    ADD CONSTRAINT "logbook_comment_likes_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."logbook_interns"("id") ON DELETE CASCADE;
+
+
+
 ALTER TABLE ONLY "public"."logbook_interns"
     ADD CONSTRAINT "logbook_interns_id_fkey" FOREIGN KEY ("id") REFERENCES "auth"."users"("id") ON DELETE CASCADE;
 
@@ -1458,6 +1693,31 @@ ALTER TABLE ONLY "public"."logbook_interns"
 
 ALTER TABLE ONLY "public"."logbook_media"
     ADD CONSTRAINT "logbook_media_post_id_fkey" FOREIGN KEY ("post_id") REFERENCES "public"."logbook_posts"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."logbook_post_comments"
+    ADD CONSTRAINT "logbook_post_comments_parent_comment_id_fkey" FOREIGN KEY ("parent_comment_id") REFERENCES "public"."logbook_post_comments"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."logbook_post_comments"
+    ADD CONSTRAINT "logbook_post_comments_post_id_fkey" FOREIGN KEY ("post_id") REFERENCES "public"."logbook_posts"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."logbook_post_comments"
+    ADD CONSTRAINT "logbook_post_comments_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."logbook_interns"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."logbook_post_likes"
+    ADD CONSTRAINT "logbook_post_likes_post_id_fkey" FOREIGN KEY ("post_id") REFERENCES "public"."logbook_posts"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."logbook_post_likes"
+    ADD CONSTRAINT "logbook_post_likes_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."logbook_interns"("id") ON DELETE CASCADE;
 
 
 
@@ -1523,6 +1783,21 @@ ALTER TABLE ONLY "public"."presensi_jaga"
 
 ALTER TABLE ONLY "public"."system_config"
     ADD CONSTRAINT "system_config_updated_by_fkey" FOREIGN KEY ("updated_by") REFERENCES "public"."pengguna"("id");
+
+
+
+ALTER TABLE ONLY "public"."user_app_roles"
+    ADD CONSTRAINT "user_app_roles_app_id_fkey" FOREIGN KEY ("app_id") REFERENCES "public"."apps"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."user_app_roles"
+    ADD CONSTRAINT "user_app_roles_granted_by_fkey" FOREIGN KEY ("granted_by") REFERENCES "auth"."users"("id");
+
+
+
+ALTER TABLE ONLY "public"."user_app_roles"
+    ADD CONSTRAINT "user_app_roles_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "auth"."users"("id") ON DELETE CASCADE;
 
 
 
@@ -1799,6 +2074,13 @@ CREATE POLICY "User dapat melihat data sendiri" ON "public"."pengguna" FOR SELEC
 
 
 
+ALTER TABLE "public"."apps" ENABLE ROW LEVEL SECURITY;
+
+
+CREATE POLICY "apps_read_authenticated" ON "public"."apps" FOR SELECT TO "authenticated" USING (true);
+
+
+
 ALTER TABLE "public"."asprak" ENABLE ROW LEVEL SECURITY;
 
 
@@ -1835,10 +2117,19 @@ ALTER TABLE "public"."jadwal_pengganti" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "public"."konfigurasi_modul" ENABLE ROW LEVEL SECURITY;
 
 
+ALTER TABLE "public"."logbook_comment_likes" ENABLE ROW LEVEL SECURITY;
+
+
 ALTER TABLE "public"."logbook_interns" ENABLE ROW LEVEL SECURITY;
 
 
 ALTER TABLE "public"."logbook_media" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."logbook_post_comments" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."logbook_post_likes" ENABLE ROW LEVEL SECURITY;
 
 
 ALTER TABLE "public"."logbook_post_tags" ENABLE ROW LEVEL SECURITY;
@@ -1875,6 +2166,13 @@ ALTER TABLE "public"."presensi_jaga" ENABLE ROW LEVEL SECURITY;
 
 
 ALTER TABLE "public"."system_config" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."user_app_roles" ENABLE ROW LEVEL SECURITY;
+
+
+CREATE POLICY "user_app_roles_read_own" ON "public"."user_app_roles" FOR SELECT TO "authenticated" USING (("user_id" = "auth"."uid"()));
+
 
 
 ALTER TABLE "public"."web_config" ENABLE ROW LEVEL SECURITY;
@@ -2114,9 +2412,27 @@ GRANT ALL ON FUNCTION "public"."rls_auto_enable"() TO "service_role";
 
 
 
+GRANT ALL ON FUNCTION "public"."sync_comment_like_count"() TO "anon";
+GRANT ALL ON FUNCTION "public"."sync_comment_like_count"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."sync_comment_like_count"() TO "service_role";
+
+
+
 GRANT ALL ON FUNCTION "public"."sync_intern_from_auth"() TO "anon";
 GRANT ALL ON FUNCTION "public"."sync_intern_from_auth"() TO "authenticated";
 GRANT ALL ON FUNCTION "public"."sync_intern_from_auth"() TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."sync_post_comment_count"() TO "anon";
+GRANT ALL ON FUNCTION "public"."sync_post_comment_count"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."sync_post_comment_count"() TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."sync_post_like_count"() TO "anon";
+GRANT ALL ON FUNCTION "public"."sync_post_like_count"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."sync_post_like_count"() TO "service_role";
 
 
 
@@ -2149,6 +2465,12 @@ GRANT ALL ON FUNCTION "public"."user_role"() TO "service_role";
 
 
 
+
+
+
+GRANT ALL ON TABLE "public"."apps" TO "anon";
+GRANT ALL ON TABLE "public"."apps" TO "authenticated";
+GRANT ALL ON TABLE "public"."apps" TO "service_role";
 
 
 
@@ -2244,6 +2566,12 @@ GRANT ALL ON TABLE "public"."konfigurasi_modul" TO "service_role";
 
 
 
+GRANT ALL ON TABLE "public"."logbook_comment_likes" TO "anon";
+GRANT ALL ON TABLE "public"."logbook_comment_likes" TO "authenticated";
+GRANT ALL ON TABLE "public"."logbook_comment_likes" TO "service_role";
+
+
+
 GRANT ALL ON TABLE "public"."logbook_interns" TO "anon";
 GRANT ALL ON TABLE "public"."logbook_interns" TO "authenticated";
 GRANT ALL ON TABLE "public"."logbook_interns" TO "service_role";
@@ -2253,6 +2581,18 @@ GRANT ALL ON TABLE "public"."logbook_interns" TO "service_role";
 GRANT ALL ON TABLE "public"."logbook_media" TO "anon";
 GRANT ALL ON TABLE "public"."logbook_media" TO "authenticated";
 GRANT ALL ON TABLE "public"."logbook_media" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."logbook_post_comments" TO "anon";
+GRANT ALL ON TABLE "public"."logbook_post_comments" TO "authenticated";
+GRANT ALL ON TABLE "public"."logbook_post_comments" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."logbook_post_likes" TO "anon";
+GRANT ALL ON TABLE "public"."logbook_post_likes" TO "authenticated";
+GRANT ALL ON TABLE "public"."logbook_post_likes" TO "service_role";
 
 
 
@@ -2321,6 +2661,12 @@ GRANT ALL ON TABLE "public"."presensi_jaga" TO "service_role";
 
 GRANT ALL ON TABLE "public"."system_config" TO "authenticated";
 GRANT ALL ON TABLE "public"."system_config" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."user_app_roles" TO "anon";
+GRANT ALL ON TABLE "public"."user_app_roles" TO "authenticated";
+GRANT ALL ON TABLE "public"."user_app_roles" TO "service_role";
 
 
 

@@ -129,9 +129,10 @@ export function ManajemenAkunClientPage({
         accessorKey: 'role',
         header: 'Role',
         cell: ({ row }) => {
-          const role = row.original.role;
-          const badgeCfg = ROLE_BADGE[role] || { label: role || 'Unknown', variant: 'outline' };
-          const RoleIcon = ROLE_ICON[role] || User;
+          const appRole = row.original.app_roles?.find((r) => r.app_slug === 'manajemenasprak')?.role;
+          const role = (appRole || row.original.role) as Role;
+          const badgeCfg = (role && ROLE_BADGE[role]) || { label: role || 'Tanpa Akses', variant: 'outline' };
+          const RoleIcon = (role && ROLE_ICON[role]) || User;
           return (
             <Badge variant={badgeCfg.variant as any} className="gap-1">
               <RoleIcon className="h-3 w-3" />
@@ -354,9 +355,10 @@ export function ManajemenAkunClientPage({
         accessorKey: 'role',
         header: 'Role Terakhir',
         cell: ({ row }) => {
-          const role = row.original.role;
-          const badgeCfg = ROLE_BADGE[role] || { label: role || 'Unknown', variant: 'outline' };
-          const RoleIcon = ROLE_ICON[role] || User;
+          const appRole = row.original.app_roles?.find((r) => r.app_slug === 'manajemenasprak')?.role;
+          const role = (appRole || row.original.role) as Role;
+          const badgeCfg = (role && ROLE_BADGE[role]) || { label: role || 'Tanpa Akses', variant: 'outline' };
+          const RoleIcon = (role && ROLE_ICON[role]) || User;
           return (
             <Badge variant={badgeCfg.variant as any} className="gap-1">
               <RoleIcon className="h-3 w-3" />

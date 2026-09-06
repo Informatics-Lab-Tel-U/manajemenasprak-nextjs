@@ -73,7 +73,6 @@ export async function GET(request: Request) {
         await admin.from('pengguna').insert({
           id: user.id,
           nama_lengkap: rawName,
-          role: 'ASLAB', // placeholder role until approved by admin
           status: 'PENDING',
         });
         userStatus = 'PENDING';

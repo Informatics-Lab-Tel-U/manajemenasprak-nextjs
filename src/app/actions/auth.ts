@@ -69,7 +69,7 @@ export async function login(email: string, password: string, turnstileToken: str
       // Check MFA Assurance Level
       const { data: aalData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
 
-      const meRes = await fetch(`${process.env.HONO_BACKEND_URL}/api/auth/me`, {
+      const meRes = await fetch(`${process.env.HONO_BACKEND_URL}/api/auth/me?app=manajemenasprak`, {
         headers: { Authorization: `Bearer ${authData.session?.access_token}` },
         cache: 'no-store',
       });
@@ -77,7 +77,7 @@ export async function login(email: string, password: string, turnstileToken: str
       let role: Role | undefined;
       if (meRes.ok) {
         const meData = await meRes.json();
-        role = meData.data?.pengguna?.role;
+        role = meData.data?.effectiveRole || meData.data?.pengguna?.role;
       }
 
       if (aalData?.currentLevel === 'aal1' && aalData?.nextLevel === 'aal2') {

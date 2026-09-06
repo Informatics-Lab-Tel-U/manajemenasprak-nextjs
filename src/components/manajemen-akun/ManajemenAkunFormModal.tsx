@@ -97,12 +97,15 @@ export function ManajemenAkunFormModal({ open, onOpenChange, mode, user, onSucce
     const hasLogbook = Boolean(logbookApp);
     const initialLogbookRole = (logbookApp?.role as 'INTERN' | 'ASLAB' | 'ADMIN') || 'INTERN';
 
+    const asprakApp = user?.app_roles?.find((r) => r.app_slug === 'manajemenasprak');
+    const initialAsprakRole = (asprakApp?.role || user?.role || 'ASPRAK_KOOR') as Role;
+
     updateState({
       nama: user?.nama_lengkap ?? '',
       email: user?.email ?? '',
       password: '',
       showPassword: false,
-      role: user?.role ?? 'ASPRAK_KOOR',
+      role: initialAsprakRole,
       praktikumList: [],
       tahunAjaranList: [],
       selectedPraktikumId: '',
@@ -111,7 +114,7 @@ export function ManajemenAkunFormModal({ open, onOpenChange, mode, user, onSucce
     });
 
     // Fetch praktikum + existing assignment if ASPRAK_KOOR
-    const shouldFetch = (user?.role ?? 'ASPRAK_KOOR') === 'ASPRAK_KOOR';
+    const shouldFetch = initialAsprakRole === 'ASPRAK_KOOR';
     if (!shouldFetch) return;
 
     updateState({ loadingPraktikum: true });

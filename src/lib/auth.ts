@@ -43,7 +43,7 @@ export const getCurrentUser = cache(async (): Promise<AuthUser | null> => {
   }
 
   try {
-    const meRes = await fetch(`${process.env.HONO_BACKEND_URL}/api/auth/me`, {
+    const meRes = await fetch(`${process.env.HONO_BACKEND_URL}/api/auth/me?app=manajemenasprak`, {
       headers: { Authorization: `Bearer ${session.access_token}` },
     });
 
@@ -56,6 +56,10 @@ export const getCurrentUser = cache(async (): Promise<AuthUser | null> => {
 
     if (!pengguna || pengguna.deleted_at) {
       return null;
+    }
+
+    if (meData.data?.effectiveRole) {
+      pengguna.role = meData.data.effectiveRole;
     }
 
     return {
