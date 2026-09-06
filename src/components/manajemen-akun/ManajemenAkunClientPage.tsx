@@ -469,20 +469,33 @@ export function ManajemenAkunClientPage({
         <TabsList className="glass border border-border/50 p-1">
           <TabsTrigger value="users" className="gap-2 text-xs sm:text-sm">
             <Users className="h-4 w-4" />
-            Akun Aktif ({users.length})
+            <span>Akun Aktif</span>
+            <Badge
+              variant="secondary"
+              className="ml-0.5 rounded-full px-2 py-0 text-[11px] font-semibold tabular-nums"
+            >
+              {users.length}
+            </Badge>
           </TabsTrigger>
           <TabsTrigger value="requests" className="gap-2 text-xs sm:text-sm">
             <Clock className="h-4 w-4" />
-            Permintaan Akses
-            {pendingCount > 0 && (
-              <Badge variant="secondary" className="ml-1 px-1.5 py-0 text-[10px]">
-                {pendingCount}
-              </Badge>
-            )}
+            <span>Permintaan Akses</span>
+            <Badge
+              variant={pendingCount > 0 ? 'default' : 'secondary'}
+              className="ml-0.5 rounded-full px-2 py-0 text-[11px] font-semibold tabular-nums"
+            >
+              {pendingCount}
+            </Badge>
           </TabsTrigger>
           <TabsTrigger value="archived" className="gap-2 text-xs sm:text-sm">
             <Archive className="h-4 w-4" />
-            Akun Dinonaktifkan ({archivedUsers.length})
+            <span>Akun Dinonaktifkan</span>
+            <Badge
+              variant="secondary"
+              className="ml-0.5 rounded-full px-2 py-0 text-[11px] font-semibold tabular-nums"
+            >
+              {archivedUsers.length}
+            </Badge>
           </TabsTrigger>
         </TabsList>
 
