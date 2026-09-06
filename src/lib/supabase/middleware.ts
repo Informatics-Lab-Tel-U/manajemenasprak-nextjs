@@ -88,13 +88,20 @@ export async function updateSession(request: NextRequest) {
 
   if (token) {
     try {
-      const meRes = await fetch(`${process.env.HONO_BACKEND_URL}/api/auth/me`, {
-        headers: { Authorization: `Bearer ${token}` },
-        cache: 'no-store',
-      });
+      const meRes = await fetch(
+        `${process.env.HONO_BACKEND_URL}/api/auth/me?app=manajemenasprak`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+          cache: 'no-store',
+        }
+      );
       if (meRes.ok) {
         const meData = await meRes.json();
         pengguna = meData.data?.pengguna;
+        // Gunakan effectiveRole (role per-app) jika tersedia, fallback ke global role
+        if (pengguna && meData.data?.effectiveRole) {
+          pengguna.role = meData.data.effectiveRole;
+        }
       } else {
         penggunaError = new Error(`Hono returned ${meRes.status}`);
       }

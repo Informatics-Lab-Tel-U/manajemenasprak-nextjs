@@ -23,6 +23,16 @@ export async function GET(request: Request) {
         status: (error as any)?.status,
         code: (error as any)?.code,
       });
+
+      const isBanned =
+        error?.message?.toLowerCase().includes('banned') ||
+        (error as any)?.code === 'user_banned' ||
+        (error as any)?.status === 403;
+
+      if (isBanned) {
+        return NextResponse.redirect(`${origin}/login?error=account-banned`);
+      }
+
       return NextResponse.redirect(`${origin}/login?error=auth-code-error`);
     }
 
@@ -44,9 +54,14 @@ export async function GET(request: Request) {
       const admin = createAdminClient();
       const { data: existingProfile } = await admin
         .from('pengguna')
-        .select('id, status, role')
+        .select('id, status, role, deleted_at')
         .eq('id', user.id)
-        .single();
+        .maybeSingle();
+
+      if (existingProfile?.deleted_at) {
+        await supabase.auth.signOut();
+        return NextResponse.redirect(`${origin}/login?error=account-banned`);
+      }
 
       if (!existingProfile) {
         const rawName =

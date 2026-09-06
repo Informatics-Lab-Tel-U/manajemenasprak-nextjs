@@ -128,11 +128,23 @@ ALTER TYPE "public"."blog_post_status" OWNER TO "postgres";
 CREATE TYPE "public"."roles" AS ENUM (
     'ADMIN',
     'ASLAB',
-    'ASPRAK_KOOR'
+    'ASPRAK_KOOR',
+    'MAHASISWA',
+    'INTERN'
 );
 
 
 ALTER TYPE "public"."roles" OWNER TO "postgres";
+
+
+CREATE TYPE "public"."user_status" AS ENUM (
+    'PENDING',
+    'ACTIVE',
+    'REJECTED'
+);
+
+
+ALTER TYPE "public"."user_status" OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."copy_tahun_ajaran"("p_source_term" "text", "p_target_term" "text", "p_copy_praktikum" boolean, "p_copy_mata_kuliah" boolean, "p_copy_asprak_assignments" boolean) RETURNS "jsonb"
@@ -496,6 +508,45 @@ $$;
 ALTER FUNCTION "public"."rls_auto_enable"() OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."sync_intern_from_auth"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    AS $$
+BEGIN
+  IF COALESCE(NEW.raw_user_meta_data->>'role', 'INTERN') = 'INTERN' THEN
+    INSERT INTO "public"."logbook_interns" (id, name, email, code)
+    VALUES (
+        NEW.id,
+        COALESCE(NEW.raw_user_meta_data->>'nama_lengkap', NEW.raw_user_meta_data->>'name', split_part(NEW.email, '@', 1)),
+        NEW.email,
+        NEW.raw_user_meta_data->>'code'
+    )
+    ON CONFLICT (id) DO UPDATE SET
+        name       = EXCLUDED.name,
+        email      = EXCLUDED.email,
+        code       = COALESCE(EXCLUDED.code, logbook_interns.code),
+        updated_at = now();
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."sync_intern_from_auth"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."touch_logbook_updated_at"() RETURNS "trigger"
+    LANGUAGE "plpgsql"
+    AS $$
+BEGIN
+    NEW.updated_at = now();
+    RETURN NEW;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."touch_logbook_updated_at"() OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."update_updated_at_column"() RETURNS "trigger"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
@@ -766,6 +817,60 @@ CREATE TABLE IF NOT EXISTS "public"."konfigurasi_modul" (
 ALTER TABLE "public"."konfigurasi_modul" OWNER TO "postgres";
 
 
+CREATE TABLE IF NOT EXISTS "public"."logbook_interns" (
+    "id" "uuid" NOT NULL,
+    "name" "text" NOT NULL,
+    "email" "text" NOT NULL,
+    "code" "text",
+    "image" "text",
+    "streak" integer DEFAULT 0 NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL
+);
+
+
+ALTER TABLE "public"."logbook_interns" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."logbook_media" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "post_id" "uuid" NOT NULL,
+    "url" "text" NOT NULL,
+    "order" integer DEFAULT 0 NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL
+);
+
+
+ALTER TABLE "public"."logbook_media" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."logbook_post_tags" (
+    "post_id" "uuid" NOT NULL,
+    "user_id" "uuid" NOT NULL
+);
+
+
+ALTER TABLE "public"."logbook_post_tags" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."logbook_posts" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "user_id" "uuid" NOT NULL,
+    "pic_id" "uuid",
+    "title" "text" NOT NULL,
+    "description" "jsonb",
+    "is_public" boolean DEFAULT false NOT NULL,
+    "is_verified" boolean DEFAULT false NOT NULL,
+    "activity_date" "date" NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL
+);
+
+
+ALTER TABLE "public"."logbook_posts" OWNER TO "postgres";
+
+
 CREATE TABLE IF NOT EXISTS "public"."monitoring_heartbeat_log" (
     "id" bigint NOT NULL,
     "lab_id" "text" NOT NULL,
@@ -837,7 +942,13 @@ CREATE TABLE IF NOT EXISTS "public"."pengguna" (
     "role" "public"."roles" NOT NULL,
     "deleted_at" timestamp with time zone,
     "created_at" timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
-    "updated_at" timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+    "updated_at" timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    "status" "public"."user_status" DEFAULT 'PENDING'::"public"."user_status",
+    "nim" character varying(20),
+    "catatan_request" "text",
+    "approved_by" "uuid",
+    "approved_at" timestamp with time zone,
+    "rejection_reason" "text"
 );
 
 
@@ -988,6 +1099,31 @@ ALTER TABLE ONLY "public"."konfigurasi_modul"
 
 
 
+ALTER TABLE ONLY "public"."logbook_interns"
+    ADD CONSTRAINT "logbook_interns_email_key" UNIQUE ("email");
+
+
+
+ALTER TABLE ONLY "public"."logbook_interns"
+    ADD CONSTRAINT "logbook_interns_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."logbook_media"
+    ADD CONSTRAINT "logbook_media_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."logbook_post_tags"
+    ADD CONSTRAINT "logbook_post_tags_pkey" PRIMARY KEY ("post_id", "user_id");
+
+
+
+ALTER TABLE ONLY "public"."logbook_posts"
+    ADD CONSTRAINT "logbook_posts_pkey" PRIMARY KEY ("id");
+
+
+
 ALTER TABLE ONLY "public"."mata_kuliah"
     ADD CONSTRAINT "mata_kuliah_pkey" PRIMARY KEY ("id");
 
@@ -1115,6 +1251,34 @@ CREATE INDEX "idx_jadwal_mk" ON "public"."jadwal" USING "btree" ("id_mk");
 
 
 
+CREATE INDEX "idx_logbook_media_post_id" ON "public"."logbook_media" USING "btree" ("post_id");
+
+
+
+CREATE INDEX "idx_logbook_post_tags_post_id" ON "public"."logbook_post_tags" USING "btree" ("post_id");
+
+
+
+CREATE INDEX "idx_logbook_post_tags_user_id" ON "public"."logbook_post_tags" USING "btree" ("user_id");
+
+
+
+CREATE INDEX "idx_logbook_posts_activity_date" ON "public"."logbook_posts" USING "btree" ("activity_date" DESC);
+
+
+
+CREATE INDEX "idx_logbook_posts_is_public" ON "public"."logbook_posts" USING "btree" ("is_public") WHERE ("is_public" = true);
+
+
+
+CREATE INDEX "idx_logbook_posts_pic_id" ON "public"."logbook_posts" USING "btree" ("pic_id");
+
+
+
+CREATE INDEX "idx_logbook_posts_user_id" ON "public"."logbook_posts" USING "btree" ("user_id");
+
+
+
 CREATE INDEX "idx_mata_kuliah_praktikum" ON "public"."mata_kuliah" USING "btree" ("id_praktikum");
 
 
@@ -1207,6 +1371,18 @@ CREATE OR REPLACE TRIGGER "tr_prevent_role_escalation" BEFORE UPDATE ON "public"
 
 
 
+CREATE OR REPLACE TRIGGER "trg_logbook_interns_updated_at" BEFORE UPDATE ON "public"."logbook_interns" FOR EACH ROW EXECUTE FUNCTION "public"."touch_logbook_updated_at"();
+
+
+
+CREATE OR REPLACE TRIGGER "trg_logbook_media_updated_at" BEFORE UPDATE ON "public"."logbook_media" FOR EACH ROW EXECUTE FUNCTION "public"."touch_logbook_updated_at"();
+
+
+
+CREATE OR REPLACE TRIGGER "trg_logbook_posts_updated_at" BEFORE UPDATE ON "public"."logbook_posts" FOR EACH ROW EXECUTE FUNCTION "public"."touch_logbook_updated_at"();
+
+
+
 CREATE OR REPLACE TRIGGER "update_blog_categories_updated_at" BEFORE UPDATE ON "public"."blog_categories" FOR EACH ROW EXECUTE FUNCTION "public"."update_updated_at_column"();
 
 
@@ -1275,6 +1451,36 @@ ALTER TABLE ONLY "public"."jadwal_pengganti"
 
 
 
+ALTER TABLE ONLY "public"."logbook_interns"
+    ADD CONSTRAINT "logbook_interns_id_fkey" FOREIGN KEY ("id") REFERENCES "auth"."users"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."logbook_media"
+    ADD CONSTRAINT "logbook_media_post_id_fkey" FOREIGN KEY ("post_id") REFERENCES "public"."logbook_posts"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."logbook_post_tags"
+    ADD CONSTRAINT "logbook_post_tags_post_id_fkey" FOREIGN KEY ("post_id") REFERENCES "public"."logbook_posts"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."logbook_post_tags"
+    ADD CONSTRAINT "logbook_post_tags_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."logbook_interns"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."logbook_posts"
+    ADD CONSTRAINT "logbook_posts_pic_id_fkey" FOREIGN KEY ("pic_id") REFERENCES "public"."pengguna"("id") ON DELETE SET NULL;
+
+
+
+ALTER TABLE ONLY "public"."logbook_posts"
+    ADD CONSTRAINT "logbook_posts_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."logbook_interns"("id") ON DELETE CASCADE;
+
+
+
 ALTER TABLE ONLY "public"."mata_kuliah"
     ADD CONSTRAINT "mata_kuliah_id_praktikum_fkey" FOREIGN KEY ("id_praktikum") REFERENCES "public"."praktikum"("id");
 
@@ -1297,6 +1503,11 @@ ALTER TABLE ONLY "public"."pelanggaran_status"
 
 ALTER TABLE ONLY "public"."pelanggaran_status"
     ADD CONSTRAINT "pelanggaran_status_id_praktikum_fkey" FOREIGN KEY ("id_praktikum") REFERENCES "public"."praktikum"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."pengguna"
+    ADD CONSTRAINT "pengguna_approved_by_fkey" FOREIGN KEY ("approved_by") REFERENCES "public"."pengguna"("id");
 
 
 
@@ -1624,6 +1835,18 @@ ALTER TABLE "public"."jadwal_pengganti" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "public"."konfigurasi_modul" ENABLE ROW LEVEL SECURITY;
 
 
+ALTER TABLE "public"."logbook_interns" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."logbook_media" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."logbook_post_tags" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."logbook_posts" ENABLE ROW LEVEL SECURITY;
+
+
 ALTER TABLE "public"."mata_kuliah" ENABLE ROW LEVEL SECURITY;
 
 
@@ -1891,6 +2114,18 @@ GRANT ALL ON FUNCTION "public"."rls_auto_enable"() TO "service_role";
 
 
 
+GRANT ALL ON FUNCTION "public"."sync_intern_from_auth"() TO "anon";
+GRANT ALL ON FUNCTION "public"."sync_intern_from_auth"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."sync_intern_from_auth"() TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."touch_logbook_updated_at"() TO "anon";
+GRANT ALL ON FUNCTION "public"."touch_logbook_updated_at"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."touch_logbook_updated_at"() TO "service_role";
+
+
+
 GRANT ALL ON FUNCTION "public"."update_updated_at_column"() TO "anon";
 GRANT ALL ON FUNCTION "public"."update_updated_at_column"() TO "authenticated";
 GRANT ALL ON FUNCTION "public"."update_updated_at_column"() TO "service_role";
@@ -2006,6 +2241,30 @@ GRANT ALL ON TABLE "public"."jadwal_public_view" TO "service_role";
 GRANT SELECT,REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."konfigurasi_modul" TO "anon";
 GRANT ALL ON TABLE "public"."konfigurasi_modul" TO "authenticated";
 GRANT ALL ON TABLE "public"."konfigurasi_modul" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."logbook_interns" TO "anon";
+GRANT ALL ON TABLE "public"."logbook_interns" TO "authenticated";
+GRANT ALL ON TABLE "public"."logbook_interns" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."logbook_media" TO "anon";
+GRANT ALL ON TABLE "public"."logbook_media" TO "authenticated";
+GRANT ALL ON TABLE "public"."logbook_media" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."logbook_post_tags" TO "anon";
+GRANT ALL ON TABLE "public"."logbook_post_tags" TO "authenticated";
+GRANT ALL ON TABLE "public"."logbook_post_tags" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."logbook_posts" TO "anon";
+GRANT ALL ON TABLE "public"."logbook_posts" TO "authenticated";
+GRANT ALL ON TABLE "public"."logbook_posts" TO "service_role";
 
 
 

@@ -22,6 +22,7 @@ const URL_ERROR_MESSAGES: Record<string, string> = {
   'invalid-domain': 'Hanya akun resmi civitas akademika Telkom University (@student.telkomuniversity.ac.id / @telkomuniversity.ac.id) yang diizinkan.',
   'auth-code-error': 'Gagal melakukan verifikasi akun Microsoft. Silakan coba lagi.',
   'no-code': 'Kode autentikasi tidak valid atau sudah kedaluwarsa.',
+  'account-banned': 'Akun Anda telah dinonaktifkan oleh administrator. Silakan hubungi admin laboratorium jika membutuhkan akses kembali.',
 };
 
 

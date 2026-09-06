@@ -20,6 +20,9 @@ const ROLE_LABEL: Record<Role, string> = {
   ADMIN: 'Administrator',
   ASLAB: 'Asisten Laboratorium',
   ASPRAK_KOOR: 'Koordinator Asprak',
+  ASPRAK: 'Asisten Praktikum',
+  MAHASISWA: 'Mahasiswa',
+  INTERN: 'Intern',
 };
 
 export function AccountSwitcher({

@@ -2,6 +2,12 @@ import type { Role } from '@/config/rbac';
 
 export type UserStatus = 'PENDING' | 'ACTIVE' | 'REJECTED';
 
+export type UserAppRole = {
+  app_slug: string;
+  role: string;
+  app_name?: string;
+};
+
 export type Pengguna = {
   id: string;
   nama_lengkap: string;
@@ -15,6 +21,13 @@ export type Pengguna = {
   deleted_at?: string;
   created_at: string;
   updated_at: string;
+};
+
+export type UserWithEmail = Pengguna & {
+  email: string;
+  auth_created_at?: string;
+  provider?: string;
+  app_roles?: UserAppRole[];
 };
 
 export type AsprakKoordinator = {

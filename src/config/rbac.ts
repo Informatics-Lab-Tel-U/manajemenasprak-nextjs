@@ -4,9 +4,10 @@ import { AUTH_CONFIG } from './auth';
 export { ROLES, ALL_ROLES, type Role };
 
 /**
- * Defines which routes each role can access.
+ * Defines which routes each role can access in the manajemenasprak app.
  * Use exact path prefixes; the middleware uses startsWith() matching.
  *
+ * Role berlaku per-app — di-lookup dari user_app_roles di DB.
  * Order matters: more specific paths should come before less specific ones.
  */
 export const ROLE_ALLOWED_PATHS: Record<Role, string[]> = {
@@ -53,6 +54,10 @@ export const ROLE_ALLOWED_PATHS: Record<Role, string[]> = {
     '/blog',
   ],
   ASPRAK_KOOR: ['/pelanggaran', '/panduan'],
+  ASPRAK: ['/jadwal', '/jadwal-jaga', '/panduan'],
+  // MAHASISWA & INTERN tidak punya akses ke manajemenasprak — akan di-redirect keluar
+  MAHASISWA: [],
+  INTERN: [],
 };
 
 /**
@@ -65,12 +70,16 @@ export const PUBLIC_PATHS = [
 ];
 
 /**
- * The default redirect destination when a role tries to access a forbidden path.
+ * The default redirect destination when a role logs in or tries to access a forbidden path.
+ * MAHASISWA & INTERN tidak boleh ada di app ini — redirect ke login dengan error.
  */
 export const ROLE_DEFAULT_REDIRECT: Record<Role, string> = {
   ADMIN: '/',
   ASLAB: '/',
   ASPRAK_KOOR: '/pelanggaran',
+  ASPRAK: '/jadwal',
+  MAHASISWA: '/login',
+  INTERN: '/login',
 };
 
 /**
@@ -79,7 +88,6 @@ export const ROLE_DEFAULT_REDIRECT: Record<Role, string> = {
 export function hasAccess(role: Role, urlPath: string): boolean {
   const pathname = urlPath.split('?')[0];
   const allowed = ROLE_ALLOWED_PATHS[role];
-  // VULN-10 FIX: Guard against unknown/undefined role to prevent TypeError crash.
   // Fail-closed: unknown roles are denied rather than crashing the middleware.
   if (!allowed) return false;
   return allowed.some((allowedPath) => {
@@ -94,3 +102,4 @@ export function hasAccess(role: Role, urlPath: string): boolean {
 export function isPublicPath(pathname: string): boolean {
   return PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(p + '/'));
 }
+
