@@ -249,7 +249,19 @@ export function ManajemenAkunClientPage({
       {
         accessorKey: 'nama_lengkap',
         header: 'Nama Pengaju',
-        cell: ({ row }) => <span className="font-medium">{row.original.nama_lengkap}</span>,
+        cell: ({ row }) => (
+          <div className="flex flex-col gap-0.5">
+            <span className="font-medium">{row.original.nama_lengkap}</span>
+            {row.original.catatan_request && (
+              <span
+                className="text-xs text-muted-foreground italic truncate max-w-[240px]"
+                title={row.original.catatan_request}
+              >
+                Catatan: {row.original.catatan_request}
+              </span>
+            )}
+          </div>
+        ),
       },
       {
         accessorKey: 'email',
@@ -467,38 +479,49 @@ export function ManajemenAkunClientPage({
       </div>
 
       <Tabs defaultValue="users" className="space-y-6">
-        <TabsList className="glass border border-border/50 p-1">
-          <TabsTrigger value="users" className="gap-2 text-xs sm:text-sm">
-            <Users className="h-4 w-4" />
-            <span>Akun Aktif</span>
-            <Badge
-              variant="secondary"
-              className="ml-0.5 rounded-full px-2 py-0 text-[11px] font-semibold tabular-nums"
-            >
-              {users.length}
-            </Badge>
-          </TabsTrigger>
-          <TabsTrigger value="requests" className="gap-2 text-xs sm:text-sm">
-            <Clock className="h-4 w-4" />
-            <span>Permintaan Akses</span>
-            <Badge
-              variant={pendingCount > 0 ? 'default' : 'secondary'}
-              className="ml-0.5 rounded-full px-2 py-0 text-[11px] font-semibold tabular-nums"
-            >
-              {pendingCount}
-            </Badge>
-          </TabsTrigger>
-          <TabsTrigger value="archived" className="gap-2 text-xs sm:text-sm">
-            <Archive className="h-4 w-4" />
-            <span>Akun Dinonaktifkan</span>
-            <Badge
-              variant="secondary"
-              className="ml-0.5 rounded-full px-2 py-0 text-[11px] font-semibold tabular-nums"
-            >
-              {archivedUsers.length}
-            </Badge>
-          </TabsTrigger>
-        </TabsList>
+        <div className="w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+          <TabsList className="glass border border-border/50 p-1 h-auto sm:h-9 inline-flex w-full sm:w-auto">
+            <TabsTrigger value="users" className="gap-1.5 sm:gap-2 text-xs sm:text-sm px-2.5 sm:px-3 py-1.5 sm:py-1 flex-1 sm:flex-initial">
+              <Users className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />
+              <span>
+                <span className="inline sm:hidden">Aktif</span>
+                <span className="hidden sm:inline">Akun Aktif</span>
+              </span>
+              <Badge
+                variant="secondary"
+                className="ml-0.5 rounded-full px-1.5 sm:px-2 py-0 text-[10px] sm:text-[11px] font-semibold tabular-nums"
+              >
+                {users.length}
+              </Badge>
+            </TabsTrigger>
+            <TabsTrigger value="requests" className="gap-1.5 sm:gap-2 text-xs sm:text-sm px-2.5 sm:px-3 py-1.5 sm:py-1 flex-1 sm:flex-initial">
+              <Clock className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />
+              <span>
+                <span className="inline sm:hidden">Permintaan</span>
+                <span className="hidden sm:inline">Permintaan Akses</span>
+              </span>
+              <Badge
+                variant={pendingCount > 0 ? 'default' : 'secondary'}
+                className="ml-0.5 rounded-full px-1.5 sm:px-2 py-0 text-[10px] sm:text-[11px] font-semibold tabular-nums"
+              >
+                {pendingCount}
+              </Badge>
+            </TabsTrigger>
+            <TabsTrigger value="archived" className="gap-1.5 sm:gap-2 text-xs sm:text-sm px-2.5 sm:px-3 py-1.5 sm:py-1 flex-1 sm:flex-initial">
+              <Archive className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />
+              <span>
+                <span className="inline sm:hidden">Nonaktif</span>
+                <span className="hidden sm:inline">Akun Dinonaktifkan</span>
+              </span>
+              <Badge
+                variant="secondary"
+                className="ml-0.5 rounded-full px-1.5 sm:px-2 py-0 text-[10px] sm:text-[11px] font-semibold tabular-nums"
+              >
+                {archivedUsers.length}
+              </Badge>
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
         {/* Tab 1: Active Users */}
         <TabsContent value="users" className="space-y-4">

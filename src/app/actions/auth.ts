@@ -1,6 +1,7 @@
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { AUTH_CONFIG, isMfaRequiredForRole } from '@/config/auth';
 import type { Role } from '@/config/rbac';
 
@@ -90,4 +91,60 @@ export async function login(email: string, password: string, turnstileToken: str
   }
 
   return { success: true, redirectTo };
+}
+
+export async function reapplyAccess(notes?: string) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { error: 'Sesi login Anda telah kedaluwarsa. Silakan masuk kembali.' };
+  }
+
+  try {
+    const admin = createAdminClient();
+    const { data: pengguna, error: fetchError } = await admin
+      .from('pengguna')
+      .select('id, status, deleted_at')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    if (fetchError || !pengguna) {
+      return { error: 'Profil pengguna tidak ditemukan.' };
+    }
+
+    if (pengguna.deleted_at) {
+      return { error: 'Akun Anda telah dinonaktifkan oleh administrator.' };
+    }
+
+    if (pengguna.status !== 'REJECTED') {
+      return { error: 'Permintaan akses hanya dapat diajukan ulang jika status akun ditolak.' };
+    }
+
+    const updatePayload: Record<string, any> = {
+      status: 'PENDING',
+      rejection_reason: null,
+      updated_at: new Date().toISOString(),
+    };
+
+    if (notes && notes.trim().length > 0) {
+      updatePayload.catatan_request = notes.trim();
+    }
+
+    const { error: updateError } = await admin
+      .from('pengguna')
+      .update(updatePayload)
+      .eq('id', user.id);
+
+    if (updateError) {
+      return { error: updateError.message || 'Gagal memperbarui status permintaan.' };
+    }
+
+    return { success: true };
+  } catch (err: any) {
+    console.error('[reapplyAccess] Unexpected error:', err);
+    return { error: err.message || 'Terjadi kesalahan sistem saat mengajukan ulang.' };
+  }
 }
