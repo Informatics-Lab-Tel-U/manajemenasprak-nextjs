@@ -79,6 +79,14 @@ const ROLE_ICON: Record<Role, React.ElementType> = {
   INTERN: User,
 };
 
+function isSsoUser(user: { provider?: string; email?: string }): boolean {
+  return (
+    user.provider === 'azure' ||
+    Boolean(user.email?.endsWith('@student.telkomuniversity.ac.id')) ||
+    Boolean(user.email?.endsWith('@telkomuniversity.ac.id'))
+  );
+}
+
 export function ManajemenAkunClientPage({
   users,
   requests = [],
@@ -114,14 +122,7 @@ export function ManajemenAkunClientPage({
         accessorKey: 'email',
         header: 'Email',
         cell: ({ row }) => (
-          <div className="flex items-center gap-1.5">
-            <span className="text-muted-foreground font-mono text-xs">{row.original.email}</span>
-            {row.original.provider === 'azure' && (
-              <Badge variant="outline" className="text-[10px] px-1.5 py-0 font-normal text-muted-foreground border-border/60">
-                SSO
-              </Badge>
-            )}
-          </div>
+          <span className="text-muted-foreground font-mono text-xs">{row.original.email}</span>
         ),
       },
       {
@@ -204,7 +205,7 @@ export function ManajemenAkunClientPage({
         id: 'actions',
         header: () => <div className="text-center">Aksi</div>,
         cell: ({ row }) => {
-          const isSso = row.original.provider === 'azure';
+          const isSso = isSsoUser(row.original);
           return (
             <div className="flex justify-center gap-1">
               {!isSso && (
