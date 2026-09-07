@@ -4,13 +4,14 @@ import type { ExistingAsprakInfo } from '@/components/asprak/AsprakImportCSVModa
 
 const CODE_RECYCLE_YEARS = 5;
 
-export type ExistingNimInfo = { nim: string; role: string; kode?: string };
+export type ExistingNimInfo = { nim: string; role: string; kode?: string; nama_lengkap?: string };
 
 export function validateAsprakData(
   data: any[],
   existingCodes: string[],
   existingNims: ExistingNimInfo[],
-  forceOverride: boolean = false
+  forceOverride: boolean = false,
+  nimS2Mode: boolean = false
 ): PreviewRow[] {
   const usedCodes = new Set(
     (existingCodes || [])
@@ -24,6 +25,17 @@ export function validateAsprakData(
       existingRecords.set(`${e.nim}_${e.role}`, e.kode.toUpperCase());
     }
   });
+
+  // S2 mode: lookup map by kode+nama_lengkap (normalized uppercase)
+  const existingByKodeNama = new Map<string, { nim: string; kode: string; role: string }>();
+  if (nimS2Mode) {
+    existingNims.forEach((e) => {
+      if (e.kode && e.nama_lengkap) {
+        const key = `${e.kode.toUpperCase()}_${e.nama_lengkap.toUpperCase().replace(/\s+/g, ' ').trim()}`;
+        existingByKodeNama.set(key, { nim: e.nim, kode: e.kode.toUpperCase(), role: e.role });
+      }
+    });
+  }
 
   const normalizedData = data.map((r: any) => {
     const keys = Object.keys(r);
@@ -59,6 +71,7 @@ export function validateAsprakData(
 
   const preview: PreviewRow[] = [];
   const seenNimsInCSV = new Set<string>();
+  const seenKodeNamaInCSV = new Set<string>(); // used in S2 mode
 
   for (let idx = 0; idx < normalizedData.length; idx++) {
     const row = normalizedData[idx];
@@ -86,6 +99,28 @@ export function validateAsprakData(
     } else if (!nim) {
       status = 'error';
       statusMessage = 'NIM kosong';
+    } else if (nimS2Mode) {
+      // S2 mode: match by kode + nama, update NIM
+      if (!originalKode) {
+        status = 'error';
+        statusMessage = 'Mode NIM S2: kolom kode wajib diisi';
+      } else {
+        const csvNamaNorm = namaLengkap.toUpperCase().replace(/\s+/g, ' ').trim();
+        const s2Key = `${originalKode.toUpperCase()}_${csvNamaNorm}`;
+        if (seenKodeNamaInCSV.has(s2Key)) {
+          status = 'duplicate-csv';
+          statusMessage = 'Duplikat dalam CSV — Kode dan Nama sama dengan row sebelumnya';
+        } else {
+          const s2Match = existingByKodeNama.get(s2Key);
+          if (s2Match) {
+            status = 'warning';
+            statusMessage = `NIM S2: ${s2Match.nim} → ${nim}`;
+            generated = { code: s2Match.kode, rule: 'Existing (DB) — NIM S2' };
+            originalKode = s2Match.kode;
+          }
+          // else: tidak ditemukan di DB → insert baru (status tetap 'ok')
+        }
+      }
     } else if (existingRecords.has(`${nim}_${role}`)) {
       status = 'warning';
       statusMessage = `Data sudah ada di DB — akan di-update`;
@@ -110,6 +145,9 @@ export function validateAsprakData(
     }
 
     if (nim) seenNimsInCSV.add(`${nim}_${role}`);
+    if (nimS2Mode && originalKode && namaLengkap) {
+      seenKodeNamaInCSV.add(`${originalKode.toUpperCase()}_${namaLengkap.toUpperCase().replace(/\s+/g, ' ').trim()}`);
+    }
 
     const codeSource: PreviewRow['codeSource'] =
       generated.rule === 'Provided (CSV)' || generated.rule === 'Existing (DB)' ? 'csv' : 'generated';

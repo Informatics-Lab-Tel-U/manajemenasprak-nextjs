@@ -234,7 +234,7 @@ export interface BulkImportResult {
 
 export async function bulkImportAspraks(
   rows: BulkImportRow[],
-  options?: { asyncJob?: boolean; term?: string }
+  options?: { asyncJob?: boolean; term?: string; nimS2Mode?: boolean }
 ): Promise<ServiceResult<BulkImportResult>> {
   try {
     // Mode Async via Inngest jika diminta
@@ -242,7 +242,7 @@ export async function bulkImportAspraks(
       const res = await fetch('/api/asprak', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'bulk-import', rows, asyncJob: true, term: options.term }),
+        body: JSON.stringify({ action: 'bulk-import', rows, asyncJob: true, term: options.term, nimS2Mode: options.nimS2Mode }),
       });
 
       const json = await res.json();
@@ -265,7 +265,7 @@ export async function bulkImportAspraks(
       const res = await fetch('/api/asprak', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'bulk-import', rows }),
+        body: JSON.stringify({ action: 'bulk-import', rows, nimS2Mode: options?.nimS2Mode }),
       });
 
       const json = await res.json();
@@ -287,7 +287,7 @@ export async function bulkImportAspraks(
       const res = await fetch('/api/asprak', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'bulk-import', rows: chunk }),
+        body: JSON.stringify({ action: 'bulk-import', rows: chunk, nimS2Mode: options?.nimS2Mode }),
       });
 
       const json = await res.json();

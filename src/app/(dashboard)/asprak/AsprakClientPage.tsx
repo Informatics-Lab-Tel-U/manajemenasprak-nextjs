@@ -120,7 +120,7 @@ export default function AsprakClientPage({
       setExistingCodes(codesResult.data);
     }
     if (allAsprakResult.ok && allAsprakResult.data) {
-      setAllExistingNims(allAsprakResult.data.map((a) => ({ nim: a.nim, role: a.role, kode: a.kode })));
+      setAllExistingNims(allAsprakResult.data.map((a) => ({ nim: a.nim, role: a.role, kode: a.kode, nama_lengkap: a.nama_lengkap })));
       setAllExistingAspraks(
         allAsprakResult.data.map((a) => ({ nim: a.nim, kode: a.kode, angkatan: a.angkatan ?? 0 }))
       );
@@ -153,9 +153,10 @@ export default function AsprakClientPage({
       angkatan: number;
     }[],
     term: string,
-    allPreviewRows?: PreviewRow[]
+    allPreviewRows?: PreviewRow[],
+    nimS2Mode?: boolean
   ) => {
-    const result = await bulkImportAspraks(rows);
+    const result = await bulkImportAspraks(rows, { nimS2Mode });
 
     if (!result.ok) {
       throw new Error(result.error || 'Gagal import data.');

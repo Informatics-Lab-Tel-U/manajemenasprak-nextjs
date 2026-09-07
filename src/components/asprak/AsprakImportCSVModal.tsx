@@ -72,7 +72,8 @@ interface AsprakImportCSVModalProps {
       angkatan: number;
     }[],
     term: string,
-    allPreviewRows?: PreviewRow[]
+    allPreviewRows?: PreviewRow[],
+    nimS2Mode?: boolean
   ) => Promise<void>;
   onClose: () => void;
   open: boolean;
@@ -112,6 +113,7 @@ export default function AsprakImportCSVModal({
   const [saving, setSaving] = useState(false);
   const [forceOverride, setForceOverride] = useState(false);
   const [showOverrideConfirm, setShowOverrideConfirm] = useState(false);
+  const [nimS2Mode, setNimS2Mode] = useState(false);
 
   const term = useMemo(() => buildTermString(termYear, termSem), [termYear, termSem]);
   const isTermValid = term.length > 0 && !isNaN(parseInt(termYear));
@@ -178,12 +180,12 @@ export default function AsprakImportCSVModal({
   useEffect(() => {
     if (parsedData.length === 0) return;
     try {
-      const preview = validateAsprakData(parsedData, existingCodes, existingNims, forceOverride);
+      const preview = validateAsprakData(parsedData, existingCodes, existingNims, forceOverride, nimS2Mode);
       setPreviewRows(preview);
     } catch (e: any) {
       setError(`Error saat menyiapkan data: ${e.message}`);
     }
-  }, [parsedData, existingCodes, existingNims, forceOverride]);
+  }, [parsedData, existingCodes, existingNims, forceOverride, nimS2Mode]);
 
 
   const handleToggleSelect = useCallback((rowIndex: number) => {
@@ -237,7 +239,8 @@ export default function AsprakImportCSVModal({
           remappedData,
           existingCodes,
           existingNims,
-          forceOverride
+          forceOverride,
+          nimS2Mode
         );
         const finalRows = revalidated.map((revalRow, i) => {
           if (updated[i].codeRule === 'Manual edit') {
@@ -315,7 +318,8 @@ export default function AsprakImportCSVModal({
           angkatan: r.angkatan,
         })),
         term,
-        previewRows
+        previewRows,
+        nimS2Mode
       );
     } catch (e: any) {
       const errMsg = e instanceof Error ? e.message : String(e);
@@ -333,6 +337,7 @@ export default function AsprakImportCSVModal({
     setFileName(null);
     setError(null);
     setForceOverride(false);
+    setNimS2Mode(false);
   };
 
 
@@ -344,6 +349,7 @@ export default function AsprakImportCSVModal({
     setError(null);
     setSaving(false);
     setForceOverride(false);
+    setNimS2Mode(false);
     onClose();
   };
 
@@ -388,6 +394,24 @@ export default function AsprakImportCSVModal({
                     label="Tahun Ajaran Penugasan"
                     description="Isi term terlebih dahulu sebelum upload CSV."
                   />
+
+                  {/* Switch NIM S2 */}
+                  <div className="flex items-start gap-3 bg-muted/30 p-3 rounded-md border border-border/50">
+                    <Switch
+                      id="nim-s2-mode"
+                      checked={nimS2Mode}
+                      onCheckedChange={setNimS2Mode}
+                    />
+                    <div>
+                      <Label htmlFor="nim-s2-mode" className="text-sm font-medium leading-tight cursor-pointer">
+                        NIM S2
+                      </Label>
+                      <p className="text-xs text-muted-foreground font-normal mt-0.5">
+                        Timpa NIM lama dengan NIM baru berdasarkan <b>kode</b> dan <b>nama</b> yang sama.
+                        Kolom <code className="text-[9px] bg-muted px-1 rounded">kode</code> wajib diisi.
+                      </p>
+                    </div>
+                  </div>
 
                   {/* Step 2: Dropzone (only enabled after term is filled) */}
                   <div className="space-y-2">
