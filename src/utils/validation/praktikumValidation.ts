@@ -24,7 +24,18 @@ export function validatePraktikumData(
       .toString()
       .trim()
       .toUpperCase();
-    const tahunAjaran = (row.tahun_ajaran || row['Tahun Ajaran'] || '').toString().trim();
+    let rawTahun = (row.tahun_ajaran || row['Tahun Ajaran'] || '').toString().trim();
+    const num = Number(rawTahun);
+    if (!isNaN(num) && num >= 100000 && num <= 400000) {
+      const utc_days = Math.floor(num - 25569);
+      const date = new Date(utc_days * 86400 * 1000);
+      const year = date.getUTCFullYear();
+      const month = date.getUTCMonth() + 1;
+      if (year >= 2000 && year <= 2999 && (month === 1 || month === 2)) {
+        rawTahun = `${year}-${month}`;
+      }
+    }
+    const tahunAjaran = rawTahun;
 
     let status: PraktikumPreviewRow['status'] = 'ok';
     let statusMessage = '';
