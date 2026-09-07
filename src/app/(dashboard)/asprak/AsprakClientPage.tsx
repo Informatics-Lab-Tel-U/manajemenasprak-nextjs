@@ -163,6 +163,21 @@ export default function AsprakClientPage({
 
     const data = result.data!;
 
+    // Jika Inngest berhasil meng-queue job, tampilkan info khusus dan skip export
+    if (data.queued) {
+      toast.info('Import dijadwalkan!', {
+        description: (
+          <div className="mt-2 text-xs">
+            <p>{data.message || 'Import sedang diproses di background oleh Inngest.'}</p>
+            <p className="mt-1 text-muted-foreground">Halaman akan direfresh otomatis setelah selesai.</p>
+          </div>
+        ),
+        duration: 5000,
+      });
+      setShowImportModal(false);
+      return;
+    }
+
     // Auto-download hasil import berupa spreadsheet XLSX (lengkap dengan kode asprak & status duplikat)
     if (allPreviewRows && allPreviewRows.length > 0) {
       try {
@@ -225,6 +240,7 @@ export default function AsprakClientPage({
     fetchAsprak();
     refreshCodesAndNims();
   };
+
 
   const handleView = async (asprak: Asprak) => {
     setSelectedAsprak(asprak);

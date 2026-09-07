@@ -118,15 +118,22 @@ export default function PraktikanClientPage() {
   };
 
   const handleImportCSV = async (importRows: Omit<PraktikanRecord, 'id' | 'created_at'>[]) => {
+    const isAsync = importRows.length > 30;
     const response = await fetch('/api/praktikan', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ rows: importRows }),
+      body: JSON.stringify({ rows: importRows, asyncJob: isAsync }),
     });
     const result = await response.json();
 
     if (!response.ok || !result.ok) {
       throw new Error(result.error || 'Gagal menyimpan data praktikan.');
+    }
+
+    if (result.queued) {
+      toast.info('Import data praktikan sedang diproses di background job!');
+      setShowImportModal(false);
+      return;
     }
     
     toast.success(`${result.data?.inserted ?? importRows.length} data praktikan berhasil diimport.`);

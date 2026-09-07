@@ -17,13 +17,14 @@ export default async function MataKuliahPage() {
   let initialValidPraktikums: any[] = [];
 
   try {
-    const [termsRes, pNamesRes, mkRes, pRes] = await Promise.all([
-      getAvailableTerms(),
-      getUniquePraktikumNames(),
-      getMataKuliahByTerm('all'),
-      getPraktikumByTerm('all'),
-    ]);
+    const termsRes = await getAvailableTerms();
     terms = termsRes || [];
+
+    const [pNamesRes, mkRes, pRes] = await Promise.all([
+      getUniquePraktikumNames(),
+      getMataKuliahByTerm(terms[0] || ''),
+      getPraktikumByTerm(terms[0] || ''),
+    ]);
     praktikumNames = pNamesRes || [];
     initialGroupedData = mkRes || [];
     initialValidPraktikums = pRes || [];

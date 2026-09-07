@@ -14,12 +14,12 @@ export default async function PraktikumPage() {
   let initialPraktikumList: any[] = [];
 
   try {
-    const [termsRes, prakRes] = await Promise.all([
-      getAvailableTerms(),
-      getPraktikumByTerm('all'),
-    ]);
+    const termsRes = await getAvailableTerms();
     terms = termsRes || [];
+
+    const prakRes = await getPraktikumByTerm(terms[0] || '');
     initialPraktikumList = prakRes || [];
+
   } catch (error) {
     console.error('[PraktikumPage] SSR fetch error:', error);
   }
