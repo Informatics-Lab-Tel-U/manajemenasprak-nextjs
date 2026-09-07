@@ -19,6 +19,8 @@ import {
   UpsertAsprakInput,
 } from '@/lib/fetchers/asprakFetcher';
 import { ExistingAsprakInfo } from '@/components/asprak/AsprakImportCSVModal';
+import { PreviewRow } from '@/components/asprak/AsprakCSVPreview';
+import { exportSpreadsheet } from '@/lib/spreadsheet';
 import { ExistingNimInfo } from '@/utils/validation/asprakValidation';
 import AsprakFilters from '@/components/asprak/AsprakFilters';
 import AsprakTable from '@/components/asprak/AsprakTable';
@@ -150,7 +152,8 @@ export default function AsprakClientPage({
       role: 'ASPRAK' | 'ASLAB';
       angkatan: number;
     }[],
-    _term: string
+    term: string,
+    allPreviewRows?: PreviewRow[]
   ) => {
     const result = await bulkImportAspraks(rows);
 
@@ -160,7 +163,40 @@ export default function AsprakClientPage({
 
     const data = result.data!;
 
-    toast.success('Import selesai!', {
+    // Auto-download hasil import berupa spreadsheet XLSX (lengkap dengan kode asprak & status duplikat)
+    if (allPreviewRows && allPreviewRows.length > 0) {
+      try {
+        const exportRows = allPreviewRows.map((r) => ({
+          'NIM': r.nim,
+          'Nama Lengkap': r.nama_lengkap,
+          'Kode Asprak': r.kode,
+          'Role': r.role,
+          'Angkatan': r.angkatan,
+          'Aturan Kode': r.codeRule || '-',
+          'Status Import':
+            r.status === 'ok'
+              ? 'Berhasil (Baru)'
+              : r.status === 'warning'
+              ? 'Berhasil (Update DB / Kode Existing)'
+              : r.status === 'duplicate-csv'
+              ? 'Duplikat di File (Dilewati)'
+              : `Gagal (${r.statusMessage || 'Error'})`,
+        }));
+
+        const cleanTerm = term ? `_${term}` : '';
+        const now = new Date();
+        const dateStr = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}_${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}`;
+        const exportFilename = `Hasil_Import_Asprak${cleanTerm}_${dateStr}.xlsx`;
+
+        exportSpreadsheet(exportRows, exportFilename, 'Hasil Import Asprak', 'xlsx').catch((err) => {
+          console.error('Gagal mengunduh file hasil import:', err);
+        });
+      } catch (err) {
+        console.error('Error saat membuat data export spreadsheet:', err);
+      }
+    }
+
+    toast.success('Import selesai! File hasil import otomatis diunduh.', {
       description: (
         <div className="mt-2 text-xs font-mono">
           <p>

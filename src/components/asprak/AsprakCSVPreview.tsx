@@ -7,6 +7,7 @@
  * @module components/asprak/AsprakCSVPreview
  */
 
+import { useState } from 'react';
 import {
   CheckCircle,
   AlertTriangle,
@@ -16,7 +17,10 @@ import {
   FileCheck,
   CopyX,
   Pencil,
+  Download,
 } from 'lucide-react';
+import { exportSpreadsheet } from '@/lib/spreadsheet';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { NavButton } from '@/components/ui/nav-button';
 import { Badge } from '@/components/ui/badge';
@@ -101,6 +105,51 @@ export default function AsprakCSVPreview({
   const allSelected = selectableRows.length > 0 && selectedCount === selectableRows.length;
   const isIndeterminate = selectedCount > 0 && selectedCount < selectableRows.length;
 
+  const [downloading, setDownloading] = useState(false);
+
+  const handleDownloadPreview = async () => {
+    if (rows.length === 0) return;
+    setDownloading(true);
+    try {
+      const exportRows = rows.map((r) => {
+        const isDuplicateDB = r.status === 'error' && r.statusMessage?.includes('Duplikat');
+        const isDuplicateCSV = r.status === 'duplicate-csv';
+        let statusText = 'OK (Baru)';
+        if (r.status === 'warning') {
+          statusText = 'Data Sudah Ada di DB (Pakai Kode Lama)';
+        } else if (isDuplicateCSV) {
+          statusText = 'Duplikat di File CSV (Akan Dilewati)';
+        } else if (isDuplicateDB) {
+          statusText = 'Duplikat di Database';
+        } else if (r.status === 'error') {
+          statusText = `Error (${r.statusMessage || 'Tidak Valid'})`;
+        }
+
+        return {
+          'NIM': r.nim,
+          'Nama Lengkap': r.nama_lengkap,
+          'Kode Asprak': r.kode || '—',
+          'Role': r.role,
+          'Angkatan': r.angkatan,
+          'Aturan Kode': r.codeRule || '-',
+          'Status Preview': statusText,
+        };
+      });
+
+      const cleanTerm = term ? `_${term}` : '';
+      const now = new Date();
+      const dateStr = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}_${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}`;
+      const filename = `Preview_Kode_Asprak${cleanTerm}_${dateStr}.xlsx`;
+
+      await exportSpreadsheet(exportRows, filename, 'Preview Asprak', 'xlsx');
+      toast.success('File preview berhasil diunduh!');
+    } catch (err: any) {
+      toast.error(`Gagal mengunduh file preview: ${err.message || err}`);
+    } finally {
+      setDownloading(false);
+    }
+  };
+
   return (
     <div className="space-y-4">
       {/* Summary header */}
@@ -165,6 +214,19 @@ export default function AsprakCSVPreview({
             {totalManualEdit} Manual edit
           </Badge>
         )}
+
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={handleDownloadPreview}
+          disabled={loading || downloading || rows.length === 0}
+          className="h-8 text-xs px-2.5 gap-1.5 ml-auto bg-background hover:bg-muted/60"
+          title="Download seluruh data preview beserta kode yang ter-generate (termasuk yang duplikat)"
+        >
+          <Download size={13} className="text-primary" />
+          <span>{downloading ? 'Mengunduh...' : 'Download XLSX'}</span>
+        </Button>
       </div>
 
       {onForceOverrideChange !== undefined && (
@@ -386,24 +448,37 @@ export default function AsprakCSVPreview({
 
       {/* Action Buttons */}
       {!hideButtons && (
-        <div className="flex justify-between items-center pt-2">
-          <NavButton direction="prev" type="button" onClick={onBack} disabled={loading} />
+        <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3 pt-2">
+          <NavButton direction="prev" type="button" onClick={onBack} disabled={loading || downloading} />
 
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
             {totalError + totalDuplicateCSV > 0 && (
               <p className="text-xs text-amber-500">
                 {totalError + totalDuplicateCSV} row(s) bermasalah akan di-skip saat import.
               </p>
             )}
+
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleDownloadPreview}
+              disabled={loading || downloading || rows.length === 0}
+              className="gap-1.5 bg-background hover:bg-muted/60"
+            >
+              <Download size={15} className="text-primary" />
+              <span>{downloading ? 'Mengunduh...' : `Download XLSX (${rows.length})`}</span>
+            </Button>
+
             {onSkip && (
-              <Button type="button" variant="secondary" onClick={onSkip} disabled={loading}>
+              <Button type="button" variant="secondary" onClick={onSkip} disabled={loading || downloading}>
                 Lewati Langkah Ini
               </Button>
             )}
             <NavButton 
               direction="next" 
               onClick={onConfirm} 
-              disabled={loading || selectedCount === 0}
+              disabled={loading || downloading || selectedCount === 0}
               loading={loading}
               loadingText="Menyimpan..."
               icon={<Save size={16} className="ml-2" />}

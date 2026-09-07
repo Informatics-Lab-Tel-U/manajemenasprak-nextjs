@@ -71,7 +71,8 @@ interface AsprakImportCSVModalProps {
       role: 'ASPRAK' | 'ASLAB';
       angkatan: number;
     }[],
-    term: string
+    term: string,
+    allPreviewRows?: PreviewRow[]
   ) => Promise<void>;
   onClose: () => void;
   open: boolean;
@@ -313,7 +314,8 @@ export default function AsprakImportCSVModal({
           role: r.role,
           angkatan: r.angkatan,
         })),
-        term
+        term,
+        previewRows
       );
     } catch (e: any) {
       const errMsg = e instanceof Error ? e.message : String(e);
