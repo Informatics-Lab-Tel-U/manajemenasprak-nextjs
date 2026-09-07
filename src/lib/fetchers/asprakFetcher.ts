@@ -234,7 +234,8 @@ export async function bulkImportAspraks(
   rows: BulkImportRow[]
 ): Promise<ServiceResult<BulkImportResult>> {
   try {
-    const CHUNK_SIZE = 50;
+    // 20 baris per batch menjamin tidak pernah menabrak limit 50 subrequest CF Workers Free bahkan saat fallback
+    const CHUNK_SIZE = 20;
 
     // Jika data kecil, kirim langsung 1 request
     if (rows.length <= CHUNK_SIZE) {
