@@ -31,8 +31,7 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
+import { Spinner } from '@/components/ui/spinner';
 import { cn } from '@/lib/utils';
 
 import TermInput from './TermInput';
@@ -74,8 +73,7 @@ interface AsprakImportCSVModalProps {
       angkatan: number;
     }[],
     term: string,
-    allPreviewRows?: PreviewRow[],
-    nimS2Mode?: boolean
+    allPreviewRows?: PreviewRow[]
   ) => Promise<void>;
   onClose: () => void;
   open: boolean;
@@ -113,88 +111,104 @@ export default function AsprakImportCSVModal({
   const [previewRows, setPreviewRows] = useState<PreviewRow[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
   const [forceOverride, setForceOverride] = useState(false);
   const [showOverrideConfirm, setShowOverrideConfirm] = useState(false);
-  const [nimS2Mode, setNimS2Mode] = useState(false);
 
   const term = useMemo(() => buildTermString(termYear, termSem), [termYear, termSem]);
   const isTermValid = term.length > 0 && !isNaN(parseInt(termYear));
 
 
-  const processFile = useCallback(async (file: File) => {
-    setError(null);
-    setFileName(file.name);
+  const processFile = useCallback(
+    async (file: File) => {
+      setError(null);
+      setFileName(file.name);
+      setIsProcessing(true);
 
-    const normalizeHeader = (header: string) => {
-      const h = header.trim().toLowerCase();
-      if (h.includes('nama')) return 'nama_lengkap';
-      if (h.includes('nim')) return 'nim';
-      if (h.includes('kode')) return 'kode';
-      if (h.includes('role') || h.includes('peran')) return 'role';
-      if (h.includes('angkatan') || h.includes('tahun')) return 'angkatan';
-      return h.replace(/[^a-z0-9]/g, '_');
-    };
+      // Jeda 60ms agar browser sempat me-render loader spinner sebelum proses kalkulasi berat
+      await new Promise((resolve) => setTimeout(resolve, 60));
 
-    try {
-      const matrix = await parseSpreadsheet(file);
-      if (matrix.length < 2) {
-        setError('File kosong — tidak ada data yang ditemukan.');
-        return;
+      const normalizeHeader = (header: string) => {
+        const h = header.trim().toLowerCase();
+        if (h.includes('nama')) return 'nama_lengkap';
+        if (h.includes('nim')) return 'nim';
+        if (h.includes('kode')) return 'kode';
+        if (h.includes('role') || h.includes('peran')) return 'role';
+        if (h.includes('angkatan') || h.includes('tahun')) return 'angkatan';
+        return h.replace(/[^a-z0-9]/g, '_');
+      };
+
+      try {
+        const matrix = await parseSpreadsheet(file);
+        if (matrix.length < 2) {
+          setError('File kosong — tidak ada data yang ditemukan.');
+          setIsProcessing(false);
+          return;
+        }
+
+        const rawHeaders = matrix[0];
+        const normalizedHeaders = rawHeaders.map(normalizeHeader);
+
+        const data = matrix.slice(1).reduce((acc: any[], row: string[]) => {
+          if (!row || !row.some(Boolean)) return acc;
+          const newRow: any = {};
+          normalizedHeaders.forEach((header: string, idx: number) => {
+            newRow[header] = row[idx] ?? '';
+          });
+          acc.push(newRow);
+          return acc;
+        }, []);
+
+        if (data.length === 0) {
+          setError('File kosong — tidak ada data yang ditemukan.');
+          setIsProcessing(false);
+          return;
+        }
+
+        const firstRow = data[0];
+        const requiredCols = ['nama_lengkap', 'nim'];
+        const missingCols = requiredCols.filter((col) => !(col in firstRow));
+        if (missingCols.length > 0) {
+          setError(
+            `Kolom wajib tidak ditemukan: ${missingCols.join(', ')}. Kolom yang ada: ${Object.keys(firstRow).join(', ')}`
+          );
+          setIsProcessing(false);
+          return;
+        }
+
+        const preview = validateAsprakData(data, existingCodes, existingNims, forceOverride);
+        setParsedData(data);
+        setPreviewRows(preview);
+        setStep('preview');
+      } catch (err: any) {
+        setError(`Gagal membaca file: ${err.message}`);
+      } finally {
+        setIsProcessing(false);
       }
+    },
+    [existingCodes, existingNims, forceOverride]
+  );
 
-      const rawHeaders = matrix[0];
-      const normalizedHeaders = rawHeaders.map(normalizeHeader);
-
-      const data = matrix.slice(1).reduce((acc: any[], row: string[]) => {
-        if (!row || !row.some(Boolean)) return acc;
-        const newRow: any = {};
-        normalizedHeaders.forEach((header: string, idx: number) => {
-          newRow[header] = row[idx] ?? '';
-        });
-        acc.push(newRow);
-        return acc;
-      }, []);
-
-      if (data.length === 0) {
-        setError('File kosong — tidak ada data yang ditemukan.');
-        return;
-      }
-
-      const firstRow = data[0];
-      const requiredCols = ['nama_lengkap', 'nim'];
-      const missingCols = requiredCols.filter((col) => !(col in firstRow));
-      if (missingCols.length > 0) {
-        setError(
-          `Kolom wajib tidak ditemukan: ${missingCols.join(', ')}. Kolom yang ada: ${Object.keys(firstRow).join(', ')}`
-        );
-        return;
-      }
-
-      setParsedData(data);
-      setStep('preview');
-    } catch (err: any) {
-      setError(`Gagal membaca file: ${err.message}`);
-    }
-  }, []);
-
-  // eslint-disable-next-line react-doctor/no-chain-state-updates
   // eslint-disable-next-line react-doctor/no-chain-state-updates
   useEffect(() => {
     if (parsedData.length === 0) return;
     try {
-      const preview = validateAsprakData(parsedData, existingCodes, existingNims, forceOverride, nimS2Mode);
+      const preview = validateAsprakData(parsedData, existingCodes, existingNims, forceOverride);
       setPreviewRows(preview);
     } catch (e: any) {
       setError(`Error saat menyiapkan data: ${e.message}`);
     }
-  }, [parsedData, existingCodes, existingNims, forceOverride, nimS2Mode]);
+  }, [parsedData, existingCodes, existingNims, forceOverride]);
 
 
   const handleToggleSelect = useCallback((rowIndex: number) => {
     setPreviewRows((prev) => {
       const updated = [...prev];
       const row = { ...updated[rowIndex] };
-      if (row.status !== 'error' && row.status !== 'duplicate-csv' && row.status !== 'warning') {
+      const isSelectable =
+        row.status !== 'error' &&
+        row.status !== 'duplicate-csv';
+      if (isSelectable) {
         row.selected = !row.selected;
         updated[rowIndex] = row;
       }
@@ -205,13 +219,18 @@ export default function AsprakImportCSVModal({
   const handleToggleAll = useCallback((checked: boolean) => {
     setPreviewRows((prev) => {
       return prev.map((row) => {
-        if (row.status !== 'error' && row.status !== 'duplicate-csv' && row.status !== 'warning') {
+        const isSelectable =
+          row.status !== 'error' &&
+          row.status !== 'duplicate-csv';
+        if (isSelectable) {
           return { ...row, selected: checked };
         }
         return row;
       });
     });
   }, []);
+
+
 
 
   const handleCodeEdit = useCallback(
@@ -241,8 +260,7 @@ export default function AsprakImportCSVModal({
           remappedData,
           existingCodes,
           existingNims,
-          forceOverride,
-          nimS2Mode
+          forceOverride
         );
         const finalRows = revalidated.map((revalRow, i) => {
           if (updated[i].codeRule === 'Manual edit') {
@@ -296,7 +314,7 @@ export default function AsprakImportCSVModal({
     onDrop,
     accept: { 'text/csv': ['.csv'], 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'] },
     maxFiles: 1,
-    disabled: !isTermValid,
+    disabled: !isTermValid || isProcessing,
   });
 
 
@@ -320,8 +338,7 @@ export default function AsprakImportCSVModal({
           angkatan: r.angkatan,
         })),
         term,
-        previewRows,
-        nimS2Mode
+        previewRows
       );
     } catch (e: any) {
       const errMsg = e instanceof Error ? e.message : String(e);
@@ -339,11 +356,12 @@ export default function AsprakImportCSVModal({
     setFileName(null);
     setError(null);
     setForceOverride(false);
-    setNimS2Mode(false);
+    setIsProcessing(false);
   };
 
 
   const handleClose = () => {
+    if (isProcessing) return;
     setStep('upload');
     setPreviewRows([]);
     setParsedData([]);
@@ -351,7 +369,7 @@ export default function AsprakImportCSVModal({
     setError(null);
     setSaving(false);
     setForceOverride(false);
-    setNimS2Mode(false);
+    setIsProcessing(false);
     onClose();
   };
 
@@ -361,7 +379,7 @@ export default function AsprakImportCSVModal({
       <DialogContent
         className={cn(
           'flex max-h-[min(800px,90vh)] flex-col gap-0 p-0',
-          step === 'preview' ? 'sm:max-w-4xl' : 'sm:max-w-lg'
+          step === 'preview' ? 'sm:max-w-6xl' : 'sm:max-w-lg'
         )}
       >
         <DialogHeader className="contents space-y-0 text-left">
@@ -397,25 +415,7 @@ export default function AsprakImportCSVModal({
                     description="Isi term terlebih dahulu sebelum upload CSV."
                   />
 
-                  {/* Switch NIM S2 */}
-                  <div className="flex items-start gap-3 bg-muted/30 p-3 rounded-md border border-border/50">
-                    <Switch
-                      id="nim-s2-mode"
-                      checked={nimS2Mode}
-                      onCheckedChange={setNimS2Mode}
-                    />
-                    <div>
-                      <Label htmlFor="nim-s2-mode" className="text-sm font-medium leading-tight cursor-pointer">
-                        NIM S2
-                      </Label>
-                      <p className="text-xs text-muted-foreground font-normal mt-0.5">
-                        Timpa NIM lama dengan NIM baru berdasarkan <b>kode</b> dan <b>nama</b> yang sama.
-                        Kolom <code className="text-[9px] bg-muted px-1 rounded">kode</code> wajib diisi.
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Step 2: Dropzone (only enabled after term is filled) */}
+                  {/* Step 2: Dropzone */}
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <label htmlFor="csv-upload" className="text-sm font-medium leading-none">Upload CSV</label>
@@ -431,40 +431,51 @@ export default function AsprakImportCSVModal({
                       {...getRootProps()}
                       className={cn(
                         'border-2 border-dashed rounded-lg p-10 text-center transition-all',
-                        !isTermValid
-                          ? 'border-border/50 bg-muted/20 cursor-not-allowed opacity-50'
-                          : isDragActive
-                            ? 'border-primary bg-primary/5 cursor-copy'
-                            : 'border-border bg-transparent hover:border-primary/50 cursor-pointer'
+                        isProcessing
+                          ? 'border-border/60 bg-muted/10 cursor-wait'
+                          : !isTermValid
+                            ? 'border-border/50 bg-muted/20 cursor-not-allowed opacity-50'
+                            : isDragActive
+                              ? 'border-primary bg-primary/5 cursor-copy'
+                              : 'border-border bg-transparent hover:border-primary/50 cursor-pointer'
                       )}
                     >
                       <input {...getInputProps()} id="csv-upload" />
-                      <FileSpreadsheet
-                        size={40}
-                        className={cn(
-                          'mb-3 mx-auto',
-                          isTermValid ? 'text-muted-foreground' : 'text-muted-foreground/40'
-                        )}
-                      />
-
-                      {!isTermValid ? (
-                        <div className="space-y-1">
-                          <p className="font-medium text-muted-foreground/60">
-                            Isi tahun ajaran terlebih dahulu
-                          </p>
-                          <p className="text-xs text-muted-foreground/40">
-                            Dropzone akan aktif setelah term diisi
-                          </p>
+                      {isProcessing ? (
+                        <div className="py-2 flex flex-col items-center justify-center space-y-2">
+                          <Spinner className="size-6 text-muted-foreground" />
+                          <p className="text-xs text-muted-foreground">Membaca file...</p>
                         </div>
-                      ) : isDragActive ? (
-                        <p className="text-primary font-semibold">Drop CSV file di sini...</p>
                       ) : (
-                        <div className="space-y-1">
-                          <p className="font-medium">Drag & drop file CSV di sini</p>
-                          <p className="text-xs text-muted-foreground">
-                            atau klik untuk pilih file (.csv, .xlsx)
-                          </p>
-                        </div>
+                        <>
+                          <FileSpreadsheet
+                            size={40}
+                            className={cn(
+                              'mb-3 mx-auto',
+                              isTermValid ? 'text-muted-foreground' : 'text-muted-foreground/40'
+                            )}
+                          />
+
+                          {!isTermValid ? (
+                            <div className="space-y-1">
+                              <p className="font-medium text-muted-foreground/60">
+                                Isi tahun ajaran terlebih dahulu
+                              </p>
+                              <p className="text-xs text-muted-foreground/40">
+                                Dropzone akan aktif setelah term diisi
+                              </p>
+                            </div>
+                          ) : isDragActive ? (
+                            <p className="text-primary font-semibold">Drop CSV file di sini...</p>
+                          ) : (
+                            <div className="space-y-1">
+                              <p className="font-medium">Drag & drop file CSV di sini</p>
+                              <p className="text-xs text-muted-foreground">
+                                atau klik untuk pilih file (.csv, .xlsx)
+                              </p>
+                            </div>
+                          )}
+                        </>
                       )}
                     </div>
 

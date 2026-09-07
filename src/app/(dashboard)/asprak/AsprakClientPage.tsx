@@ -3,7 +3,7 @@
 /* eslint-disable react-doctor/no-impure-state-updater */
 /* eslint-disable react-doctor/no-chain-state-updates, react-doctor/no-cascading-set-state, react-doctor/no-effect-chain, react-doctor/rendering-hydration-no-flicker */
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Download, Plus, Upload, ChevronDown, Users, GitFork } from 'lucide-react';
 import { toast } from 'sonner';
@@ -30,7 +30,15 @@ import AsprakExportModal from '@/components/asprak/AsprakExportModal';
 import AsprakDetailsModal from '@/components/asprak/AsprakDetailsModal';
 import AsprakEditModal from '@/components/asprak/AsprakEditModal';
 import PlottingImportModal from '@/components/plotting/PlottingImportModal';
+import PlottingManualModal from '@/components/plotting/PlottingManualModal';
 import { Button } from '@/components/ui/button';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -94,12 +102,33 @@ export default function AsprakClientPage({
   const [allExistingAspraks, setAllExistingAspraks] =
     useState<ExistingAsprakInfo[]>(initialExistingAspraks);
 
+  // View mode: 'term' = ikuti term aktif global, 'all' = tampilkan semua term
+  const [viewMode, setViewMode] = useState<'term' | 'all'>('term');
+  const [allAsprakData, setAllAsprakData] = useState<Asprak[]>([]);
+  const [loadingAll, setLoadingAll] = useState(false);
+
+  const fetchAllData = useCallback(async () => {
+    setLoadingAll(true);
+    const result = await fetchAllAsprak();
+    if (result.ok && result.data) {
+      setAllAsprakData(result.data);
+    }
+    setLoadingAll(false);
+  }, []);
+
+  useEffect(() => {
+    if (viewMode === 'all') {
+      fetchAllData();
+    }
+  }, [viewMode, fetchAllData]);
+
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedAsprak, setSelectedAsprak] = useState<AsprakWithAssignments | null>(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
   const [showPlottingImportModal, setShowPlottingImportModal] = useState(false);
+  const [showManualPlottingModal, setShowManualPlottingModal] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
 
   const [showEditModal, setShowEditModal] = useState(false);
@@ -151,12 +180,12 @@ export default function AsprakClientPage({
       kode: string;
       role: 'ASPRAK' | 'ASLAB';
       angkatan: number;
+      nimS2?: boolean;
     }[],
     term: string,
-    allPreviewRows?: PreviewRow[],
-    nimS2Mode?: boolean
+    allPreviewRows?: PreviewRow[]
   ) => {
-    const result = await bulkImportAspraks(rows, { nimS2Mode });
+    const result = await bulkImportAspraks(rows);
 
     if (!result.ok) {
       throw new Error(result.error || 'Gagal import data.');
@@ -276,7 +305,8 @@ export default function AsprakClientPage({
     newKode: string,
     forceOverride: boolean,
     rfidUid?: string,
-    namaLengkap?: string
+    namaLengkap?: string,
+    newNim?: string
   ) => {
     if (!editTarget) return;
 
@@ -286,7 +316,7 @@ export default function AsprakClientPage({
       'all',
       praktikumIds,
       newKode,
-      editTarget.asprak.nim,
+      newNim,
       forceOverride,
       rfidUid,
       namaLengkap
@@ -295,6 +325,10 @@ export default function AsprakClientPage({
     if (result.ok) {
       toast.success('Data asisten berhasil diperbarui');
       fetchAsprak(); // Refresh list
+      refreshCodesAndNims();
+      if (viewMode === 'all') {
+        fetchAllData();
+      }
     } else {
       toast.error(`Gagal memperbarui: ${result.error}`);
     }
@@ -318,7 +352,7 @@ export default function AsprakClientPage({
   };
 
   const filteredList = useMemo(() => {
-    const list = asprakList;
+    const list = viewMode === 'all' ? allAsprakData : asprakList;
 
     if (!searchQuery) return list;
     const lowerQ = searchQuery.toLowerCase();
@@ -330,7 +364,6 @@ export default function AsprakClientPage({
         const end = (angkatan + 4) % 100;
         const term = `${start.toString().padStart(2, '0')}${end.toString().padStart(2, '0')}`;
         roleText = HIDE_ASLAB_YEAR ? 'ASLAB' : `ASLAB ${term}`;
-        // Fallback check to allow searching by the suffix even if hidden
         if (HIDE_ASLAB_YEAR && (lowerQ.includes(term) || term.includes(lowerQ))) {
           roleText = `ASLAB ${term}`;
         }
@@ -343,7 +376,7 @@ export default function AsprakClientPage({
         roleText.toLowerCase().includes(lowerQ)
       );
     });
-  }, [asprakList, searchQuery]);
+  }, [asprakList, allAsprakData, viewMode, searchQuery]);
 
   return (
     <div className="container mx-auto max-w-[2000px] 2xl:px-8" style={{ position: 'relative' }}>
@@ -383,10 +416,25 @@ export default function AsprakClientPage({
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => setShowPlottingImportModal(true)}>
                 <GitFork size={15} className="mr-2 text-violet-500" />
-                Import Penugasan
+                Import Penugasan (CSV)
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setShowManualPlottingModal(true)}>
+                <GitFork size={15} className="mr-2 text-amber-500" />
+                Input Penugasan Manual
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+
+          {/* View mode: Term / All */}
+          <Select value={viewMode} onValueChange={(v) => setViewMode(v as 'term' | 'all')}>
+            <SelectTrigger className="w-[90px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent align="end">
+              <SelectItem value="term">Term</SelectItem>
+              <SelectItem value="all">All</SelectItem>
+            </SelectContent>
+          </Select>
 
           <Button
             variant="outline"
@@ -409,7 +457,7 @@ export default function AsprakClientPage({
               onSearchChange={setSearchQuery}
             />
 
-            <AsprakTable data={filteredList} loading={loading} onViewDetails={handleView} />
+            <AsprakTable data={filteredList} loading={loading || loadingAll} onViewDetails={handleView} />
           </div>
         )}
       </div>
@@ -441,6 +489,13 @@ export default function AsprakClientPage({
         onOpenChange={setShowPlottingImportModal}
         onSuccess={() => {}}
         terms={initialTerms}
+      />
+
+      {/* Manual Input — Penugasan (Plotting) */}
+      <PlottingManualModal
+        open={showManualPlottingModal}
+        onOpenChange={setShowManualPlottingModal}
+        onSuccess={fetchAsprak}
       />
 
       {/* Export Modal */}

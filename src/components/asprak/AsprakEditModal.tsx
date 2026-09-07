@@ -26,7 +26,8 @@ interface AsprakEditModalProps {
     newKode: string,
     forceOverride: boolean,
     rfidUid?: string,
-    namaLengkap?: string
+    namaLengkap?: string,
+    newNim?: string
   ) => Promise<void>;
   onClose: () => void;
   open: boolean;
@@ -44,6 +45,7 @@ export default function AsprakEditModal({
   const [selectedPraktikumIds, setSelectedPraktikumIds] = useState<string[]>(assignments || []);
   const [newKode, setNewKode] = useState<string>(asprak.kode);
   const [namaLengkap, setNamaLengkap] = useState<string>(asprak.nama_lengkap);
+  const [nim, setNim] = useState<string>(asprak.nim);
   const [rfidUid, setRfidUid] = useState<string>(asprak.rfid_uid || '');
   const [forceOverride, setForceOverride] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -59,6 +61,7 @@ export default function AsprakEditModal({
       setSelectedPraktikumIds(assignments || []);
       setNewKode(asprak.kode);
       setNamaLengkap(asprak.nama_lengkap);
+      setNim(asprak.nim);
       setRfidUid(asprak.rfid_uid || '');
       setForceOverride(false);
     }
@@ -120,7 +123,7 @@ export default function AsprakEditModal({
   };
 
   const handleSave = async () => {
-    if (newKode.length !== 3 || kodeError || !namaLengkap.trim()) {
+    if (newKode.length !== 3 || kodeError || !namaLengkap.trim() || !nim.trim()) {
       return;
     }
 
@@ -130,7 +133,8 @@ export default function AsprakEditModal({
       newKode.toUpperCase(),
       forceOverride,
       rfidUid,
-      namaLengkap.trim()
+      namaLengkap.trim(),
+      nim.trim() !== asprak.nim ? nim.trim() : undefined
     );
     setSaving(false);
     onClose();
@@ -168,8 +172,15 @@ export default function AsprakEditModal({
         <div className="px-6 py-4 grid gap-4 shrink-0">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label className="text-muted-foreground text-xs">NIM</Label>
-              <div className="font-medium">{asprak.nim}</div>
+              <Label htmlFor="nim" className="text-muted-foreground text-xs">NIM</Label>
+              <Input
+                id="nim"
+                value={nim}
+                onChange={(e) => setNim(e.target.value.replace(/\D/g, ''))}
+                className="font-mono transition-colors h-8 text-xs"
+                placeholder="NIM Asprak"
+                maxLength={20}
+              />
             </div>
             <div>
               <Label htmlFor="kode" className="text-muted-foreground text-xs">

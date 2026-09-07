@@ -220,6 +220,7 @@ export interface BulkImportRow {
   kode: string;
   role: 'ASPRAK' | 'ASLAB';
   angkatan: number;
+  nimS2?: boolean;
 }
 
 export interface BulkImportResult {

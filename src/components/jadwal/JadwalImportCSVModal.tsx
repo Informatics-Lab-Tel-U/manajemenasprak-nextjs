@@ -70,7 +70,7 @@ export default function JadwalImportCSVModal({
       try {
         const matrix = await parseSpreadsheet(file);
         if (matrix.length < 2) {
-          setError('File kosong — tidak ada data yang ditemukan.');
+          setError('File kosong: tidak ada data yang ditemukan.');
           return;
         }
 
@@ -88,7 +88,7 @@ export default function JadwalImportCSVModal({
         }, []);
 
         if (data.length === 0) {
-          setError('CSV kosong — tidak ada data yang ditemukan.');
+          setError('CSV kosong: tidak ada data yang ditemukan.');
           return;
         }
 
@@ -179,7 +179,7 @@ export default function JadwalImportCSVModal({
             <Upload size={18} />
             Import CSV Jadwal
             {step === 'preview' && (
-              <span className="text-sm font-normal text-muted-foreground ml-2">— Preview</span>
+              <span className="text-sm font-normal text-muted-foreground ml-2">(Preview)</span>
             )}
           </DialogTitle>
 
@@ -243,14 +243,14 @@ export default function JadwalImportCSVModal({
                       </p>
                       <div className="flex flex-wrap gap-2 mb-1">
                         {[
-                          'Kelas',
-                          'Nama Singkat',
-                          'Hari',
-                          'Sesi',
-                          'Jam',
-                          'Ruangan',
-                          'Total Asprak',
-                          'Dosen',
+                          'kelas',
+                          'nama_singkat',
+                          'hari',
+                          'sesi',
+                          'jam',
+                          'ruangan',
+                          'total_asprak',
+                          'dosen',
                         ].map((col) => (
                           <span
                             key={col}
@@ -261,8 +261,7 @@ export default function JadwalImportCSVModal({
                         ))}
                       </div>
                       <p className="text-[10px] text-muted-foreground/60 mb-3">
-                        * Nama Singkat (Atau Mata Kuliah) harus sesuai detail praktikum (contoh:
-                        "PBO"). Ruangan akan dipotong otomatis jika ada "&" atau "dan" (contoh: "TULT 0602 dan 0604" → "TULT 0602").
+                        * Kolom <code className="text-[9px] bg-muted px-1 rounded">nama_singkat</code> harus sesuai detail praktikum di database (contoh: "PBO"). Ruangan akan dipotong otomatis jika ada "&amp;" atau "dan" (contoh: "TULT 0602 dan 0604" menjadi "TULT 0602").
                       </p>
 
                       <div className="flex items-center gap-3 pt-2 border-t border-border/50">

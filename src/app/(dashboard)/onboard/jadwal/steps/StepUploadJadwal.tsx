@@ -74,7 +74,7 @@ export default function StepUploadJadwal({ term, mataKuliahList }: StepUploadJad
         }, []);
 
         if (data.length === 0) {
-          setError('File kosong — tidak ada data yang ditemukan.');
+          setError('File kosong: tidak ada data yang ditemukan.');
           setIsLoading(false);
           return;
         }
@@ -179,9 +179,9 @@ export default function StepUploadJadwal({ term, mataKuliahList }: StepUploadJad
           </div>
 
           <div className="bg-muted/30 p-4 rounded-lg border border-border/50 mt-4">
-            <p className="text-xs text-muted-foreground mb-2 font-medium">Format Kolom Wajib:</p>
+            <p className="text-xs text-muted-foreground mb-2 font-medium">Format Kolom:</p>
             <div className="flex flex-wrap gap-2 mb-1">
-              {['Kelas', 'Nama Singkat', 'Hari', 'Sesi', 'Jam', 'Ruangan', 'Total Asprak', 'Dosen'].map(
+              {['kelas', 'nama_singkat', 'hari', 'sesi', 'jam', 'ruangan', 'total_asprak', 'dosen'].map(
                 (col) => (
                   <span
                     key={col}
@@ -192,9 +192,8 @@ export default function StepUploadJadwal({ term, mataKuliahList }: StepUploadJad
                 )
               )}
             </div>
-            <p className="text-[10px] text-muted-foreground/60 mb-4">
-              * Kolom <strong>Nama Singkat</strong> (Mata Kuliah) harus sesuai dengan nama yang
-              ada di database. Sistem akan memotong teks secara otomatis jika ada "&".
+            <p className="text-[10px] text-muted-foreground/60 mb-3">
+              * Kolom <code className="text-[9px] bg-muted px-1 rounded">nama_singkat</code> harus sesuai detail praktikum di database (contoh: "PBO"). Ruangan akan dipotong otomatis jika ada "&amp;" atau "dan" (contoh: "TULT 0602 dan 0604" menjadi "TULT 0602").
             </p>
 
             <div className="flex flex-col sm:flex-row sm:items-center gap-3 pt-3 border-t border-border/50">
