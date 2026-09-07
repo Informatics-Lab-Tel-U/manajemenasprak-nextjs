@@ -300,7 +300,7 @@ export default function AsprakCSVPreview({
 
                 return (
                   <tr
-                    key={row.nim || row.nama_lengkap}
+                    key={`${row.nim}_${row.role}_${idx}`}
                     className={`
                     border-b border-border/50 transition-colors
                     ${isDuplicateDB ? 'bg-red-500/10' : ''}
