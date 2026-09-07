@@ -234,19 +234,62 @@ export async function bulkImportAspraks(
   rows: BulkImportRow[]
 ): Promise<ServiceResult<BulkImportResult>> {
   try {
-    const res = await fetch('/api/asprak', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'bulk-import', rows }),
-    });
+    const CHUNK_SIZE = 50;
 
-    const json = await res.json();
+    // Jika data kecil, kirim langsung 1 request
+    if (rows.length <= CHUNK_SIZE) {
+      const res = await fetch('/api/asprak', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'bulk-import', rows }),
+      });
 
-    if (!res.ok) {
-      return { ok: false, error: json.error };
+      const json = await res.json();
+      if (!res.ok) {
+        return { ok: false, error: json.error };
+      }
+      return { ok: true, data: json.data };
     }
 
-    return { ok: true, data: json.data };
+    // Chunking jika data besar (> 50 baris)
+    let totalInserted = 0;
+    let totalUpdated = 0;
+    let totalSkipped = 0;
+    const allErrors: string[] = [];
+    const mergedKodeToIdMap: Record<string, string> = {};
+
+    for (let i = 0; i < rows.length; i += CHUNK_SIZE) {
+      const chunk = rows.slice(i, i + CHUNK_SIZE);
+      const res = await fetch('/api/asprak', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'bulk-import', rows: chunk }),
+      });
+
+      const json = await res.json();
+      if (!res.ok) {
+        return { ok: false, error: json.error || `Gagal pada batch ${Math.floor(i / CHUNK_SIZE) + 1}` };
+      }
+
+      if (json.data) {
+        totalInserted += json.data.inserted || 0;
+        totalUpdated += json.data.updated || 0;
+        totalSkipped += json.data.skipped || 0;
+        if (json.data.errors) allErrors.push(...json.data.errors);
+        if (json.data.kodeToIdMap) Object.assign(mergedKodeToIdMap, json.data.kodeToIdMap);
+      }
+    }
+
+    return {
+      ok: true,
+      data: {
+        inserted: totalInserted,
+        updated: totalUpdated,
+        skipped: totalSkipped,
+        errors: allErrors,
+        kodeToIdMap: mergedKodeToIdMap,
+      },
+    };
   } catch (e: any) {
     logger.error('Error bulk importing aspraks:', e);
     return { ok: false, error: e.message };
