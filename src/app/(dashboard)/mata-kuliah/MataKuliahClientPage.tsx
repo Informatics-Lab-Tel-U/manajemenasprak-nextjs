@@ -1,7 +1,7 @@
 /* eslint-disable react-doctor/exhaustive-deps */
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useTermStore } from '@/store/useTermStore';
 import { useMataKuliah } from '@/hooks/useMataKuliah';
 import { usePraktikum } from '@/hooks/usePraktikum';
@@ -41,11 +41,16 @@ export default function MataKuliahClientPage({
   const [showManualModal, setShowManualModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
+  const isInitialMount = useRef(true);
+
   useEffect(() => {
     async function fetchData() {
-      // If we are at the initial term, we don't need to fetch
-      if (selectedTerm === initialTerms[0]) {
-        return;
+      // If we are at the initial term on initial mount, skip first fetch (already hydrated by SSR)
+      if (isInitialMount.current) {
+        isInitialMount.current = false;
+        if (selectedTerm === initialTerms[0]) {
+          return;
+        }
       }
 
       if (!selectedTerm) return;

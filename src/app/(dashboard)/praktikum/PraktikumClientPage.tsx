@@ -2,7 +2,7 @@
 /* eslint-disable react-doctor/exhaustive-deps */
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { Plus, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -37,10 +37,15 @@ export default function PraktikumClientPage({
   const [showManualModal, setShowManualModal] = useState(false);
   const [selectedPraktikum, setSelectedPraktikum] = useState<PraktikumWithStats | null>(null);
 
+  const isInitialMount = useRef(true);
+
   useEffect(() => {
     async function fetchPraktikums() {
-      if (selectedTerm === initialTerms[0]) {
-        return;
+      if (isInitialMount.current) {
+        isInitialMount.current = false;
+        if (selectedTerm === initialTerms[0]) {
+          return;
+        }
       }
 
       if (!selectedTerm) return;
