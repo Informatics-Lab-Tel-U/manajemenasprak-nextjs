@@ -228,12 +228,35 @@ export interface BulkImportResult {
   skipped: number;
   errors: string[];
   kodeToIdMap: Record<string, string>;
+  queued?: boolean;
+  message?: string;
 }
 
 export async function bulkImportAspraks(
-  rows: BulkImportRow[]
+  rows: BulkImportRow[],
+  options?: { asyncJob?: boolean; term?: string }
 ): Promise<ServiceResult<BulkImportResult>> {
   try {
+    // Mode Async via Inngest jika diminta
+    if (options?.asyncJob) {
+      const res = await fetch('/api/asprak', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'bulk-import', rows, asyncJob: true, term: options.term }),
+      });
+
+      const json = await res.json();
+      if (!res.ok) {
+        return { ok: false, error: json.error };
+      }
+      return {
+        ok: true,
+        data: json.queued
+          ? { inserted: 0, updated: 0, skipped: 0, errors: [], kodeToIdMap: {}, queued: true, message: json.message }
+          : json.data,
+      };
+    }
+
     // 20 baris per batch menjamin tidak pernah menabrak limit 50 subrequest CF Workers Free bahkan saat fallback
     const CHUNK_SIZE = 20;
 
@@ -299,13 +322,20 @@ export async function bulkImportAspraks(
 
 export async function bulkImportAspraksWithPlotting(
   rows: BulkImportRow[],
-  plottingPayload: { asprak_id: string; praktikum_id: string; kode_asprak: string; }[]
+  plottingPayload: { asprak_id: string; praktikum_id: string; kode_asprak: string; }[],
+  options?: { asyncJob?: boolean; term?: string }
 ): Promise<ServiceResult<BulkImportResult>> {
   try {
     const res = await fetch('/api/asprak', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'bulk-import-with-plotting', rows, plottingPayload }),
+      body: JSON.stringify({
+        action: 'bulk-import-with-plotting',
+        rows,
+        plottingPayload,
+        asyncJob: options?.asyncJob,
+        term: options?.term,
+      }),
     });
 
     const json = await res.json();
@@ -314,7 +344,12 @@ export async function bulkImportAspraksWithPlotting(
       return { ok: false, error: json.error };
     }
 
-    return { ok: true, data: json.data };
+    return {
+      ok: true,
+      data: json.queued
+        ? { inserted: 0, updated: 0, skipped: 0, errors: [], kodeToIdMap: {}, queued: true, message: json.message }
+        : json.data,
+    };
   } catch (e: any) {
     logger.error('Error bulk importing aspraks with plotting:', e);
     return { ok: false, error: e.message };
