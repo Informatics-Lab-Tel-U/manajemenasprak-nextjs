@@ -63,8 +63,16 @@ export default function PlottingImportModal({
         return;
       }
 
+      const normalizeHeader = (header: string) => {
+        const h = header.trim().toLowerCase();
+        if (h.includes('kode') && h.includes('asprak')) return 'kode_asprak';
+        if (h === 'kode') return 'kode_asprak';
+        if (h.includes('mk') || h.includes('mata') || h.includes('singkat')) return 'mk_singkat';
+        return h.replace(/[^a-z0-9]/g, '_');
+      };
+
       const rawHeaders = matrix[0];
-      const headers = rawHeaders.map((h: string) => h.trim().toLowerCase().replace(/\s+/g, '_'));
+      const headers = rawHeaders.map(normalizeHeader);
 
       const rawRows = matrix.slice(1).reduce((acc: any[], row: string[]) => {
         if (!row || !row.some(Boolean)) return acc;
@@ -73,8 +81,8 @@ export default function PlottingImportModal({
           obj[h] = row[idx] ?? '';
         });
 
-        const kode_asprak = obj.kode_asprak || '';
-        const mk_singkat = obj.mk_singkat || '';
+        const kode_asprak = (obj.kode_asprak || obj.kode || '').toString().trim();
+        const mk_singkat = (obj.mk_singkat || obj.mk || '').toString().trim();
         if (kode_asprak && mk_singkat) {
           acc.push({ kode_asprak, mk_singkat });
         }
