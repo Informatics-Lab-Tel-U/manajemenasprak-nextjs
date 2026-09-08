@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
-import { Copy, Check, Loader2, AlertCircle } from 'lucide-react';
+import { Copy, Check, Loader2, AlertCircle, RotateCw } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
@@ -34,29 +34,32 @@ export default function Setup2FAPage() {
   const [error, setError] = React.useState<string | null>(null);
   const [isInitializing, setIsInitializing] = React.useState(true);
 
-  React.useEffect(() => {
-    async function initEnroll() {
-      try {
-        const res = await enrollTotp();
-        if (res.alreadyEnrolled) {
-          router.replace(AUTH_CONFIG.paths.verify2fa);
-          return;
-        }
-        if (res.error) {
-          setError(res.error);
-        } else if (res.data) {
-          setQrCodeSvg(res.data.qrCode);
-          setSecret(res.data.secret);
-          setFactorId(res.data.id);
-        }
-      } catch (err: any) {
-        setError(err.message || 'Gagal memulai inisialisasi 2FA');
-      } finally {
-        setIsInitializing(false);
+  const initEnroll = React.useCallback(async () => {
+    setIsInitializing(true);
+    setError(null);
+    try {
+      const res = await enrollTotp();
+      if (res.alreadyEnrolled) {
+        router.replace(AUTH_CONFIG.paths.verify2fa);
+        return;
       }
+      if (res.error) {
+        setError(res.error);
+      } else if (res.data) {
+        setQrCodeSvg(res.data.qrCode);
+        setSecret(res.data.secret);
+        setFactorId(res.data.id);
+      }
+    } catch (err: any) {
+      setError(err.message || 'Gagal memulai inisialisasi 2FA');
+    } finally {
+      setIsInitializing(false);
     }
+  }, [router]);
+
+  React.useEffect(() => {
     initEnroll();
-  }, []);
+  }, [initEnroll]);
 
   const handleCopySecret = () => {
     if (!secret) return;
@@ -137,9 +140,23 @@ export default function Setup2FAPage() {
                 ) : (
                   <>
                     {error && (
-                      <Alert variant="destructive">
-                        <AlertCircle className="h-4 w-4" />
-                        <AlertDescription className="text-xs leading-relaxed">{error}</AlertDescription>
+                      <Alert variant="destructive" className="flex flex-col gap-2">
+                        <div className="flex items-start gap-2">
+                          <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+                          <AlertDescription className="text-xs leading-relaxed">{error}</AlertDescription>
+                        </div>
+                        {!qrCodeSvg && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => initEnroll()}
+                            className="self-end text-xs h-7 gap-1.5 border-destructive/40 hover:bg-destructive/10"
+                          >
+                            <RotateCw className="size-3" />
+                            Inisialisasi Ulang
+                          </Button>
+                        )}
                       </Alert>
                     )}
 

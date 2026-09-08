@@ -46,6 +46,36 @@ export function isMfaRequiredForRole(role?: Role | null): boolean {
 }
 
 /**
+ * Checks if a user is using manual credentials (email/password) rather than federated SSO/OAuth (e.g. Microsoft Azure).
+ */
+export function isManualCredentialUser(user?: { app_metadata?: Record<string, any>; identities?: Array<{ provider?: string }> } | null): boolean {
+  if (!user) return true;
+  const provider = user.app_metadata?.provider;
+  if (provider && provider !== 'email') {
+    return false;
+  }
+  // Check identities if available
+  if (user.identities && user.identities.length > 0) {
+    const hasOAuth = user.identities.some((id) => id.provider && id.provider !== 'email');
+    if (hasOAuth) return false;
+  }
+  return true;
+}
+
+/**
+ * Checks if 2FA is required for a user given their role and authentication provider.
+ * Only users logging in with manual credentials (email & password) with an enforced role are mandated.
+ * Federated OAuth (Microsoft / Azure SSO) accounts are exempted because identity & MFA is managed by the IdP.
+ */
+export function isMfaRequiredForUser(
+  user?: { app_metadata?: Record<string, any>; identities?: Array<{ provider?: string }> } | null,
+  role?: Role | null
+): boolean {
+  if (!isMfaRequiredForRole(role)) return false;
+  return isManualCredentialUser(user);
+}
+
+/**
  * Checks if an email belongs to the allowed organizational domains.
  */
 export function isAllowedEmailDomain(email?: string): boolean {

@@ -2,7 +2,6 @@
 
 import * as React from 'react';
 import { toast } from 'sonner';
-import { ShieldX } from 'lucide-react';
 import { Spinner } from '@/components/ui/spinner';
 import { Button } from '@/components/ui/button';
 import {
@@ -73,8 +72,7 @@ export function RejectRequestModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-destructive text-xl">
-            <ShieldX className="h-5 w-5" />
+          <DialogTitle className="text-destructive text-xl">
             Tolak Permintaan Akses
           </DialogTitle>
           <DialogDescription>
@@ -107,7 +105,7 @@ export function RejectRequestModal({
             disabled={isLoading}
             className="gap-2"
           >
-            {isLoading ? <Spinner className="h-4 w-4" /> : <ShieldX className="h-4 w-4" />}
+            {isLoading && <Spinner className="h-4 w-4" />}
             Tolak Permintaan
           </Button>
         </DialogFooter>

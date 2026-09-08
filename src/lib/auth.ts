@@ -5,7 +5,7 @@ import { headers } from 'next/headers';
 import { createClient } from '@/lib/supabase/server';
 import { logger } from '@/lib/logger';
 import { Role } from '@/config/rbac';
-import { AUTH_CONFIG, isMfaRequiredForRole } from '@/config/auth';
+import { AUTH_CONFIG, isMfaRequiredForRole, isMfaRequiredForUser } from '@/config/auth';
 import type { Pengguna } from '@/types/database';
 
 export type AuthUser = {
@@ -113,15 +113,18 @@ export async function requireRoleApi(
 
   if (isMfaRequiredForRole(user.pengguna.role)) {
     const supabase = await createClient();
-    const { data: aalData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-    if (aalData?.currentLevel !== 'aal2') {
-      return {
-        ok: false,
-        response: NextResponse.json(
-          { ok: false, error: 'Two-Factor Authentication (AAL2) diperlukan untuk aksi ini.' },
-          { status: 403 }
-        ),
-      };
+    const { data: { user: supabaseUser } } = await supabase.auth.getUser();
+    if (isMfaRequiredForUser(supabaseUser, user.pengguna.role)) {
+      const { data: aalData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+      if (aalData?.currentLevel !== 'aal2') {
+        return {
+          ok: false,
+          response: NextResponse.json(
+            { ok: false, error: 'Two-Factor Authentication (AAL2) diperlukan untuk aksi ini.' },
+            { status: 403 }
+          ),
+        };
+      }
     }
   }
 

@@ -2,7 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { AUTH_CONFIG, isMfaRequiredForRole } from '@/config/auth';
+import { AUTH_CONFIG, isMfaRequiredForRole, isMfaRequiredForUser } from '@/config/auth';
 import type { Role } from '@/config/rbac';
 
 export async function logout() {
@@ -82,7 +82,7 @@ export async function login(email: string, password: string, turnstileToken: str
 
       if (aalData?.currentLevel === 'aal1' && aalData?.nextLevel === 'aal2') {
         redirectTo = AUTH_CONFIG.paths.verify2fa;
-      } else if (isMfaRequiredForRole(role) && aalData?.nextLevel !== 'aal2') {
+      } else if (isMfaRequiredForUser(authData.user, role) && aalData?.nextLevel !== 'aal2') {
         redirectTo = AUTH_CONFIG.paths.setup2fa;
       }
     } catch (err) {

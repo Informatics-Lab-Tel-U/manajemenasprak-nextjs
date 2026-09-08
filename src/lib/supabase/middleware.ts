@@ -1,7 +1,7 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 import { hasAccess, isPublicPath, ROLE_DEFAULT_REDIRECT, type Role } from '@/config/rbac';
-import { AUTH_CONFIG, isMfaRequiredForRole } from '@/config/auth';
+import { AUTH_CONFIG, isMfaRequiredForRole, isMfaRequiredForUser } from '@/config/auth';
 
 let cachedMaintenance: { active: boolean; timestamp: number } | null = null;
 const MAINTENANCE_TTL_MS = 15000; // 15 seconds
@@ -183,7 +183,7 @@ export async function updateSession(request: NextRequest) {
       return supabaseResponse;
     }
 
-    if (isMfaRequiredForRole(role) && aalData?.nextLevel !== 'aal2') {
+    if (isMfaRequiredForUser(user, role) && aalData?.nextLevel !== 'aal2') {
       if (pathname !== AUTH_CONFIG.paths.setup2fa) {
         const setupUrl = request.nextUrl.clone();
         setupUrl.pathname = AUTH_CONFIG.paths.setup2fa;

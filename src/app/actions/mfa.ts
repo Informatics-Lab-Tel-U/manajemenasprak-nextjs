@@ -1,6 +1,7 @@
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { AUTH_CONFIG } from '@/config/auth';
 
 export interface MfaFactorInfo {
@@ -72,6 +73,11 @@ export async function enrollTotp(): Promise<{
   try {
     const supabase = await createClient();
 
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError || !user) {
+      return { error: 'Sesi pengguna tidak valid' };
+    }
+
     // 1. Cek faktor yang sudah ada
     const { data: factorData } = await supabase.auth.mfa.listFactors();
     const totpFactors = factorData?.totp || [];
@@ -82,10 +88,17 @@ export async function enrollTotp(): Promise<{
       return { alreadyEnrolled: true };
     }
 
-    // Bersihkan faktor lama yang belum selesai diverifikasi (unverified)
+    // Bersihkan faktor lama yang belum selesai diverifikasi (unverified zombie factor)
+    // Penting: unenroll via standard client ditolak pada sesi AAL1, gunakan admin client
     const unverifiedFactors = totpFactors.filter((f) => (f.status as string) === 'unverified');
-    for (const factor of unverifiedFactors) {
-      await supabase.auth.mfa.unenroll({ factorId: factor.id });
+    if (unverifiedFactors.length > 0) {
+      const admin = createAdminClient();
+      for (const factor of unverifiedFactors) {
+        await admin.auth.admin.mfa.deleteFactor({
+          id: factor.id,
+          userId: user.id,
+        });
+      }
     }
 
     // 2. Buat faktor TOTP baru
@@ -140,17 +153,31 @@ export async function verifyTotp(factorId: string, code: string): Promise<{ succ
 }
 
 /**
- * Menghapus/menonaktifkan factor TOTP (hanya bisa dilakukan jika sudah di level AAL2).
+ * Menghapus/menonaktifkan factor TOTP.
+ * Mencoba unenroll standar terlebih dahulu, dengan fallback ke admin client jika sesi belum AAL2.
  */
 export async function unenrollTotp(factorId: string): Promise<{ success: boolean; error?: string }> {
   try {
     const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return { success: false, error: 'Sesi pengguna tidak valid' };
+    }
+
     const { error } = await supabase.auth.mfa.unenroll({
       factorId,
     });
 
     if (error) {
-      return { success: false, error: error.message };
+      // Fallback ke admin client jika unenroll gagal karena batasan AAL
+      const admin = createAdminClient();
+      const { error: adminError } = await admin.auth.admin.mfa.deleteFactor({
+        id: factorId,
+        userId: user.id,
+      });
+      if (adminError) {
+        return { success: false, error: adminError.message };
+      }
     }
 
     return { success: true };
