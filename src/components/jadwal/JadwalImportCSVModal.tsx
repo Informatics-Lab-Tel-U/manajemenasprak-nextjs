@@ -18,6 +18,7 @@ import {
   buildJadwalPreviewRows,
 } from '@/utils/validation/jadwalValidation';
 import { parseSpreadsheet, downloadTemplate } from '@/lib/spreadsheet';
+import { isTimetableGrid, parseTimetableGrid } from '@/utils/parsers/timetableGridParser';
 
 
 interface RawCSVRow {
@@ -74,21 +75,29 @@ export default function JadwalImportCSVModal({
           return;
         }
 
-        const rawHeaders = matrix[0];
-        const normalizedHeaders = rawHeaders.map((h: string) => h.trim().toLowerCase().replace(/[^a-z0-9]+/g, '_'));
+        let data: any[] = [];
 
-        const data = matrix.slice(1).reduce((acc: any[], row: string[]) => {
-          if (!row || !row.some(Boolean)) return acc;
-          const newRow: any = {};
-          normalizedHeaders.forEach((header: string, idx: number) => {
-            newRow[header] = row[idx] ?? '';
-          });
-          acc.push(newRow);
-          return acc;
-        }, []);
+        if (isTimetableGrid(matrix)) {
+          // New format: Timetable Grid Matrix (like DATASET_JADWAL.xlsx)
+          data = parseTimetableGrid(matrix);
+        } else {
+          // Standard format: Flat Table
+          const rawHeaders = matrix[0];
+          const normalizedHeaders = rawHeaders.map((h: string) => h.trim().toLowerCase().replace(/[^a-z0-9]+/g, '_'));
+
+          data = matrix.slice(1).reduce((acc: any[], row: string[]) => {
+            if (!row || !row.some(Boolean)) return acc;
+            const newRow: any = {};
+            normalizedHeaders.forEach((header: string, idx: number) => {
+              newRow[header] = row[idx] ?? '';
+            });
+            acc.push(newRow);
+            return acc;
+          }, []);
+        }
 
         if (data.length === 0) {
-          setError('CSV kosong: tidak ada data yang ditemukan.');
+          setError('File kosong: tidak ada data jadwal yang dapat diproses.');
           return;
         }
 
@@ -239,30 +248,43 @@ export default function JadwalImportCSVModal({
 
                     <div className="bg-muted/30 p-4 rounded-lg border border-border/50">
                       <p className="text-xs text-muted-foreground mb-2 font-medium">
-                        Format Kolom:
+                        Mendukung 2 Jenis Format File:
                       </p>
-                      <div className="flex flex-wrap gap-2 mb-1">
-                        {[
-                          'kelas',
-                          'nama_singkat',
-                          'hari',
-                          'sesi',
-                          'jam',
-                          'ruangan',
-                          'total_asprak',
-                          'dosen',
-                        ].map((col) => (
-                          <span
-                            key={col}
-                            className="text-[10px] bg-background border px-1.5 py-0.5 rounded font-mono text-muted-foreground"
-                          >
-                            {col}
-                          </span>
-                        ))}
+                      
+                      <div className="space-y-2 mb-3 text-[11px] text-muted-foreground/80 leading-relaxed">
+                        <div>
+                          <span className="font-semibold text-foreground">1. Format Matriks Jadwal (Excel / Timetable)</span>
+                          <p className="text-[10px] text-muted-foreground/70 mt-0.5">
+                            Seperti file <code className="text-[9px] bg-muted px-1 py-0.5 rounded">DATASET_JADWAL.xlsx</code> dengan kolom ruangan (<code className="text-[9px] bg-muted px-1 rounded">TULT</code> / <code className="text-[9px] bg-muted px-1 rounded">GKU</code>) dan sel berisi <code className="text-[9px] bg-muted px-1 rounded">MK_KELAS_DOSEN</code> (misal: <code className="text-[9px] bg-muted px-1 rounded">STD_IF-49-06_SHZ</code> atau kelas PJJ <code className="text-[9px] bg-muted px-1 rounded">STD_IF-49-PJJ01_FZD</code>).
+                          </p>
+                        </div>
+
+                        <div>
+                          <span className="font-semibold text-foreground">2. Format Tabel Flat (CSV / Excel)</span>
+                          <div className="flex flex-wrap gap-1.5 my-1">
+                            {[
+                              'kelas',
+                              'nama_singkat',
+                              'hari',
+                              'sesi',
+                              'jam',
+                              'ruangan',
+                              'total_asprak',
+                              'dosen',
+                            ].map((col) => (
+                              <span
+                                key={col}
+                                className="text-[10px] bg-background border px-1.5 py-0.5 rounded font-mono text-muted-foreground"
+                              >
+                                {col}
+                              </span>
+                            ))}
+                          </div>
+                          <p className="text-[10px] text-muted-foreground/70">
+                            * Kolom <code className="text-[9px] bg-muted px-1 rounded">nama_singkat</code> harus sesuai kode praktikum di database (contoh: "PBO", "STD", "ALPRO"). Kelas PJJ tidak wajib mengisi ruangan.
+                          </p>
+                        </div>
                       </div>
-                      <p className="text-[10px] text-muted-foreground/60 mb-3">
-                        * Kolom <code className="text-[9px] bg-muted px-1 rounded">nama_singkat</code> harus sesuai detail praktikum di database (contoh: "PBO"). Ruangan akan dipotong otomatis jika ada "&amp;" atau "dan" (contoh: "TULT 0602 dan 0604" menjadi "TULT 0602").
-                      </p>
 
                       <div className="flex items-center gap-3 pt-2 border-t border-border/50">
                         <span className="text-xs text-muted-foreground flex items-center gap-1.5">

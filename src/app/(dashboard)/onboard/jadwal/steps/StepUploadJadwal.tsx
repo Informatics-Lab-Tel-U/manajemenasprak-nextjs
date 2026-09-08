@@ -14,6 +14,7 @@ import {
   buildJadwalPreviewRows,
 } from '@/utils/validation/jadwalValidation';
 import { parseSpreadsheet, downloadTemplate } from '@/lib/spreadsheet';
+import { isTimetableGrid, parseTimetableGrid } from '@/utils/parsers/timetableGridParser';
 
 interface RawCSVRow {
   kelas?: string;
@@ -59,34 +60,44 @@ export default function StepUploadJadwal({ term, mataKuliahList }: StepUploadJad
           return;
         }
 
-        const rawHeaders = matrix[0];
-        const normalizeHeader = (header: string) => header.trim().toLowerCase().replace(/\s+/g, '_');
-        const normalizedHeaders = rawHeaders.map(normalizeHeader);
+        let data: any[] = [];
 
-        const data = matrix.slice(1).reduce((acc: any[], row: string[]) => {
-          if (!row || !row.some(Boolean)) return acc;
-          const newRow: any = {};
-          normalizedHeaders.forEach((header: string, idx: number) => {
-            newRow[header] = row[idx] ?? '';
-          });
-          acc.push(newRow);
-          return acc;
-        }, []);
+        if (isTimetableGrid(matrix)) {
+          // Timetable Grid Matrix format (like DATASET_JADWAL.xlsx)
+          data = parseTimetableGrid(matrix);
+        } else {
+          // Flat Table format
+          const rawHeaders = matrix[0];
+          const normalizeHeader = (header: string) => header.trim().toLowerCase().replace(/\s+/g, '_');
+          const normalizedHeaders = rawHeaders.map(normalizeHeader);
 
-        if (data.length === 0) {
-          setError('File kosong: tidak ada data yang ditemukan.');
-          setIsLoading(false);
-          return;
+          data = matrix.slice(1).reduce((acc: any[], row: string[]) => {
+            if (!row || !row.some(Boolean)) return acc;
+            const newRow: any = {};
+            normalizedHeaders.forEach((header: string, idx: number) => {
+              newRow[header] = row[idx] ?? '';
+            });
+            acc.push(newRow);
+            return acc;
+          }, []);
+
+          // Validate required columns only for flat table
+          if (data.length > 0) {
+            const firstRow = data[0];
+            const missingCols = REQUIRED_COLS.filter((col) => !(col in firstRow));
+
+            if (missingCols.length > 0) {
+              setError(
+                `Kolom wajib tidak ditemukan: ${missingCols.join(', ')}. \nFormat yang diharapkan: Kelas, Nama Singkat (Atau Mata Kuliah), Hari, Sesi, Jam, Ruangan, Total Asprak, Dosen`
+              );
+              setIsLoading(false);
+              return;
+            }
+          }
         }
 
-        // Validate required columns
-        const firstRow = data[0];
-        const missingCols = REQUIRED_COLS.filter((col) => !(col in firstRow));
-
-        if (missingCols.length > 0) {
-          setError(
-            `Kolom wajib tidak ditemukan: ${missingCols.join(', ')}. \nFormat yang diharapkan: Kelas, Nama Singkat (Atau Mata Kuliah), Hari, Sesi, Jam, Ruangan, Total Asprak, Dosen`
-          );
+        if (data.length === 0) {
+          setError('File kosong: tidak ada data jadwal yang ditemukan.');
           setIsLoading(false);
           return;
         }
@@ -112,7 +123,11 @@ export default function StepUploadJadwal({ term, mataKuliahList }: StepUploadJad
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop: (acceptedFiles) => acceptedFiles[0] && processAndValidate(acceptedFiles[0]),
-    accept: { 'text/csv': ['.csv'] },
+    accept: {
+      'text/csv': ['.csv'],
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
+      'application/vnd.ms-excel': ['.xls'],
+    },
     maxFiles: 1,
     disabled: isLoading,
   });
@@ -179,22 +194,35 @@ export default function StepUploadJadwal({ term, mataKuliahList }: StepUploadJad
           </div>
 
           <div className="bg-muted/30 p-4 rounded-lg border border-border/50 mt-4">
-            <p className="text-xs text-muted-foreground mb-2 font-medium">Format Kolom:</p>
-            <div className="flex flex-wrap gap-2 mb-1">
-              {['kelas', 'nama_singkat', 'hari', 'sesi', 'jam', 'ruangan', 'total_asprak', 'dosen'].map(
-                (col) => (
-                  <span
-                    key={col}
-                    className="text-[10px] bg-background border px-1.5 py-0.5 rounded font-mono text-muted-foreground"
-                  >
-                    {col}
-                  </span>
-                )
-              )}
+            <p className="text-xs text-muted-foreground mb-2 font-medium">Mendukung 2 Jenis Format File:</p>
+
+            <div className="space-y-2 mb-3 text-[11px] text-muted-foreground/80 leading-relaxed">
+              <div>
+                <span className="font-semibold text-foreground">1. Format Matriks Jadwal (Excel / Timetable)</span>
+                <p className="text-[10px] text-muted-foreground/70 mt-0.5">
+                  Seperti file <code className="text-[9px] bg-muted px-1 py-0.5 rounded">DATASET_JADWAL.xlsx</code> dengan kolom ruangan (<code className="text-[9px] bg-muted px-1 rounded">TULT</code> / <code className="text-[9px] bg-muted px-1 rounded">GKU</code>) dan sel berisi <code className="text-[9px] bg-muted px-1 rounded">MK_KELAS_DOSEN</code> (misal: <code className="text-[9px] bg-muted px-1 rounded">STD_IF-49-06_SHZ</code> atau kelas PJJ <code className="text-[9px] bg-muted px-1 rounded">STD_IF-49-PJJ01_FZD</code>).
+                </p>
+              </div>
+
+              <div>
+                <span className="font-semibold text-foreground">2. Format Tabel Flat (CSV / Excel)</span>
+                <div className="flex flex-wrap gap-1.5 my-1">
+                  {['kelas', 'nama_singkat', 'hari', 'sesi', 'jam', 'ruangan', 'total_asprak', 'dosen'].map(
+                    (col) => (
+                      <span
+                        key={col}
+                        className="text-[10px] bg-background border px-1.5 py-0.5 rounded font-mono text-muted-foreground"
+                      >
+                        {col}
+                      </span>
+                    )
+                  )}
+                </div>
+                <p className="text-[10px] text-muted-foreground/70">
+                  * Kolom <code className="text-[9px] bg-muted px-1 rounded">nama_singkat</code> harus sesuai kode praktikum di database (contoh: "PBO", "STD", "ALPRO"). Kelas PJJ tidak wajib mengisi ruangan.
+                </p>
+              </div>
             </div>
-            <p className="text-[10px] text-muted-foreground/60 mb-3">
-              * Kolom <code className="text-[9px] bg-muted px-1 rounded">nama_singkat</code> harus sesuai detail praktikum di database (contoh: "PBO"). Ruangan akan dipotong otomatis jika ada "&amp;" atau "dan" (contoh: "TULT 0602 dan 0604" menjadi "TULT 0602").
-            </p>
 
             <div className="flex flex-col sm:flex-row sm:items-center gap-3 pt-3 border-t border-border/50">
               <span className="text-xs font-medium flex items-center gap-1.5">

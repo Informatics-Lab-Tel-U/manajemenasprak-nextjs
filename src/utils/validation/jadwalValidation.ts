@@ -1,5 +1,6 @@
 import { JadwalPreviewRow } from '@/components/jadwal/JadwalCSVPreview';
 import * as jadwalFetcher from '@/lib/fetchers/jadwalFetcher';
+import { excelFractionToTime } from '@/utils/parsers/timetableGridParser';
 
 const VALID_DAYS = ['SENIN', 'SELASA', 'RABU', 'KAMIS', 'JUMAT', 'SABTU'];
 
@@ -162,12 +163,15 @@ export function buildJadwalPreviewRows(
       ruanganClean = ruanganClean.split('&')[0].trim();
     }
 
+    const rawJam = row.jam ?? row.Jam ?? '';
+    const formattedJam = excelFractionToTime(rawJam);
+
     preview.push({
       id_mk: mkId,
       kelas: kelas,
       hari: hari,
       sesi: sesi,
-      jam: (row.jam || row.Jam || '').trim(),
+      jam: formattedJam,
       ruangan: ruanganClean,
       total_asprak: totalAsprak,
       dosen: (row.dosen || row.Dosen || '').trim(),
