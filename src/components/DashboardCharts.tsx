@@ -6,6 +6,7 @@ import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { useScheduleData } from '@/hooks/useScheduleData';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import {
   ChartConfig,
   ChartContainer,
@@ -140,42 +141,30 @@ export default function DashboardCharts({
   return (
     <div className="grid grid-cols-1 gap-6">
       {/* Schedule Visualization */}
-      <Card className="col-span-full border-border/50 shadow-sm bg-card flex flex-col">
-        <CardHeader className="flex flex-row items-center justify-between">
-          <div>
+      <Card className="col-span-full border-border/50 shadow-sm bg-card">
+        <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="space-y-1.5">
             <CardTitle>
               Jadwal Hari Ini ({todayDate.toLocaleDateString('id-ID', { weekday: 'long', timeZone: 'Asia/Jakarta' })})
             </CardTitle>
             <CardDescription>
-              Visualisasi jadwal praktikum yang berlangsung hari ini
+              Jadwal praktikum yang berlangsung hari ini
             </CardDescription>
           </div>
-          <div className="bg-muted/50 p-1 rounded-lg flex items-center gap-1 border border-border/50">
-            <button
-              type="button"
-              onClick={() => setProgramType('REGULER')}
-              className={`px-3 py-1 rounded-md text-xs font-medium transition-all ${
-                programType === 'REGULER'
-                  ? 'bg-background shadow-sm text-foreground'
-                  : 'text-muted-foreground hover:bg-background/50 hover:text-foreground'
-              }`}
-            >
-              Reguler
-            </button>
-            <button
-              type="button"
-              onClick={() => setProgramType('PJJ')}
-              className={`px-3 py-1 rounded-md text-xs font-medium transition-all ${
-                programType === 'PJJ'
-                  ? 'bg-background shadow-sm text-foreground'
-                  : 'text-muted-foreground hover:bg-background/50 hover:text-foreground'
-              }`}
-            >
-              PJJ
-            </button>
-          </div>
+          <ToggleGroup
+            type="single"
+            value={programType}
+            onValueChange={(value) => {
+              if (value) setProgramType(value as 'REGULER' | 'PJJ');
+            }}
+            variant="outline"
+            className="*:data-[slot=toggle-group-item]:px-4!"
+          >
+            <ToggleGroupItem value="REGULER">Reguler</ToggleGroupItem>
+            <ToggleGroupItem value="PJJ">PJJ</ToggleGroupItem>
+          </ToggleGroup>
         </CardHeader>
-        <CardContent className="p-6">
+        <CardContent>
           {loading ? (
             <div className="space-y-4">
               <div className="overflow-x-auto rounded-lg border border-border bg-card/50">

@@ -24,25 +24,27 @@ export default async function Home() {
   let initialMonitoringData: any[] = [];
 
   try {
+    initialTerms = (await fetchAvailableTerms()) || [];
+    latestTerm = initialTerms[0] ?? '';
+
     const nowUtc = new Date();
     const nowWib = new Date(nowUtc.getTime() + 7 * 60 * 60 * 1000);
     const todayStr = nowWib.toISOString().split('T')[0];
 
-    const [termsRes, modulsRes, statsRes, jadwalRes, penggantiRes, monitoringRes] = await Promise.all([
-      fetchAvailableTerms(),
-      getModulScheduleByTerm('all'),
-      getStats('all'),
-      getJadwalByTerm('all'),
-      getJadwalPengganti(1),
+    const [modulsRes, statsRes, jadwalRes, monitoringRes] = await Promise.all([
+      getModulScheduleByTerm(latestTerm),
+      getStats(latestTerm),
+      getJadwalByTerm(latestTerm),
       getMonitoringLabs(),
     ]);
 
-    initialTerms = termsRes || [];
     const initialModuls = modulsRes || [];
     activeModul =
       initialModuls
         .filter((m) => m.tanggal_mulai && m.tanggal_mulai <= todayStr)
         .sort((a, b) => b.modul - a.modul)[0]?.modul || 1;
+
+    const penggantiRes = await getJadwalPengganti(activeModul);
 
     initialStats = statsRes;
     initialJadwal = jadwalRes || [];

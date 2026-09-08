@@ -12,6 +12,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
   Filter,
@@ -233,32 +234,18 @@ export default function JadwalClientPage({
             <p className="text-sm 2xl:text-base text-muted-foreground mt-1">Overview jadwal per ruangan</p>
           </div>
 
-          <div className="bg-muted/50 p-1.5 rounded-lg flex items-center gap-1 border border-border/50">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setProgramType('REGULER')}
-              className={`rounded-md text-sm font-medium transition-colors ${
-                programType === 'REGULER'
-                  ? 'bg-background shadow-sm text-foreground hover:bg-background'
-                  : 'text-muted-foreground hover:bg-background/50 hover:text-foreground'
-              }`}
-            >
-              Reguler
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setProgramType('PJJ')}
-              className={`rounded-md text-sm font-medium transition-colors ${
-                programType === 'PJJ'
-                  ? 'bg-background shadow-sm text-foreground hover:bg-background'
-                  : 'text-muted-foreground hover:bg-background/50 hover:text-foreground'
-              }`}
-            >
-              PJJ
-            </Button>
-          </div>
+          <ToggleGroup
+            type="single"
+            value={programType}
+            onValueChange={(value) => {
+              if (value) setProgramType(value as 'REGULER' | 'PJJ');
+            }}
+            variant="outline"
+            className="*:data-[slot=toggle-group-item]:px-4!"
+          >
+            <ToggleGroupItem value="REGULER">Reguler</ToggleGroupItem>
+            <ToggleGroupItem value="PJJ">PJJ</ToggleGroupItem>
+          </ToggleGroup>
         </div>
 
         <div className="flex flex-wrap md:flex-nowrap gap-2 md:gap-3 items-center w-full md:w-auto">
@@ -484,9 +471,9 @@ export default function JadwalClientPage({
             </div>
 
             <div className="p-6 space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/30">
-                  <Clock className="text-blue-500 mt-0.5" size={18} />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/20 border border-border/50">
+                  <Clock className="text-muted-foreground mt-0.5 shrink-0" size={18} />
                   <div>
                     <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">
                       Waktu
@@ -497,8 +484,8 @@ export default function JadwalClientPage({
                   </div>
                 </div>
 
-                <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/30">
-                  <MapPin className="text-emerald-500 mt-0.5" size={18} />
+                <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/20 border border-border/50">
+                  <MapPin className="text-muted-foreground mt-0.5 shrink-0" size={18} />
                   <div>
                     <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">
                       Ruangan
@@ -511,8 +498,8 @@ export default function JadwalClientPage({
                   </div>
                 </div>
 
-                <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/30">
-                  <User className="text-amber-500 mt-0.5" size={18} />
+                <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/20 border border-border/50">
+                  <User className="text-muted-foreground mt-0.5 shrink-0" size={18} />
                   <div>
                     <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">
                       Dosen
@@ -521,8 +508,8 @@ export default function JadwalClientPage({
                   </div>
                 </div>
 
-                <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/30">
-                  <Users className="text-violet-500 mt-0.5" size={18} />
+                <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/20 border border-border/50">
+                  <Users className="text-muted-foreground mt-0.5 shrink-0" size={18} />
                   <div>
                     <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">
                       Kebutuhan
@@ -550,15 +537,15 @@ export default function JadwalClientPage({
                   Hapus Jadwal
                 </Button>
 
+                <Button variant="outline" onClick={() => setSelectedJadwal(null)}>
+                  Tutup
+                </Button>
+
                 <Button
-                  variant="outline"
                   onClick={() => selectedJadwal && handleOpenEdit(selectedJadwal)}
-                  className="border-primary text-primary hover:bg-primary/10"
                 >
                   Edit Jadwal
                 </Button>
-
-                <Button onClick={() => setSelectedJadwal(null)}>Tutup</Button>
               </div>
             </div>
             </>

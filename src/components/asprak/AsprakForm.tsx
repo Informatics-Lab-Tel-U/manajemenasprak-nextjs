@@ -415,26 +415,30 @@ export default function AsprakForm({ onSubmit, onCancel }: AsprakFormProps) {
                 {isManualCode ? 'Manual Input' : `Auto: ${ruleInfo}`}
               </p>
             )}
-
-            <div className="flex items-start space-x-2 bg-muted/30 p-2 rounded-md border mt-2">
-              <Switch
-                id="form-force-override"
-                checked={forceOverride}
-                onCheckedChange={setForceOverride}
-                className="scale-90"
-              />
-              <Label
-                htmlFor="form-force-override"
-                className="text-[10px] leading-tight cursor-pointer font-medium"
-              >
-                Paksa gunakan kode
-                <p className="text-muted-foreground font-normal mt-0.5">
-                  Abaikan peringatan bentrok (cooldown 1-6 thn)
-                </p>
-              </Label>
-            </div>
           </div>
         </div>
+
+        {/* Switch Paksa Gunakan Kode - Tampil saat kode bentrok atau forceOverride aktif agar kolom NIM & Kode simetris */}
+        {(codeStatus === 'taken' || forceOverride) && (
+          <div className="flex items-center justify-between gap-3 bg-muted/40 p-2.5 rounded-lg border border-border/60 transition-all">
+            <div className="space-y-0.5">
+              <Label
+                htmlFor="form-force-override"
+                className="text-xs font-medium cursor-pointer"
+              >
+                Paksa gunakan kode
+              </Label>
+              <p className="text-[11px] text-muted-foreground">
+                Abaikan peringatan bentrok (cooldown 1-6 tahun)
+              </p>
+            </div>
+            <Switch
+              id="form-force-override"
+              checked={forceOverride}
+              onCheckedChange={setForceOverride}
+            />
+          </div>
+        )}
 
         {/* Angkatan & RFID */}
         <div className="grid grid-cols-2 gap-3">
@@ -482,7 +486,7 @@ export default function AsprakForm({ onSubmit, onCancel }: AsprakFormProps) {
           {assignments.map((block) => {
             const disabledTerms = getDisabledTerms(block.id);
             return (
-              <Card key={block.id} className="relative bg-muted/20 border-border/50 shadow-sm">
+              <Card key={block.id} className="relative bg-muted/20 border-border/50 shadow-sm py-0">
                 <Button
                   variant="ghost"
                   size="icon"
@@ -560,16 +564,16 @@ export default function AsprakForm({ onSubmit, onCancel }: AsprakFormProps) {
         <Button
           type="button"
           onClick={addAssignmentBlock}
-          variant="default"
+          variant="outline"
           size="sm"
-          className="w-full bg-blue-600 hover:bg-blue-700 text-white h-8 text-xs"
+          className="w-full border-dashed h-9 text-xs text-muted-foreground hover:text-foreground"
         >
           <Plus size={14} className="mr-2" /> Tambah Tahun Ajaran
         </Button>
       </div>
 
-      <div className="flex justify-end gap-2 pt-2">
-        <Button type="button" variant="outline" size="sm" onClick={onCancel} className="h-8">
+      <div className="flex justify-end gap-2 pt-3 border-t border-border/50">
+        <Button type="button" variant="outline" size="sm" onClick={onCancel}>
           Batal
         </Button>
         <Button

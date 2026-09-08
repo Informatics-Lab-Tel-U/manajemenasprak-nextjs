@@ -3,6 +3,7 @@ import { toast } from 'sonner';
 import { useTermStore } from '@/store/useTermStore';
 import { getPraktikumList, getPraktikumClasses, getAsprakListByPraktikum } from '@/app/actions/presensi';
 import { AsprakEntry, KelasSetting, PresensiFormOptions, ThemeKey } from '@/types/presensi';
+import { fetchModulSchedule } from '@/lib/fetchers/modulScheduleFetcher';
 
 export function usePresensi() {
   const { activeTerm } = useTermStore();
@@ -11,7 +12,7 @@ export function usePresensi() {
   const [jumlahModul, setJumlahModul] = useState(8);
   const [globalJumlahPraktikan, setGlobalJumlahPraktikan] = useState(40);
   const [globalJumlahAsprak, setGlobalJumlahAsprak] = useState(4);
-  const [globalTanggalMulai, setGlobalTanggalMulai] = useState<Date | undefined>(new Date());
+  const [globalTanggalMulai, setGlobalTanggalMulai] = useState<Date | undefined>(undefined);
   const [theme, setTheme] = useState<ThemeKey>('BLUE');
   const [opsi, setOpsi] = useState<PresensiFormOptions>({
     tp: { enabled: true, weight: 30, inputType: 'number' },
@@ -37,9 +38,11 @@ export function usePresensi() {
   const [loadingAsprak, setLoadingAsprak] = useState(false);
 
   const totalWeight =
-    (opsi.tp.enabled && opsi.tp.inputType === 'number' ? opsi.tp.weight : 0) +
-    (opsi.jurnal.enabled && opsi.jurnal.inputType === 'number' ? opsi.jurnal.weight : 0) +
-    (opsi.tesAkhir.enabled && opsi.tesAkhir.inputType === 'number' ? opsi.tesAkhir.weight : 0);
+    Math.round(
+      ((opsi.tp.enabled && opsi.tp.inputType === 'number' ? opsi.tp.weight : 0) +
+      (opsi.jurnal.enabled && opsi.jurnal.inputType === 'number' ? opsi.jurnal.weight : 0) +
+      (opsi.tesAkhir.enabled && opsi.tesAkhir.inputType === 'number' ? opsi.tesAkhir.weight : 0)) * 100
+    ) / 100;
 
   const isWeightValid = totalWeight === 100 || totalWeight === 0;
 
@@ -56,14 +59,14 @@ export function usePresensi() {
       setKelasSettings((prev) => [
         ...prev,
         ...Array.from({ length: newClasses.length }).map(() => ({
-          tanggalMulai: new Date(),
+          tanggalMulai: globalTanggalMulai,
           jumlahPraktikan: globalJumlahPraktikan,
           jumlahAsprak: globalJumlahAsprak,
         })),
       ]);
     }
     setCustomKelasInput('');
-  }, [customKelasInput, kelasNames, globalJumlahPraktikan, globalJumlahAsprak]);
+  }, [customKelasInput, kelasNames, globalJumlahPraktikan, globalJumlahAsprak, globalTanggalMulai]);
 
   const handleRemoveKelas = useCallback((indexToRemove: number) => {
     setKelasNames((prev) => prev.filter((_, i) => i !== indexToRemove));
@@ -103,6 +106,27 @@ export function usePresensi() {
       setLoadingPraktikum(false);
     }
     fetchPraktikum();
+  }, [activeTerm]);
+
+  useEffect(() => {
+    async function loadModulSchedule() {
+      if (!activeTerm) return;
+      try {
+        const res = await fetchModulSchedule(activeTerm);
+        if (res.ok && res.data) {
+          const m1 = res.data.find((e) => e.modul === 1);
+          if (m1?.tanggal_mulai) {
+            const [y, m, d] = m1.tanggal_mulai.split('-').map(Number);
+            if (y && m && d) {
+              setGlobalTanggalMulai(new Date(y, m - 1, d));
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Gagal mengambil tanggal modul 1:', err);
+      }
+    }
+    loadModulSchedule();
   }, [activeTerm]);
 
   useEffect(() => {
@@ -181,14 +205,14 @@ export function usePresensi() {
       });
       
       const newSettings = Array.from({ length: filtered.length }).map(() => ({
-        tanggalMulai: undefined,
+        tanggalMulai: globalTanggalMulai,
         jumlahPraktikan: globalJumlahPraktikan,
         jumlahAsprak: globalJumlahAsprak,
       }));
       
       return [...newSettings, ...customSettings];
     });
-  }, [selectedJurusan, allFetchedKelas, globalJumlahPraktikan, globalJumlahAsprak]);
+  }, [selectedJurusan, allFetchedKelas, globalJumlahPraktikan, globalJumlahAsprak, globalTanggalMulai]);
 
   useEffect(() => {
     async function fetchAsprak() {

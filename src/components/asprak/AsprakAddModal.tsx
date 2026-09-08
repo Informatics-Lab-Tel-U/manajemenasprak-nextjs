@@ -12,15 +12,15 @@ interface AsprakAddModalProps {
 export default function AsprakAddModal({ onSubmit, onClose, open }: AsprakAddModalProps) {
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="flex max-h-[min(700px,85vh)] flex-col gap-0 p-0 sm:max-w-lg">
-        <DialogHeader className="contents space-y-0 text-left">
-          <DialogTitle className="border-b px-6 py-4">Input Manual Asprak</DialogTitle>
-          <ScrollArea className="flex max-h-full flex-col overflow-hidden">
-            <div className="px-6 py-4">
-              <AsprakForm onSubmit={onSubmit} onCancel={onClose} />
-            </div>
-          </ScrollArea>
+      <DialogContent className="flex max-h-[min(720px,90vh)] flex-col gap-0 p-0 sm:max-w-lg">
+        <DialogHeader className="border-b px-6 py-4">
+          <DialogTitle>Input Manual Asprak</DialogTitle>
         </DialogHeader>
+        <ScrollArea className="flex-1 overflow-y-auto">
+          <div className="px-6 py-4">
+            <AsprakForm onSubmit={onSubmit} onCancel={onClose} />
+          </div>
+        </ScrollArea>
       </DialogContent>
     </Dialog>
   );

@@ -14,9 +14,17 @@ import {
   parseISO,
 } from 'date-fns';
 import { id } from 'date-fns/locale';
+import { Calendar as CalendarIcon } from 'lucide-react';
 import { ModulScheduleEntryDto } from '@/lib/fetchers/modulScheduleFetcher';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+} from '@/components/ui/card';
 import { COURSE_COLORS } from '@/utils/colorUtils';
 
 interface ModulCalendarViewProps {
@@ -70,71 +78,94 @@ export function ModulCalendarView({ rows }: ModulCalendarViewProps) {
 
   if (monthsToRender.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center h-full min-h-[300px] text-muted-foreground bg-muted/20 rounded-lg border border-dashed p-8">
-        <p className="text-sm">Isi tanggal modul untuk melihat pratinjau kalender.</p>
-      </div>
+      <Card className="flex flex-col shadow-sm lg:h-[600px] max-h-[80vh]">
+        <CardHeader className="pb-4 shrink-0">
+          <CardTitle className="text-lg">Pratinjau Kalender</CardTitle>
+          <CardDescription>Visualisasi timeline modul praktikum</CardDescription>
+        </CardHeader>
+        <CardContent className="flex-1 flex flex-col items-center justify-center p-8 border-t border-border/50 text-center text-muted-foreground">
+          <CalendarIcon className="h-10 w-10 stroke-1 mb-3 opacity-30" />
+          <p className="text-sm font-medium">Belum ada modul yang dijadwalkan</p>
+          <p className="text-xs text-muted-foreground mt-1 max-w-[280px]">
+            Tentukan tanggal mulai modul di panel kiri untuk melihat visualisasi kalender.
+          </p>
+        </CardContent>
+      </Card>
     );
   }
 
-
-
   return (
-    <ScrollArea className="h-[calc(100vh-200px)] min-h-[500px] rounded-lg border border-border bg-card/50 shadow-sm backdrop-blur-sm">
-      <div className="p-6 space-y-10">
-        {monthsToRender.map((month) => {
-          const start = startOfWeek(month, { weekStartsOn: 1 });
-          const end = endOfWeek(endOfMonth(month), { weekStartsOn: 1 });
-          const days = eachDayOfInterval({ start, end });
+    <Card className="flex flex-col shadow-sm lg:h-[600px] max-h-[80vh] overflow-hidden">
+      <CardHeader className="pb-4 shrink-0">
+        <CardTitle className="text-lg">Pratinjau Kalender</CardTitle>
+        <CardDescription>Visualisasi timeline modul praktikum</CardDescription>
+      </CardHeader>
+      <CardContent className="p-0 flex-1 overflow-hidden flex flex-col border-t border-border/50">
+        <ScrollArea className="flex-1 h-full">
+          <div className="p-5 sm:p-6 space-y-8">
+            {monthsToRender.map((month) => {
+              const start = startOfWeek(month, { weekStartsOn: 1 });
+              const end = endOfWeek(endOfMonth(month), { weekStartsOn: 1 });
+              const days = eachDayOfInterval({ start, end });
 
-          return (
-            <div key={month.toISOString()} className="space-y-4">
-              <h3 className="font-bold text-lg 2xl:text-xl capitalize flex items-center gap-4">
-                {format(month, 'MMMM yyyy', { locale: id })}
-                <div className="flex-1 h-px bg-border/50"></div>
-              </h3>
-
-              <div className="grid grid-cols-7 gap-1 sm:gap-2">
-                {DAY_NAMES.map((day) => (
-                  <div key={day} className="text-center font-semibold text-xs 2xl:text-sm text-muted-foreground pb-2 uppercase tracking-wide">
-                    {day}
+              return (
+                <div key={month.toISOString()} className="space-y-3">
+                  <div className="flex items-center gap-3 pb-2 border-b border-border/40">
+                    <h3 className="font-semibold text-sm sm:text-base capitalize">
+                      {format(month, 'MMMM yyyy', { locale: id })}
+                    </h3>
                   </div>
-                ))}
 
-                {days.map((day) => {
-                  const isCurrentMonth = isSameMonth(day, month);
+                  <div className="grid grid-cols-7 gap-1 sm:gap-1.5">
+                    {DAY_NAMES.map((day) => (
+                      <div
+                        key={day}
+                        className="text-center font-medium text-[11px] sm:text-xs text-muted-foreground pb-1 uppercase tracking-wider"
+                      >
+                        {day}
+                      </div>
+                    ))}
 
-                  if (!isCurrentMonth) {
-                    return <div key={day.toISOString()} className="aspect-square p-1" />;
-                  }
+                    {days.map((day) => {
+                      const isCurrentMonth = isSameMonth(day, month);
 
-                  const modulNum = getModuleForDay(day);
-                  const hexColor = modulNum ? COURSE_COLORS[(modulNum - 1) % COURSE_COLORS.length] : undefined;
+                      if (!isCurrentMonth) {
+                        return <div key={day.toISOString()} className="aspect-square p-1" />;
+                      }
 
-                  return (
-                    <div
-                      key={day.toISOString()}
-                      className={cn(
-                        'aspect-square p-1 flex flex-col items-center justify-center rounded-none relative text-sm 2xl:text-base font-medium transition-all duration-200',
-                        modulNum ? 'text-white shadow-sm' : 'bg-transparent hover:bg-muted/50 border border-transparent hover:border-border',
-                        modulNum ? 'hover:scale-105 hover:z-10 hover:shadow-md cursor-default' : ''
-                      )}
-                      style={modulNum ? { backgroundColor: hexColor } : {}}
-                      title={modulNum ? `Modul ${modulNum}` : 'Tidak ada modul'}
-                    >
-                      <span className={cn('z-10', modulNum ? 'font-bold' : '')}>{format(day, 'd')}</span>
-                      {modulNum !== null && (
-                        <span className="text-[10px] 2xl:text-xs font-bold uppercase tracking-tighter mt-1 opacity-90 leading-none">
-                          M{modulNum}
-                        </span>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </ScrollArea>
+                      const modulNum = getModuleForDay(day);
+                      const hexColor = modulNum
+                        ? COURSE_COLORS[(modulNum - 1) % COURSE_COLORS.length]
+                        : undefined;
+
+                      return (
+                        <div
+                          key={day.toISOString()}
+                          className={cn(
+                            'aspect-square p-1 flex flex-col items-center justify-center rounded-md relative text-xs sm:text-sm transition-all',
+                            modulNum
+                              ? 'text-white shadow-xs font-semibold hover:scale-105 hover:z-10 hover:shadow-md cursor-default'
+                              : 'bg-transparent text-foreground hover:bg-muted/50'
+                          )}
+                          style={modulNum ? { backgroundColor: hexColor } : {}}
+                          title={modulNum ? `Modul ${modulNum}` : undefined}
+                        >
+                          <span className="leading-none">{format(day, 'd')}</span>
+                          {modulNum !== null && (
+                            <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-tight mt-0.5 opacity-90 leading-none">
+                              M{modulNum}
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </ScrollArea>
+      </CardContent>
+    </Card>
   );
 }

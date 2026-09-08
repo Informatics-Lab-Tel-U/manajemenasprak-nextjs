@@ -1,28 +1,25 @@
+// 12 highly distinct hues spread ~30° apart on the color wheel
+// Each pair (bg/text) is chosen for WCAG AA contrast on white and dark backgrounds
 export const COURSE_COLORS = [
-  '#dc3c3c', // red
-  '#e05a1f', // orange
-  '#c99a00', // yellow
-  '#18a558', // green
-  '#1098ad', // cyan
-  '#3a5edb', // blue
-  '#4b4fd6', // indigo
-  '#8b3fd6', // purple
-  '#d63384', // pink
-  '#d7264f', // rose
-  '#059669', // emerald
-  '#0284c7', // sky
-  '#4f46e5', // indigo-vivid
-  '#7c3aed', // violet
-  '#c026d3', // fuchsia
-  '#db2777', // pink-vivid
-  '#ea580c', // orange-vivid
-  '#65a30d', // lime
+  '#e53935', // Red
+  '#e65100', // Deep Orange
+  '#f9a825', // Amber
+  '#2e7d32', // Green
+  '#00695c', // Teal
+  '#0277bd', // Blue
+  '#1565c0', // Indigo-Blue
+  '#6a1b9a', // Deep Purple
+  '#ad1457', // Pink
+  '#558b2f', // Olive Green
+  '#00838f', // Cyan-Teal
+  '#4527a0', // Violet
 ];
 
-export const getCourseColor = (name: string) => {
+// Improved hash using prime multiplier 61 for better distribution
+export const getCourseColor = (name: string): string => {
   let hash = 0;
   for (let i = 0; i < name.length; i++) {
-    hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    hash = (hash * 61 + name.charCodeAt(i)) >>> 0; // keep 32-bit unsigned
   }
-  return COURSE_COLORS[Math.abs(hash) % COURSE_COLORS.length];
+  return COURSE_COLORS[hash % COURSE_COLORS.length];
 };

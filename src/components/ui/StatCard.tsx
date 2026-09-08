@@ -87,9 +87,6 @@ export function StatCard({
         <div className="line-clamp-1 flex gap-2 font-medium">
           {subtitle}
         </div>
-        <div className="text-muted-foreground">
-          Berdasarkan data saat ini
-        </div>
       </CardFooter>
     </Card>
   );

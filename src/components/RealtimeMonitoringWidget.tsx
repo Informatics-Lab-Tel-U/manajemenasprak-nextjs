@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { ROOMS } from '@/constants';
 import { useMonitoringStore, LabStatus } from '@/store/useMonitoringStore';
 import Link from 'next/link';
+import { ChevronRight } from 'lucide-react';
 
 import { isLabOnline } from '@/lib/labStatus';
 
@@ -34,12 +35,12 @@ export default function RealtimeMonitoringWidget({ initialData }: { initialData:
   const activeLabsCount = monitoringData.filter((d) => isLabOnline(d, now)).length;
 
   return (
-    <Card className="w-full transition-colors border bg-card hover:border-foreground/20 shadow-sm border-blue-200/50 dark:border-blue-500/20 mb-6">
-      <CardContent className="p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+    <Card className="w-full transition-colors border bg-card hover:border-foreground/20 shadow-sm border-blue-200/50 dark:border-blue-500/20 py-0 mb-6">
+      <CardContent className="px-6 py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6 w-full flex-1">
           <div className="shrink-0">
             <CardTitle className="flex items-center gap-2">
-              Track Ruangan
+              Ruangan
             </CardTitle>
           </div>
 
@@ -76,8 +77,10 @@ export default function RealtimeMonitoringWidget({ initialData }: { initialData:
           </div>
         </div>
 
-        <Button asChild variant="outline" size="sm" className="shrink-0 self-start sm:self-auto">
-          <Link prefetch={false} href="/monitoring">Lihat Detail</Link>
+        <Button asChild variant="outline" size="icon-sm" className="shrink-0 self-start sm:self-auto" title="Lihat Detail">
+          <Link prefetch={false} href="/monitoring" aria-label="Lihat Detail">
+            <ChevronRight className="h-4 w-4" />
+          </Link>
         </Button>
       </CardContent>
     </Card>

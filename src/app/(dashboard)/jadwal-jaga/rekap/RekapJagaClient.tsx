@@ -5,7 +5,7 @@ import { useRekapJaga } from '@/hooks/useJaga';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Shield } from 'lucide-react';
 import { useTermStore } from '@/store/useTermStore';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 
 export default function RekapJagaClient({ initialTerms }: { initialTerms: string[] }) {
   const { activeTerm } = useTermStore();
@@ -100,11 +100,7 @@ export default function RekapJagaClient({ initialTerms }: { initialTerms: string
       </div>
 
       <Card className="border-border/50 shadow-sm">
-        <CardHeader className="pb-3 border-b border-border/50">
-          <CardTitle className="2xl:text-2xl">Matrix Rekap Jaga</CardTitle>
-          <CardDescription className="2xl:text-base">Format tabel W1-W15 untuk menghitung akumulasi jaga</CardDescription>
-        </CardHeader>
-        <CardContent className="pt-6">
+        <CardContent>
           {renderTable(
             [...rekapAslab, ...rekapAsprak].sort((a, b) => {
               if (a.role === 'ASLAB' && b.role !== 'ASLAB') return -1;

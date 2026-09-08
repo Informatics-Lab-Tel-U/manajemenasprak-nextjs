@@ -1,9 +1,7 @@
 import * as React from 'react';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Loader2, Users, FileSpreadsheet } from 'lucide-react';
 import { PresensiFormOptions } from '@/types/presensi';
 import {
   Select,
@@ -16,14 +14,10 @@ import {
 interface OptionsTogglesProps {
   opsi: PresensiFormOptions;
   setOpsi: (val: PresensiFormOptions) => void;
-  /** Apakah sheet REKAP & ASPRAK BELUM NILAI akan di-generate */
   generateRekapSheet: boolean;
   onToggleRekapSheet: (val: boolean) => void;
-  /** Jumlah asprak yang terdeteksi dari praktikum yang dipilih */
   asprakCount: number;
-  /** Loading state saat fetch asprak */
   loadingAsprak: boolean;
-  /** Apakah praktikum sudah dipilih */
   hasPraktikum: boolean;
 }
 
@@ -74,18 +68,16 @@ export function OptionsToggles({
               {opsi.tp.inputType === 'number' && (
                 <div className="space-y-1">
                   <span className="text-[11px] text-muted-foreground font-medium">Bobot Nilai (%)</span>
-                  <div className="flex items-center gap-1.5">
-                    <Input
-                      type="number"
-                      min={0}
-                      max={100}
-                      value={opsi.tp.weight}
-                      onChange={(e) => setOpsi({ ...opsi, tp: { ...opsi.tp, weight: Number(e.target.value) } })}
-                      className="h-8 text-xs font-mono"
-                      aria-label="Bobot TP"
-                    />
-                    <span className="text-xs font-semibold text-muted-foreground">%</span>
-                  </div>
+                  <Input
+                    type="number"
+                    step="0.1"
+                    min={0}
+                    max={100}
+                    value={opsi.tp.weight || ''}
+                    onFocus={(e) => e.target.select()}
+                    onChange={(e) => setOpsi({ ...opsi, tp: { ...opsi.tp, weight: parseFloat(e.target.value) || 0 } })}
+                    aria-label="Bobot TP"
+                  />
                 </div>
               )}
             </div>
@@ -124,18 +116,16 @@ export function OptionsToggles({
               {opsi.jurnal.inputType === 'number' && (
                 <div className="space-y-1">
                   <span className="text-[11px] text-muted-foreground font-medium">Bobot Nilai (%)</span>
-                  <div className="flex items-center gap-1.5">
-                    <Input
-                      type="number"
-                      min={0}
-                      max={100}
-                      value={opsi.jurnal.weight}
-                      onChange={(e) => setOpsi({ ...opsi, jurnal: { ...opsi.jurnal, weight: Number(e.target.value) } })}
-                      className="h-8 text-xs font-mono"
-                      aria-label="Bobot Jurnal"
-                    />
-                    <span className="text-xs font-semibold text-muted-foreground">%</span>
-                  </div>
+                  <Input
+                    type="number"
+                    step="0.1"
+                    min={0}
+                    max={100}
+                    value={opsi.jurnal.weight || ''}
+                    onFocus={(e) => e.target.select()}
+                    onChange={(e) => setOpsi({ ...opsi, jurnal: { ...opsi.jurnal, weight: parseFloat(e.target.value) || 0 } })}
+                    aria-label="Bobot Jurnal"
+                  />
                 </div>
               )}
             </div>
@@ -174,18 +164,16 @@ export function OptionsToggles({
               {opsi.tesAkhir.inputType === 'number' && (
                 <div className="space-y-1">
                   <span className="text-[11px] text-muted-foreground font-medium">Bobot Nilai (%)</span>
-                  <div className="flex items-center gap-1.5">
-                    <Input
-                      type="number"
-                      min={0}
-                      max={100}
-                      value={opsi.tesAkhir.weight}
-                      onChange={(e) => setOpsi({ ...opsi, tesAkhir: { ...opsi.tesAkhir, weight: Number(e.target.value) } })}
-                      className="h-8 text-xs font-mono"
-                      aria-label="Bobot Tes Akhir"
-                    />
-                    <span className="text-xs font-semibold text-muted-foreground">%</span>
-                  </div>
+                  <Input
+                    type="number"
+                    step="0.1"
+                    min={0}
+                    max={100}
+                    value={opsi.tesAkhir.weight || ''}
+                    onFocus={(e) => e.target.select()}
+                    onChange={(e) => setOpsi({ ...opsi, tesAkhir: { ...opsi.tesAkhir, weight: parseFloat(e.target.value) || 0 } })}
+                    aria-label="Bobot Tes Akhir"
+                  />
                 </div>
               )}
             </div>
@@ -204,55 +192,23 @@ export function OptionsToggles({
               Rate Asprak
             </Label>
           </div>
-          <p className="text-xs text-muted-foreground mt-3 leading-relaxed">
-            Menyediakan kolom rating/umpan balik dari praktikan kepada asisten praktikum per modul.
-          </p>
         </div>
       </div>
 
       {/* ── Toggle Sheet Rekap ────────────────────────────────────── */}
-      <div className="p-4 rounded-xl border border-border/50 bg-muted/20 flex items-start space-x-3.5">
+      <div className="p-4 rounded-xl border border-border/50 bg-muted/20 flex items-center space-x-3.5">
         <Checkbox
           id="opsi-rekap"
           checked={generateRekapSheet}
           disabled={!canGenerateRekap}
           onCheckedChange={(checked) => onToggleRekapSheet(checked === true)}
-          className="mt-1"
         />
-        <div className="space-y-1.5 flex-1">
-          <div className="flex items-center gap-2.5 flex-wrap">
-            <Label
-              htmlFor="opsi-rekap"
-              className={`font-semibold text-sm cursor-pointer flex items-center gap-1.5 ${!canGenerateRekap ? 'text-muted-foreground' : ''}`}
-            >
-              <FileSpreadsheet className="size-4 text-primary" />
-              Generate Sheet Rekapitulasi & Asprak Belum Nilai
-            </Label>
-            {/* Status badge */}
-            {loadingAsprak ? (
-              <Badge variant="secondary" className="text-xs flex items-center gap-1">
-                <Loader2 className="h-3 w-3 animate-spin" />
-                Memuat asprak...
-              </Badge>
-            ) : !hasPraktikum ? (
-              <Badge variant="outline" className="text-xs text-muted-foreground">
-                Pilih praktikum dulu
-              </Badge>
-            ) : asprakCount > 0 ? (
-              <Badge variant="secondary" className="text-xs flex items-center gap-1 font-mono">
-                <Users className="h-3 w-3" />
-                {asprakCount} asprak
-              </Badge>
-            ) : (
-              <Badge variant="outline" className="text-xs text-muted-foreground">
-                Daftar asprak kosong
-              </Badge>
-            )}
-          </div>
-          <p className="text-xs text-muted-foreground leading-relaxed">
-            Menambahkan 2 sheet otomatis: <strong>ASPRAK BELUM NILAI</strong> (tabel asisten yang belum menginput nilai) dan <strong>REKAP</strong> nilai akhir praktikan.
-          </p>
-        </div>
+        <Label
+          htmlFor="opsi-rekap"
+          className={`font-semibold text-sm cursor-pointer ${!canGenerateRekap ? 'text-muted-foreground' : ''}`}
+        >
+          Rekapitulasi & Nilai Asprak
+        </Label>
       </div>
     </div>
   );

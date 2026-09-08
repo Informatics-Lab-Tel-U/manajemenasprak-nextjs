@@ -10,7 +10,8 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { format } from 'date-fns';
-import { CalendarIcon, Loader2, AlertCircle } from 'lucide-react';
+import { id } from 'date-fns/locale';
+import { ChevronDownIcon, Loader2, AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
@@ -65,7 +66,7 @@ export default function PresensiGeneratorClient() {
       <Card className="bg-card shadow-sm border-border/60">
         <CardHeader>
           <CardTitle className="text-lg font-bold">1. Konfigurasi File & Praktikum</CardTitle>
-          <CardDescription>Pilih praktikum, kelas, dan atur parameter dasar file Excel</CardDescription>
+
         </CardHeader>
         <CardContent className="grid gap-6 sm:grid-cols-2">
           <PraktikumSelector
@@ -102,7 +103,8 @@ export default function PresensiGeneratorClient() {
               id="jumlahModul"
               type="number"
               min={1}
-              value={state.jumlahModul}
+              value={state.jumlahModul || ''}
+              onFocus={(e) => e.target.select()}
               onChange={(e) => state.setJumlahModul(Number(e.target.value))}
             />
           </div>
@@ -128,23 +130,24 @@ export default function PresensiGeneratorClient() {
             <Popover>
               <PopoverTrigger asChild>
                 <Button
-                  variant={'outline'}
-                  className={cn(
-                    'w-full justify-start text-left font-normal',
-                    !state.globalTanggalMulai && 'text-muted-foreground'
-                  )}
+                  variant="outline"
+                  data-empty={!state.globalTanggalMulai}
+                  className="w-full justify-between text-left font-normal data-[empty=true]:text-muted-foreground"
                 >
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {state.globalTanggalMulai
-                    ? format(state.globalTanggalMulai, 'PPP')
-                    : <span>Pilih tanggal</span>}
+                  {state.globalTanggalMulai ? (
+                    format(state.globalTanggalMulai, 'EEEE, d MMMM yyyy', { locale: id })
+                  ) : (
+                    <span>Pilih tanggal</span>
+                  )}
+                  <ChevronDownIcon />
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-auto p-0">
+              <PopoverContent className="w-auto p-0" align="start">
                 <Calendar
                   mode="single"
                   selected={state.globalTanggalMulai}
                   onSelect={(date) => state.setGlobalTanggalMulai(date)}
+                  defaultMonth={state.globalTanggalMulai}
                 />
               </PopoverContent>
             </Popover>
@@ -156,7 +159,8 @@ export default function PresensiGeneratorClient() {
               id="globalJumlahPraktikan"
               type="number"
               min={1}
-              value={state.globalJumlahPraktikan}
+              value={state.globalJumlahPraktikan || ''}
+              onFocus={(e) => e.target.select()}
               onChange={(e) => state.setGlobalJumlahPraktikan(Number(e.target.value))}
             />
           </div>
@@ -167,13 +171,14 @@ export default function PresensiGeneratorClient() {
               id="globalJumlahAsprak"
               type="number"
               min={1}
-              value={state.globalJumlahAsprak}
+              value={state.globalJumlahAsprak || ''}
+              onFocus={(e) => e.target.select()}
               onChange={(e) => state.setGlobalJumlahAsprak(Number(e.target.value))}
             />
           </div>
           
           <div className="sm:col-span-2 flex justify-end pt-2">
-            <Button variant="outline" onClick={state.applyGlobalToAll} disabled={state.kelasNames.length === 0}>
+            <Button onClick={state.applyGlobalToAll} disabled={state.kelasNames.length === 0}>
               Terapkan Default ke Semua Kelas
             </Button>
           </div>
@@ -187,7 +192,7 @@ export default function PresensiGeneratorClient() {
             <div className="flex justify-between items-center">
               <div>
                 <CardTitle className="text-lg font-bold">2. Pengaturan Spesifik per Kelas</CardTitle>
-                <CardDescription>Sesuaikan tanggal modul 1, kuota praktikan, dan jumlah asprak masing-masing kelas</CardDescription>
+
               </div>
               <Badge variant="outline" className="font-mono text-xs">
                 {state.kelasNames.length} Kelas
@@ -210,23 +215,24 @@ export default function PresensiGeneratorClient() {
                     <Popover>
                       <PopoverTrigger asChild>
                         <Button
-                          variant={'outline'}
-                          className={cn(
-                            'w-full justify-start text-left font-normal h-9 text-xs',
-                            !state.kelasSettings[i]?.tanggalMulai && 'text-muted-foreground'
-                          )}
+                          variant="outline"
+                          data-empty={!state.kelasSettings[i]?.tanggalMulai}
+                          className="w-full justify-between text-left font-normal data-[empty=true]:text-muted-foreground"
                         >
-                          <CalendarIcon className="mr-2 h-3.5 w-3.5" />
-                          {state.kelasSettings[i]?.tanggalMulai
-                            ? format(state.kelasSettings[i].tanggalMulai, 'PPP')
-                            : <span>Pilih tanggal</span>}
+                          {state.kelasSettings[i]?.tanggalMulai ? (
+                            format(state.kelasSettings[i].tanggalMulai, 'EEEE, d MMMM yyyy', { locale: id })
+                          ) : (
+                            <span>Pilih tanggal</span>
+                          )}
+                          <ChevronDownIcon />
                         </Button>
                       </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0">
+                      <PopoverContent className="w-auto p-0" align="start">
                         <Calendar
                           mode="single"
                           selected={state.kelasSettings[i]?.tanggalMulai}
                           onSelect={(date) => state.updateKelasSetting(i, 'tanggalMulai', date)}
+                          defaultMonth={state.kelasSettings[i]?.tanggalMulai}
                         />
                       </PopoverContent>
                     </Popover>
@@ -237,9 +243,9 @@ export default function PresensiGeneratorClient() {
                     <Input
                       type="number"
                       min={1}
-                      value={state.kelasSettings[i]?.jumlahPraktikan || 0}
+                      value={state.kelasSettings[i]?.jumlahPraktikan || ''}
+                      onFocus={(e) => e.target.select()}
                       onChange={(e) => state.updateKelasSetting(i, 'jumlahPraktikan', Number(e.target.value))}
-                      className="h-9 text-xs font-mono"
                     />
                   </div>
                   
@@ -248,9 +254,9 @@ export default function PresensiGeneratorClient() {
                     <Input
                       type="number"
                       min={1}
-                      value={state.kelasSettings[i]?.jumlahAsprak || 0}
+                      value={state.kelasSettings[i]?.jumlahAsprak || ''}
+                      onFocus={(e) => e.target.select()}
                       onChange={(e) => state.updateKelasSetting(i, 'jumlahAsprak', Number(e.target.value))}
-                      className="h-9 text-xs font-mono"
                     />
                   </div>
                 </div>
@@ -266,9 +272,7 @@ export default function PresensiGeneratorClient() {
           <div className="flex justify-between items-center">
             <div>
               <CardTitle className="text-lg font-bold">3. Kolom Penilaian & Rekapitulasi</CardTitle>
-              <CardDescription>
-                Pilih komponen penilaian modul dan validasi total bobot 100%
-              </CardDescription>
+
             </div>
             <Badge variant={state.isWeightValid ? 'default' : 'outline'} className={`font-mono text-xs ${!state.isWeightValid ? 'border-destructive/40 text-destructive bg-destructive/10' : ''}`}>
               Total Bobot: {state.totalWeight}%

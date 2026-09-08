@@ -2,10 +2,12 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Wand2 } from 'lucide-react';
+import { Calendar as CalendarIcon, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { cn } from '@/lib/utils';
 import {
   Select,
   SelectContent,
@@ -65,6 +67,17 @@ const isMonday = (dateStr: string | null): boolean => {
     return getDay(date) === 1; // 1 is Monday
   } catch {
     return false;
+  }
+};
+
+const parseDate = (dateStr: string | null): Date | undefined => {
+  if (!dateStr) return undefined;
+  try {
+    const [y, m, d] = dateStr.split('-').map(Number);
+    if (!y || !m || !d) return undefined;
+    return new Date(y, m - 1, d);
+  } catch {
+    return undefined;
   }
 };
 
@@ -282,21 +295,56 @@ export default function JadwalModulClientPage() {
                     >
                       <div className="font-semibold text-foreground shrink-0">Modul {row.modul}</div>
                       <div className="flex items-center justify-end gap-2 sm:gap-3 shrink-0">
-                        <Input
-                          type="date"
-                          className={`h-8 text-xs max-w-[140px] ${!valid
-                            ? 'border-destructive text-destructive focus-visible:ring-destructive'
-                            : ''
-                            }`}
-                          value={row.tanggal_mulai ?? ''}
-                          onChange={(e) => handleChangeDate(row.modul, e.target.value)}
-                          disabled={loading || !term}
-                        />
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              disabled={loading || !term}
+                              className={cn(
+                                'h-8 justify-start text-left font-normal text-xs px-2.5 min-w-[130px] max-w-[150px]',
+                                !row.tanggal_mulai && 'text-muted-foreground',
+                                !valid && 'border-destructive text-destructive focus-visible:ring-destructive'
+                              )}
+                            >
+                              <CalendarIcon className="mr-1.5 h-3.5 w-3.5 shrink-0 opacity-70" />
+                              <span className="truncate">
+                                {row.tanggal_mulai && parseDate(row.tanggal_mulai) ? (
+                                  format(parseDate(row.tanggal_mulai)!, 'dd/MM/yyyy')
+                                ) : (
+                                  'Pilih tanggal'
+                                )}
+                              </span>
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0" align="end">
+                            <Calendar
+                              mode="single"
+                              selected={parseDate(row.tanggal_mulai)}
+                              onSelect={(d) => {
+                                handleChangeDate(row.modul, d ? format(d, 'yyyy-MM-dd') : '');
+                              }}
+                            />
+                            {row.tanggal_mulai && (
+                              <div className="p-2 border-t border-border flex justify-end">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-7 text-xs text-destructive hover:text-destructive gap-1 px-2"
+                                  onClick={() => handleChangeDate(row.modul, '')}
+                                >
+                                  <X className="h-3 w-3" />
+                                  Hapus
+                                </Button>
+                              </div>
+                            )}
+                          </PopoverContent>
+                        </Popover>
                         {row.tanggal_mulai && (
                           <>
                             <span
                               className={`text-xs font-medium px-2 py-1 rounded-sm ${valid
-                                ? 'bg-emerald-50 text-emerald-700'
+                                ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400'
                                 : 'bg-destructive/10 text-destructive'
                                 }`}
                             >
@@ -323,24 +371,22 @@ export default function JadwalModulClientPage() {
                   <Button
                     variant="outline"
                     size="sm"
-                    className="gap-2"
                     disabled={loading || !term || rows.length === 0}
                   >
-                    <Wand2 className="h-4 w-4 text-primary" />
-                    Generate
+                    Kalibrasi Tanggal
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="sm:max-w-[360px] p-0 overflow-hidden border-none shadow-2xl">
-                  <DialogHeader className="p-6 pb-2">
-                    <DialogTitle className="text-xl font-bold">Generate Otomatis</DialogTitle>
+                <DialogContent className="sm:max-w-[400px]">
+                  <DialogHeader>
+                    <DialogTitle>Kalibrasi Tanggal</DialogTitle>
                   </DialogHeader>
-                  <div className="px-6 py-4 space-y-4">
+                  <div className="py-2 space-y-4">
                     <div className="space-y-2">
                       <Label htmlFor="startModul" className="text-sm font-medium">
                         Mulai dari Modul
                       </Label>
                       <Select value={startModul} onValueChange={setStartModul}>
-                        <SelectTrigger className="h-10">
+                        <SelectTrigger className="w-full">
                           <SelectValue placeholder="Pilih Modul" />
                         </SelectTrigger>
                         <SelectContent>
@@ -351,23 +397,22 @@ export default function JadwalModulClientPage() {
                           ))}
                         </SelectContent>
                       </Select>
-                      <p className="text-[11px] leading-relaxed text-muted-foreground bg-muted/50 p-3 rounded-md border border-border/40">
+                      <p className="text-xs text-muted-foreground">
                         Sistem akan mengisi modul-modul berikutnya dengan interval{' '}
                         <strong>7 hari</strong> sekali dimulai dari modul yang dipilih.
                       </p>
                     </div>
                   </div>
-                  <DialogFooter className="p-6 pt-2 flex-row gap-2 sm:justify-end bg-muted/20">
+                  <DialogFooter className="gap-2 sm:gap-0">
                     <Button
-                      variant="ghost"
+                      variant="outline"
                       size="sm"
                       onClick={() => setIsGenerateDialogOpen(false)}
-                      className="flex-1 sm:flex-none"
                     >
                       Batal
                     </Button>
-                    <Button size="sm" onClick={handleGenerate} className="flex-1 sm:flex-none px-6">
-                      Generate
+                    <Button size="sm" onClick={handleGenerate}>
+                      Kalibrasi
                     </Button>
                   </DialogFooter>
                 </DialogContent>
