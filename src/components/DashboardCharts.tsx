@@ -1,7 +1,7 @@
 'use client';
 
 // eslint-disable-next-line react-doctor/prefer-dynamic-import
-import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from 'recharts';
+import { Area, AreaChart, Bar, BarChart, CartesianGrid, XAxis, YAxis } from 'recharts';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { useScheduleData } from '@/hooks/useScheduleData';
@@ -453,13 +453,44 @@ export default function DashboardCharts({
             </div>
           ) : (
             <ChartContainer config={chartConfigJadwal} className="h-[300px] 2xl:h-[450px] w-full">
-              <BarChart data={dataJadwal} accessibilityLayer>
+              <AreaChart
+                data={dataJadwal}
+                accessibilityLayer
+                margin={{
+                  top: 10,
+                  left: 10,
+                  right: 10,
+                  bottom: 0,
+                }}
+              >
+                <defs>
+                  <linearGradient id="gradientJadwal" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="var(--color-count)" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="var(--color-count)" stopOpacity={0.02} />
+                  </linearGradient>
+                </defs>
                 <CartesianGrid vertical={false} />
                 <XAxis dataKey="name" tickLine={false} tickMargin={10} axisLine={false} />
                 <YAxis tickLine={false} axisLine={false} tickMargin={10} />
-                <ChartTooltip content={<ChartTooltipContent />} />
-                <Bar dataKey="count" fill="var(--color-count)" radius={[4, 4, 0, 0]} />
-              </BarChart>
+                <ChartTooltip
+                  cursor={{ strokeDasharray: '3 3' }}
+                  content={<ChartTooltipContent indicator="line" />}
+                />
+                <Area
+                  dataKey="count"
+                  type="natural"
+                  stroke="var(--color-count)"
+                  strokeWidth={2.5}
+                  fill="url(#gradientJadwal)"
+                  dot={{
+                    fill: 'var(--color-count)',
+                    r: 4,
+                  }}
+                  activeDot={{
+                    r: 6,
+                  }}
+                />
+              </AreaChart>
             </ChartContainer>
           )}
         </CardContent>
