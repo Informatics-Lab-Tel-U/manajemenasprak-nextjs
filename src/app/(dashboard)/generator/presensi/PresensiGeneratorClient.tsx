@@ -124,7 +124,7 @@ export default function PresensiGeneratorClient() {
           </div>
 
           <div className="space-y-2">
-            <Label>Default Tanggal Modul 1</Label>
+            <Label>Default Tanggal Modul 1 (Senin)</Label>
             <Popover>
               <PopoverTrigger asChild>
                 <Button
