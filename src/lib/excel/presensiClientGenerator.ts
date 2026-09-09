@@ -269,6 +269,17 @@ function injectRowValidationAndFormulas(
       }
       currentOffset++;
     }
+    if (opsi.rate) {
+      const rateCol = sheet.getColumn(currentOffset).letter;
+      sheet.getCell(`${rateCol}${r}`).dataValidation = {
+        type: 'list',
+        allowBlank: true,
+        formulae: ['"0,1,2,3,4,5"'],
+        showErrorMessage: true,
+        showInputMessage: true,
+      };
+      currentOffset++;
+    }
 
     const totalNilaiCol = sheet.getColumn(startCol + totalColsThisModule - 1).letter;
     const totalNilaiCell = sheet.getCell(`${totalNilaiCol}${r}`);
