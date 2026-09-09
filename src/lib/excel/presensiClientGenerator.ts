@@ -540,8 +540,8 @@ export function addRekapSheet(
 
   const cellNamaHeader = row2.getCell(COL_NAMA);
   cellNamaHeader.value = {
-    formula: `_xlfn.LET(_xlpm.WEEK,INT((TODAY()-DATE(${year},${month},${day}))/7)+1," NAMA ASPRAK (MODUL "&_xlpm.WEEK&")")`,
-    result: 'Nama Asprak'
+    formula: `_xlfn.LET(_xlpm.WEEK,REKAP!E12," NAMA ASPRAK (MODUL "&_xlpm.WEEK&")")`,
+    result: 'Nama Asprak',
   };
   Object.assign(cellNamaHeader, headerStyle);
   setHeaderCell(row2, COL_KODE, 'Kode');
@@ -759,6 +759,9 @@ export function addRekapBroadcastEngine(
   ws.getColumn(5).width = 14; 
   ws.getColumn(6).width = 7; 
   ws.getColumn(7).width = 16; 
+  ws.getColumn(8).width = 4;   // H: spacer
+  ws.getColumn(9).width = 12;  // I: Modul
+  ws.getColumn(10).width = 16; // J: Tanggal Senin
 
   const b2 = ws.getCell('B2'); b2.value = 'Kelas'; b2.style = tbl1HeaderStyle;
   const c2 = ws.getCell('C2'); c2.value = 'Hide'; c2.style = tbl1HeaderStyle;
@@ -789,8 +792,8 @@ export function addRekapBroadcastEngine(
   const day = startDate.getDate();
 
   ws.getCell('E12').value = {
-    formula: `INT((TODAY()-DATE(${year},${month},${day}))/7)+1`,
-    result: 1
+    formula: `MAX(0,MIN(${options.jumlahModul},COUNTIF(J3:J18,"<="&TODAY())))`,
+    result: 1,
   };
   ws.getCell('E12').font = { bold: true, size: 20 };
   ws.getCell('E12').alignment = { horizontal: 'right', vertical: 'middle' };
@@ -808,6 +811,34 @@ export function addRekapBroadcastEngine(
   ws.getCell('E21').value = 'Sabtu'; ws.getCell('E21').style = tbl1HeaderStyle;
   const f21 = ws.getCell('F21'); f21.value = true; f21.border = PRESENSI_STYLES.BORDERS;
   f21.dataValidation = { type: 'list', allowBlank: true, formulae: ['"TRUE,FALSE"'] };
+
+  // Tabel Jadwal Modul (I2:J18) — tanggal per modul, bisa di-edit manual di Excel
+  const jadwalHeaderStyle: any = {
+    font: { bold: true },
+    fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF8EA9DB' } },
+    alignment: { vertical: 'middle', horizontal: 'center' },
+    border: PRESENSI_STYLES.BORDERS,
+  };
+  ws.getCell('I2').value = 'Modul'; ws.getCell('I2').style = jadwalHeaderStyle;
+  ws.getCell('J2').value = 'Tanggal Senin'; ws.getCell('J2').style = jadwalHeaderStyle;
+
+  for (let m = 0; m < 16; m++) {
+    const rowNum = m + 3;
+    const iCell = ws.getCell(`I${rowNum}`);
+    iCell.value = `Modul ${m + 1}`;
+    iCell.border = PRESENSI_STYLES.BORDERS;
+    iCell.alignment = { vertical: 'middle', horizontal: 'center' };
+
+    const jCell = ws.getCell(`J${rowNum}`);
+    const offsetDays = m * 7;
+    jCell.value = {
+      formula: `DATE(${year},${month},${day})+${offsetDays}`,
+      result: new Date(startDate.getTime() + offsetDays * 24 * 60 * 60 * 1000),
+    };
+    jCell.numFmt = 'dd/mm/yyyy';
+    jCell.border = PRESENSI_STYLES.BORDERS;
+    jCell.alignment = { vertical: 'middle', horizontal: 'center' };
+  }
 
   ws.getColumn(22).width = 4;
   ws.getColumn(23).width = 120;
@@ -921,7 +952,8 @@ export function addRekapBroadcastEngine(
   for (let r = 36; r < currentRow; r++) {
     ws.getRow(r).hidden = true;
   }
-  for (let c = 8; c <= 22; c++) {
+  // Kolom H (8), I (9), J (10) dibiarkan visible — berisi tabel Jadwal Modul
+  for (let c = 11; c <= 22; c++) {
     ws.getColumn(c).hidden = true;
   }
 }
