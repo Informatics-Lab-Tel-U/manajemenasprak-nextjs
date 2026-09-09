@@ -1,14 +1,14 @@
 /* eslint-disable react-doctor/no-impure-state-updater */
 import React, { useState, useEffect } from 'react';
-import { AlertTriangle, CheckCircle2, Clock, Edit2, Shield, X } from 'lucide-react';
+import { Plus, Shield } from 'lucide-react';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { useJaga } from '@/hooks/useJaga';
-import { getJagaShiftsByDay } from '@/utils/jagaUtils';
+import { getShiftTimeString } from '@/utils/jagaUtils';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
 import { deleteJadwalJaga, bulkDeleteJadwalJaga } from '@/lib/fetchers/jagaFetcher';
 import { usePresensiJagaStore } from '@/store/usePresensiJagaStore';
-import { format } from 'date-fns';
-import { id } from 'date-fns/locale';
+import { JagaCell } from '@/components/jadwal/JagaCell';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -20,18 +20,30 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import {
+  Field,
+  FieldContent,
+  FieldDescription,
+  FieldLabel,
+  FieldTitle,
+} from '@/components/ui/field';
 import { Spinner } from '@/components/ui/spinner';
+import { DAYS } from '@/constants';
 
 interface JagaPanelProps {
   term: string;
-  selectedModul: string; // e.g. "Default" or "Modul 1"
-  filterDay?: string; // Optional: "SENIN", etc.
+  selectedModul: string;
+  filterDay?: string;
   hideInputButton?: boolean;
   userRole?: string;
   onRefreshTrigger?: number;
   onEdit?: (data: any) => void;
+  onAdd?: (day: string, shift: number) => void;
   onDayChange?: (day: string) => void;
 }
+
+const SHIFT_NUMBERS = [1, 2, 3, 4];
+const MIN_ASPRAK_COLS = 4;
 
 export default function JagaPanel({
   term,
@@ -41,12 +53,14 @@ export default function JagaPanel({
   userRole,
   onRefreshTrigger,
   onEdit,
+  onAdd,
   onDayChange,
 }: JagaPanelProps) {
   const isDefault = selectedModul === 'Default';
-  const modulNum = isDefault ? 0 : parseInt(selectedModul.replace('Modul ', ''));
+  const modulNum = isDefault ? 0 : parseInt(selectedModul.replace('Modul ', ''), 10);
 
-  const [localDay, setLocalDay] = useState('SENIN');
+  // Default to SENIN — no "ALL" mode anymore
+  const [localDay, setLocalDay] = useState<string>('SENIN');
   const activeDay = (filterDay || localDay).toUpperCase();
 
   const { jagaList, loading, refresh } = useJaga(
@@ -77,13 +91,9 @@ export default function JagaPanel({
   } | null>(null);
   const [deleteScope, setDeleteScope] = useState<'single' | 'bulk'>('single');
 
-  const shifts = getJagaShiftsByDay(activeDay);
-
   const handleConfirmedDelete = async () => {
     if (!deletingItem) return;
-
     const { id, code, id_asprak, shift } = deletingItem;
-
     try {
       if (deleteScope === 'bulk') {
         const { success, error } = await bulkDeleteJadwalJaga({
@@ -116,13 +126,21 @@ export default function JagaPanel({
     }
   };
 
+  // Compute max asprak columns across all shifts (min MIN_ASPRAK_COLS)
+  const maxCols = Math.max(
+    MIN_ASPRAK_COLS,
+    ...SHIFT_NUMBERS.map(
+      (s) => jagaList.filter((j) => j.shift === s).length
+    )
+  );
+
   const renderContent = () => {
     if (isDefault) {
       return (
-        <div className="flex flex-col items-center justify-center p-8 text-center text-muted-foreground h-full">
+        <div className="flex flex-col items-center justify-center p-12 text-center text-muted-foreground h-full min-h-[350px]">
           <Shield className="w-12 h-12 mb-4 opacity-20" />
-          <p className="text-sm">
-            Pilih Modul (W1, W2, dst) untuk melihat jadwal Jaga Aslab/Asprak.
+          <p className="text-sm font-medium">
+            Pilih Modul (Modul 1 s/d 16) untuk melihat jadwal Jaga Aslab/Asprak.
           </p>
         </div>
       );
@@ -130,285 +148,293 @@ export default function JagaPanel({
 
     if (loading) {
       return (
-        <div className="space-y-4 mt-4">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <Skeleton key={i} className="h-20 2xl:h-24 w-full" />
-          ))}
+        <div className="overflow-x-auto rounded-lg border border-border shadow-sm bg-card/50 backdrop-blur-sm min-h-[300px]">
+          <table className="w-full border-collapse text-sm">
+            <thead>
+              <tr className="bg-muted/50 border-b border-border">
+                <th className="p-2 border-r border-border min-w-[90px]">
+                  <Skeleton className="h-4 w-12 mx-auto" />
+                </th>
+                {Array.from({ length: MIN_ASPRAK_COLS }).map((_, i) => (
+                  <th key={i} className="p-2 border-r border-border min-w-[120px]">
+                    <Skeleton className="h-4 w-16 mx-auto" />
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {SHIFT_NUMBERS.map((s) => (
+                <tr key={s} className="border-b border-border/50">
+                  <td className="p-2 border-r border-border bg-muted/5">
+                    <Skeleton className="h-10 w-14 mx-auto" />
+                  </td>
+                  {Array.from({ length: MIN_ASPRAK_COLS }).map((_, i) => (
+                    <td key={i} className="p-0 border-r border-border">
+                      <Skeleton className="h-[72px] w-full rounded-none" />
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       );
     }
 
-    const dayJaga = jagaList.filter((j) => j.hari.toUpperCase() === activeDay.toUpperCase());
-
     return (
-      <div className="mt-4 space-y-3">
-        {shifts.map((shiftInfo) => {
-          const shiftJaga = dayJaga.filter(
-            (j) => j.shift.toString() === shiftInfo.shift.toString()
-          );
+      <div className="overflow-x-auto rounded-lg border border-border shadow-sm bg-card/50 backdrop-blur-sm">
+        <table className="w-full border-collapse text-sm">
+          <thead>
+            <tr className="bg-muted/50 border-b border-border">
+              <th className="p-2 border-r border-border text-center font-bold text-xs uppercase text-muted-foreground min-w-[90px]">
+                Shift
+              </th>
+              {/* Single merged header spanning all asprak columns */}
+              <th
+                colSpan={maxCols}
+                className="p-2 border-r border-border text-center font-bold text-xs uppercase text-muted-foreground"
+              >
+                Jadwal Jaga
+              </th>
+              {userRole === 'ADMIN' && (
+                <th className="w-8 border-r border-border" />
+              )}
+            </tr>
+          </thead>
+          <tbody>
+            {SHIFT_NUMBERS.map((shiftNum) => {
+              const shiftJaga = jagaList.filter((j) => j.shift === shiftNum);
+              const shiftTime = getShiftTimeString(activeDay, shiftNum);
+              // Pad with nulls to reach maxCols
+              const padded: (any | null)[] = [
+                ...shiftJaga,
+                ...Array(Math.max(0, maxCols - shiftJaga.length)).fill(null),
+              ];
 
-          return (
-            <div
-              key={shiftInfo.shift}
-              className="p-3 border border-border/50 rounded-lg bg-card shadow-sm hover:shadow-md transition-shadow"
-            >
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <span className="font-bold text-base 2xl:text-lg tracking-tight text-foreground/90">
-                    Shift {shiftInfo.shift}
-                  </span>
-                </div>
-                <span className="text-xs 2xl:text-sm font-bold text-muted-foreground bg-muted/50 px-2.5 py-1 rounded-full border border-border/30">
-                  {shiftInfo.jam}
-                </span>
-              </div>
+              return (
+                <tr key={shiftNum} className="group/row border-b border-border/50">
+                  {/* Shift label cell */}
+                  <td className="p-2 border-r border-border bg-muted/10 text-center align-middle min-w-[90px]">
+                    <div className="flex flex-col items-center gap-0.5">
+                      <span className="font-bold text-xs 2xl:text-sm text-foreground">
+                        Shift {shiftNum}
+                      </span>
+                      <span className="text-xs font-medium text-muted-foreground">
+                        {shiftTime}
+                      </span>
+                    </div>
+                  </td>
 
-              <div className="flex flex-wrap gap-2">
-                {shiftJaga.length > 0 ? (
-                  shiftJaga.map((j) => {
-                    const presensi = todayPresensi.find(
-                      (p) =>
-                        p.id_asprak === j.id_asprak &&
-                        p.shift === j.shift &&
-                        p.hari.toUpperCase() === activeDay.toUpperCase() &&
-                        (!modulNum || p.modul === modulNum)
-                    );
-                    const isHadir = !!presensi;
-                    const hadirTime = presensi?.waktu_masuk
-                      ? format(new Date(presensi.waktu_masuk), 'HH:mm', { locale: id })
-                      : null;
-                    const isTerlambat = presensi?.status === 'TERLAMBAT';
-
-                    return (
-                      <div
-                        key={j.id}
-                        className={`group relative flex items-center gap-1.5 text-xs 2xl:text-sm px-3 py-2 rounded-md font-semibold transition-all shadow-sm border
-                          ${
-                            isHadir
-                              ? isTerlambat
-                                ? 'bg-amber-50/80 text-amber-900 border-amber-300 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800/60 ring-1 ring-amber-500/50'
-                                : 'bg-green-50/80 text-green-800 border-green-300 dark:bg-green-950/40 dark:text-green-300 dark:border-green-800/60 ring-1 ring-green-500/50'
-                              : j.asprak?.role === 'ASLAB'
-                              ? 'bg-blue-50/50 text-blue-700 border-blue-200/60 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-800/40'
-                              : 'bg-slate-50/50 text-slate-700 border-slate-200/60 dark:bg-slate-800/40 dark:text-slate-300 dark:border-slate-700/60'
-                          }`}
-                        title={`${j.asprak?.nama_lengkap} (${j.asprak?.nim})${isHadir ? ` — ${isTerlambat ? 'Terlambat' : 'Hadir'} ${hadirTime}` : ''}`}
-                      >
-                        {isHadir ? (
-                          <CheckCircle2
-                            className={`w-3.5 h-3.5 shrink-0 ${
-                              isTerlambat ? 'text-amber-600 dark:text-amber-400' : 'text-green-600 dark:text-green-400'
-                            }`}
-                          />
-                        ) : null}
-                        <span className="truncate max-w-[80px] 2xl:max-w-[100px]">{j.asprak?.kode || 'Unknown'}</span>
-                        {isHadir && hadirTime ? (
-                          <span
-                            className={`text-[10px] font-normal px-1 py-0.2 rounded ${
-                              isTerlambat
-                                ? 'bg-amber-200/60 dark:bg-amber-900/60 text-amber-900 dark:text-amber-200'
-                                : 'bg-green-200/60 dark:bg-green-900/60 text-green-900 dark:text-green-200'
-                            }`}
+                  {/* Asprak cells — one per column */}
+                  {padded.map((j, idx) => (
+                    <td
+                      key={j ? j.id : `empty-${shiftNum}-${idx}`}
+                      className="group/cell p-0 border-r border-border min-w-[120px] 2xl:min-w-[140px]"
+                      style={{ height: '1px' /* trick: lets child div use h-full */ }}
+                    >
+                      <div className="h-full flex flex-col">
+                        {j ? (
+                          <JagaCell
+                            jaga={j}
+                            presensi={todayPresensi.find(
+                              (p) =>
+                                p.id_asprak === j.id_asprak &&
+                                p.shift === j.shift &&
+                                p.hari.toUpperCase() === activeDay &&
+                                (!modulNum || p.modul === modulNum)
+                            )}
+                            userRole={userRole}
+                            onEdit={() =>
+                              onEdit?.({
+                                id: j.id,
+                                id_asprak: j.id_asprak,
+                                hari: j.hari,
+                                shift: j.shift,
+                              })
+                            }
+                            onDelete={() => {
+                              setDeletingItem({
+                                id: j.id,
+                                code: j.asprak?.kode || 'Asisten',
+                                id_asprak: j.id_asprak,
+                                shift: shiftNum,
+                              });
+                              setDeleteScope('single');
+                              setIsDeleteDialogOpen(true);
+                          }}
+                        />
+                      ) : (
+                        /* Empty cell — shows + on hover for ADMIN */
+                        userRole === 'ADMIN' ? (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              onAdd
+                                ? onAdd(activeDay, shiftNum)
+                                : onEdit?.({ hari: activeDay, shift: shiftNum })
+                            }
+                            className="flex-1 min-h-[72px] 2xl:min-h-[88px] w-full flex items-center justify-center group/empty bg-muted/5 hover:bg-muted/20 transition-colors"
+                            title={`Tambah asisten Shift ${shiftNum}`}
                           >
-                            {hadirTime}
-                          </span>
-                        ) : null}
-
-                        {/* Hover Actions */}
-                        {userRole === 'ADMIN' && (
-                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity ml-1 border-l pl-1 border-current/20">
-                            <button
-                              type="button"
-                              aria-label="Edit"
-                              onClick={() => {
-                                if (onEdit) {
-                                  onEdit({
-                                    id: j.id,
-                                    id_asprak: j.id_asprak,
-                                    hari: j.hari,
-                                    shift: j.shift,
-                                  });
-                                }
-                              }}
-                              className="hover:text-primary transition-colors p-0.5"
-                              title="Edit"
-                            >
-                              <Edit2 className="w-3 h-3" />
-                            </button>
-                            <button
-                              type="button"
-                              aria-label="Delete"
-                              title="Delete"
-                              onClick={() => {
-                                setDeletingItem({
-                                  id: j.id,
-                                  code: j.asprak?.kode || 'Asisten',
-                                  id_asprak: j.id_asprak,
-                                  shift: shiftInfo.shift,
-                                });
-                                setDeleteScope('single');
-                                setIsDeleteDialogOpen(true);
-                              }}
-                              className="hover:text-destructive transition-colors p-0.5"
-                            >
-                              <X className="w-3 h-3" />
-                            </button>
-                          </div>
-                        )}
+                            <Plus className="w-4 h-4 text-muted-foreground opacity-0 group-hover/empty:opacity-100 transition-opacity" />
+                          </button>
+                        ) : (
+                          <div className="flex-1 min-h-[72px] 2xl:min-h-[88px] bg-muted/5" />
+                        )
+                      )}
                       </div>
-                    );
-                  })
-                ) : (
-                  <div className="w-full py-4 flex flex-col items-center justify-center border border-dashed border-border/50 rounded-md bg-muted/5">
-                    <span className="text-xs text-muted-foreground/60 italic">
-                      Belum ada penjagaan
-                    </span>
-                  </div>
-                )}
-              </div>
-            </div>
-          );
-        })}
+                    </td>
+                  ))}
+
+                  {/* Admin: add button as last column */}
+                  {userRole === 'ADMIN' && (
+                    <td className="p-0 w-8 border-r border-border" style={{ height: '1px' }}>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          onAdd
+                            ? onAdd(activeDay, shiftNum)
+                            : onEdit?.({ hari: activeDay, shift: shiftNum })
+                        }
+                        className="w-full h-full min-h-[72px] 2xl:min-h-[88px] flex items-center justify-center opacity-0 group-hover/row:opacity-100 text-muted-foreground hover:text-foreground hover:bg-muted/30 transition-all"
+                        title={`Tambah asisten Shift ${shiftNum}`}
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                      </button>
+                    </td>
+                  )}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
       </div>
     );
   };
 
   return (
     <>
-      <div className="flex flex-col h-full">
-        {/* Konten — langsung tanpa header button */}
-        <div>
-          <div className="mb-4 pt-1">
-            <div className="text-sm 2xl:text-base text-muted-foreground mb-2 flex items-center justify-between">
-              <span>Menampilkan shift untuk hari:</span>
-              <span className="font-semibold text-foreground">{activeDay.toUpperCase()}</span>
-            </div>
-            {!filterDay && (
-              <div className="flex gap-1.5 overflow-x-auto pb-2">
-                {['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'].map((d) => (
-                  <button
-                    key={d}
-                    type="button"
-                    onClick={() => {
-                      setLocalDay(d);
-                      onDayChange?.(d.toUpperCase());
-                    }}
-                    className={`px-4 py-1.5 rounded-full text-sm 2xl:text-base font-medium whitespace-nowrap transition-colors border
-                       ${
-                         activeDay.toUpperCase() === d.toUpperCase()
-                           ? 'bg-primary text-primary-foreground border-primary'
-                           : 'bg-muted/50 hover:bg-muted border-transparent'
-                       }`}
-                  >
-                    {d}
-                  </button>
-                ))}
-              </div>
-            )}
+      <div className="flex flex-col h-full space-y-4">
+        {/* Day filter — ToggleGroup mirip JadwalClientPage */}
+        {!filterDay && (
+          <div className="overflow-x-auto pb-0.5">
+            <ToggleGroup
+              type="single"
+              value={activeDay}
+              onValueChange={(value) => {
+                if (value) {
+                  setLocalDay(value);
+                  onDayChange?.(value);
+                }
+              }}
+              variant="outline"
+              className="*:data-[slot=toggle-group-item]:px-4! w-max"
+            >
+              {DAYS.map((d) => (
+                <ToggleGroupItem key={d} value={d.toUpperCase()}>
+                  {d.charAt(0) + d.slice(1).toLowerCase()}
+                </ToggleGroupItem>
+              ))}
+            </ToggleGroup>
           </div>
-          {renderContent()}
+        )}
 
-          {/* Legenda Status Kehadiran / Penjagaan */}
-          {!isDefault && !loading && (
-            <div className="mt-6 flex flex-wrap items-center gap-3 sm:gap-6 text-xs text-muted-foreground border-t border-border/50 pt-4 px-1">
-              <span className="font-semibold text-foreground/80 text-xs">Legenda:</span>
-              
-              <div className="flex items-center gap-1.5">
-                <span className="flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded border bg-green-50/80 text-green-800 border-green-300 dark:bg-green-950/40 dark:text-green-300 dark:border-green-800/60 ring-1 ring-green-500/50">
-                  <CheckCircle2 className="w-3 h-3 text-green-600 dark:text-green-400" />
-                  Hadir
-                </span>
-                <span className="text-muted-foreground">Tepat Waktu</span>
-              </div>
+        {/* Table */}
+        {renderContent()}
 
-              <div className="flex items-center gap-1.5">
-                <span className="flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded border bg-amber-50/80 text-amber-900 border-amber-300 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800/60 ring-1 ring-amber-500/50">
-                  <CheckCircle2 className="w-3 h-3 text-amber-600 dark:text-amber-400" />
-                  Terlambat
-                </span>
-                <span className="text-muted-foreground">Presensi &gt; Toleransi</span>
-              </div>
-
-              <div className="flex items-center gap-1.5">
-                <span className="text-[11px] font-semibold px-2 py-0.5 rounded border bg-blue-50/50 text-blue-700 border-blue-200/60 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-800/40">
-                  ASLAB
-                </span>
-                <span className="text-muted-foreground">Belum Hadir</span>
-              </div>
-
-              <div className="flex items-center gap-1.5">
-                <span className="text-[11px] font-semibold px-2 py-0.5 rounded border bg-slate-50/50 text-slate-700 border-slate-200/60 dark:bg-slate-800/40 dark:text-slate-300 dark:border-slate-700/60">
-                  ASPRAK
-                </span>
-                <span className="text-muted-foreground">Belum Hadir</span>
-              </div>
+        {/* Legend */}
+        {!isDefault && !loading && (
+          <div className="flex flex-wrap items-center gap-4 sm:gap-6 text-xs text-muted-foreground border-t border-border/50 pt-3 px-1">
+            <div className="flex items-center gap-1.5">
+              <div className="w-3.5 h-3.5 rounded-sm bg-card ring-2 ring-inset ring-emerald-400"></div>
+              <span>Hadir Tepat Waktu</span>
             </div>
-          )}
-        </div>
+            <div className="flex items-center gap-1.5">
+              <div className="w-3.5 h-3.5 rounded-sm bg-card ring-2 ring-inset ring-amber-400"></div>
+              <span>Terlambat</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <div className="w-3.5 h-3.5 rounded-sm bg-card border border-border"></div>
+              <span>Belum Hadir</span>
+            </div>
+          </div>
+        )}
       </div>
 
+      {/* Delete confirmation dialog */}
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-destructive flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5" />
+        <AlertDialogContent className="flex flex-col gap-0 p-0 sm:max-w-lg overflow-hidden">
+          <AlertDialogHeader className="border-b px-6 py-4 text-left block space-y-0">
+            <AlertDialogTitle className="text-lg font-semibold text-destructive">
               Konfirmasi Hapus Jadwal
             </AlertDialogTitle>
-            <AlertDialogDescription>
-              Anda akan menghapus jadwal jaga untuk <strong>{deletingItem?.code}</strong>. Pilih
-              cakupan penghapusan di bawah ini:
+            <AlertDialogDescription className="sr-only">
+              Konfirmasi cakupan penghapusan jadwal jaga asisten
             </AlertDialogDescription>
           </AlertDialogHeader>
 
-          <div className="py-4">
+          <div className="space-y-4 p-6 text-foreground">
+            <p className="text-sm text-muted-foreground">
+              Anda akan menghapus jadwal jaga untuk{' '}
+              <strong className="text-foreground">{deletingItem?.code}</strong>. Pilih cakupan
+              penghapusan di bawah ini:
+            </p>
+
             <RadioGroup
               value={deleteScope}
               onValueChange={(val: any) => setDeleteScope(val)}
-              className="grid gap-4"
+              className="gap-2.5"
             >
-              <label
-                htmlFor="single"
-                className="flex items-start space-x-3 space-y-0 rounded-md border p-3 hover:bg-muted/50 transition-colors cursor-pointer"
+              <FieldLabel
+                htmlFor="delete-scope-single"
+                className="cursor-pointer transition-colors hover:bg-muted/40"
               >
-                <RadioGroupItem value="single" id="single" className="mt-1" />
-                <div className="font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                  <span className="block mb-1">Hanya Modul Ini Saja</span>
-                  <span className="block text-[11px] font-normal text-muted-foreground">
-                    Menghapus jadwal asisten hanya pada modul yang sedang dipilih sekarang.
-                  </span>
-                </div>
-              </label>
-              <label
-                htmlFor="bulk"
-                className="flex items-start space-x-3 space-y-0 rounded-md border p-3 hover:bg-muted/50 transition-colors cursor-pointer"
+                <Field orientation="horizontal">
+                  <RadioGroupItem value="single" id="delete-scope-single" />
+                  <FieldContent>
+                    <FieldTitle className="text-sm">Hanya Modul Ini Saja</FieldTitle>
+                    <FieldDescription className="text-xs">
+                      Menghapus jadwal asisten hanya pada modul yang sedang dipilih sekarang.
+                    </FieldDescription>
+                  </FieldContent>
+                </Field>
+              </FieldLabel>
+
+              <FieldLabel
+                htmlFor="delete-scope-bulk"
+                className="cursor-pointer transition-colors hover:bg-muted/40"
               >
-                <RadioGroupItem value="bulk" id="bulk" className="mt-1" />
-                <div className="font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                  <span className="block mb-1">Semua Modul</span>
-                  <span className="block text-[11px] font-normal text-muted-foreground">
-                    Menghapus jadwal asisten dari seluruh modul untuk hari, shift,
-                    dan ruang yang sama.
-                  </span>
-                </div>
-              </label>
+                <Field orientation="horizontal">
+                  <RadioGroupItem value="bulk" id="delete-scope-bulk" />
+                  <FieldContent>
+                    <FieldTitle className="text-sm">Semua Modul</FieldTitle>
+                    <FieldDescription className="text-xs">
+                      Menghapus jadwal asisten dari seluruh modul untuk hari, shift, dan ruang yang
+                      sama.
+                    </FieldDescription>
+                  </FieldContent>
+                </Field>
+              </FieldLabel>
             </RadioGroup>
           </div>
 
-          <AlertDialogFooter>
+          <AlertDialogFooter className="border-t px-6 py-4 sm:justify-end gap-2">
             <AlertDialogCancel disabled={loading}>Batal</AlertDialogCancel>
             <AlertDialogAction
               onClick={(e) => {
                 e.preventDefault();
                 handleConfirmedDelete();
               }}
-              variant={'destructive'}
+              variant="destructive"
               disabled={loading}
             >
               {loading ? (
                 <>
                   <Spinner className="mr-2 h-4 w-4" /> Menghapus...
                 </>
-              ) : 'Ya, Hapus Jadwal'}
+              ) : (
+                'Ya, Hapus Jadwal'
+              )}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

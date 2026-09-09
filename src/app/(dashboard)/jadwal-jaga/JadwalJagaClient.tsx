@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/select';
 import JagaPanel from '@/components/jadwal/JagaPanel';
 import { Button } from '@/components/ui/button';
-import { CreditCard, Plus } from 'lucide-react';
+import { CreditCard, Plus, RotateCw } from 'lucide-react';
 import JagaInputModal from '@/components/jadwal/JagaInputModal';
 import JagaRfidModal from '@/components/jadwal/JagaRfidModal';
 import { useTermStore } from '@/store/useTermStore';
@@ -57,14 +57,17 @@ export default function JadwalJagaClient({
 
   const handleRefresh = () => setRefreshTrigger((prev) => prev + 1);
 
-  const handleAdd = () => {
-    setEditingData(null);
+  const handleAdd = (day?: string, shift?: number) => {
+    if (day && shift) {
+      setEditingData({ hari: day, shift });
+    } else {
+      setEditingData(null);
+    }
     setIsModalOpen(true);
   };
 
   const handleEdit = (data: any) => {
     setEditingData(data);
-    console.log(data);
     setIsModalOpen(true);
   };
 
@@ -74,7 +77,7 @@ export default function JadwalJagaClient({
         <div>
           <h1 className="text-2xl 2xl:text-3xl font-bold tracking-tight">Manajemen Penjagaan</h1>
           <p className="text-sm 2xl:text-base text-muted-foreground mt-1">
-            Input dan kelola jadwal jaga Asisten Praktikum
+            Kelola jadwal jaga Asisten Laboratorium
           </p>
         </div>
 
@@ -92,6 +95,16 @@ export default function JadwalJagaClient({
             </SelectContent>
           </Select>
 
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={handleRefresh}
+            title="Muat ulang jadwal & presensi"
+            className="rounded-lg shadow-sm border-border/80 bg-background/80 hover:bg-accent"
+          >
+            <RotateCw size={16} className="text-muted-foreground hover:text-foreground" />
+          </Button>
+
           {userRole === 'ADMIN' && (
             <Button
               variant="outline"
@@ -105,7 +118,7 @@ export default function JadwalJagaClient({
 
           {userRole === 'ADMIN' && (
             <Button
-              onClick={handleAdd}
+              onClick={() => handleAdd()}
               className="flex-1 sm:flex-none min-w-0 md:whitespace-nowrap rounded-lg shadow-sm"
             >
               <Plus size={18} className="flex-shrink-0" />
@@ -116,13 +129,14 @@ export default function JadwalJagaClient({
       </div>
 
       <JagaPanel
-          term={selectedTerm}
-          selectedModul={selectedModul}
-          userRole={userRole}
-          onRefreshTrigger={refreshTrigger}
-          onEdit={handleEdit}
-          onDayChange={setSelectedDay}
-        />
+        term={selectedTerm}
+        selectedModul={selectedModul}
+        userRole={userRole}
+        onRefreshTrigger={refreshTrigger}
+        onEdit={handleEdit}
+        onAdd={handleAdd}
+        onDayChange={setSelectedDay}
+      />
 
       <JagaInputModal
         isOpen={isModalOpen}
@@ -133,7 +147,7 @@ export default function JadwalJagaClient({
         term={selectedTerm}
         selectedModul={modulNum}
         konfigurasiModul={konfigurasiModul}
-        defaultDay={selectedDay}
+        defaultDay={selectedDay === 'ALL' ? 'SENIN' : selectedDay}
         userRole={userRole}
         editData={editingData}
         onSuccess={() => {

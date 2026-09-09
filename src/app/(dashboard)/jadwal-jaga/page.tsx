@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 
 export const metadata = {
   title: 'Input Jadwal Jaga | Informatics Lab',
-  description: 'Pengelolaan dan Input Jadwal Jaga Asisten Praktikum',
+  description: 'Kelola jadwal jaga Asisten Laboratorium',
 };
 
 export default async function JadwalJagaPage() {

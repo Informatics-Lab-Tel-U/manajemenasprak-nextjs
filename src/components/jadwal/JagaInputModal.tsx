@@ -38,11 +38,11 @@ interface JagaInputModalProps {
   userRole?: string;
   onSuccess: () => void;
   editData?: {
-    id: string;
-    id_asprak: string;
-    hari: string;
-    shift: number;
-  };
+    id?: string;
+    id_asprak?: string;
+    hari?: string;
+    shift?: number;
+  } | null;
 }
 
 export default function JagaInputModal({
@@ -138,7 +138,7 @@ export default function JagaInputModal({
     setLoading(true);
 
     let result;
-    if (editData) {
+    if (editData && editData.id) {
       const { success, error } = await updateJadwalJaga(editData.id, {
         id_asprak: selectedAsprakId,
         hari: selectedHari,
@@ -347,7 +347,7 @@ export default function JagaInputModal({
               </Select>
             </div>
 
-            {!editData && (
+            {!editData?.id && (
               <div className="flex items-center space-x-2 p-3 rounded-lg border border-primary/20 bg-primary/5 mt-2">
                 <input
                   type="checkbox"

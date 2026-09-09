@@ -6,8 +6,9 @@ export async function fetchJadwalJaga(
   modul?: number,
   hari?: string
 ): Promise<{ data?: JadwalJaga[]; error?: string }> {
+  const normalizedHari = hari && hari.toUpperCase() !== 'ALL' ? hari : undefined;
   const result = await apiFetch<JadwalJaga[]>('/api/jaga', {
-    params: { term, modul: modul ? String(modul) : undefined, hari },
+    params: { term, modul: modul ? String(modul) : undefined, hari: normalizedHari },
   });
   return result.ok ? { data: result.data } : { error: result.error };
 }
