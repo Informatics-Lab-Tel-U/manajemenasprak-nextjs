@@ -56,6 +56,17 @@ export function downloadTemplate(type: string, format: 'csv' | 'xlsx' = 'csv') {
 }
 
 export async function generatePresensiExcel(options: any) {
+  try {
+    // 1. Coba generate langsung di browser menggunakan ExcelJS via CDN
+    // Menghindari limit CPU 10ms & memory 128MB Cloudflare Workers tanpa menambah bundle size Next.js
+    const { generatePresensiExcelClient } = await import('@/lib/excel/presensiClientGenerator');
+    await generatePresensiExcelClient(options);
+    return;
+  } catch (clientErr: any) {
+    console.warn('Client-side Excel generator failed, falling back to backend:', clientErr);
+  }
+
+  // 2. Fallback ke endpoint backend jika CDN atau browser generator gagal
   const response = await fetch('/api/util/presensi', {
     method: 'POST',
     headers: {
@@ -86,3 +97,4 @@ export async function generatePresensiExcel(options: any) {
   link.remove();
   setTimeout(() => window.URL.revokeObjectURL(url), 100);
 }
+
