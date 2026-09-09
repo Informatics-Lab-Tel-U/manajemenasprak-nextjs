@@ -594,7 +594,7 @@ export function addRekapSheet(
         true
       );
 
-      const formulaKode = `_xlfn.LET(_xlpm.WEEK,INT((TODAY()-DATE(${year},${month},${day}))/7),_xlpm.ROW_OFFSET,SUM(INDIRECT(_xlfn.CONCAT($F${currentRow},":",ADDRESS(ROW($E${currentRow}),COLUMN($E${currentRow})))))-$E${currentRow},_xlpm.KODE_BASE,TRIM(OFFSET(INDIRECT(_xlfn.CONCAT("'",$G${currentRow},"'!D4")),_xlpm.ROW_OFFSET,0)),_xlpm.KODE_MODUL,IF(AND(_xlpm.WEEK>=0,_xlpm.WEEK<${jumlahModul}),TRIM(OFFSET(INDIRECT(_xlfn.CONCAT("'",$G${currentRow},"'!E4")),_xlpm.ROW_OFFSET,_xlpm.WEEK*${totalColsThisModule})),""),_xlpm.KODE,IF(_xlpm.KODE_MODUL<>"",_xlpm.KODE_MODUL,_xlpm.KODE_BASE),IFERROR(IF(_xlpm.KODE="","",_xlpm.KODE),""))`;
+      const formulaKode = `_xlfn.LET(_xlpm.WEEK,REKAP!E12-1,_xlpm.ROW_OFFSET,SUM(INDIRECT(_xlfn.CONCAT($F${currentRow},":",ADDRESS(ROW($E${currentRow}),COLUMN($E${currentRow})))))-$E${currentRow},_xlpm.KODE_BASE,TRIM(OFFSET(INDIRECT(_xlfn.CONCAT("'",$G${currentRow},"'!D4")),_xlpm.ROW_OFFSET,0)),_xlpm.KODE_MODUL,IF(AND(_xlpm.WEEK>=0,_xlpm.WEEK<${jumlahModul}),TRIM(OFFSET(INDIRECT(_xlfn.CONCAT("'",$G${currentRow},"'!E4")),_xlpm.ROW_OFFSET,_xlpm.WEEK*${totalColsThisModule})),""),_xlpm.KODE,IF(_xlpm.KODE_MODUL<>"",_xlpm.KODE_MODUL,_xlpm.KODE_BASE),IFERROR(IF(_xlpm.KODE="","",_xlpm.KODE),""))`;
       styleCell(
         COL_KODE,
         {
