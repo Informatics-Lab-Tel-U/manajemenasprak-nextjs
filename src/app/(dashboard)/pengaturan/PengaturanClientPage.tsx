@@ -21,7 +21,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Switch } from '@/components/ui/switch';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter, CardAction } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { cn } from '@/lib/utils';
 import type { Role } from '@/config/rbac';
@@ -605,26 +605,26 @@ export default function DatabaseClientPage({
 
       {/* Section: Export & Template */}
       <section className="pb-10 mb-10 border-b border-border/40">
-        <div className="mb-6">
-          <div className="flex items-center gap-2 mb-1">
+        <div className="space-y-1 mb-6">
+          <div className="flex items-center gap-2">
             <Download className="h-4 w-4 text-muted-foreground" />
             <h2 className="text-base font-semibold">Export & Template</h2>
           </div>
-          <p className="text-sm text-muted-foreground ml-6">
+          <p className="text-sm text-muted-foreground">
             Download dataset aktif atau template kosong untuk diisi.
           </p>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
           {/* Export */}
-          <Card className="gap-3 shadow-none bg-muted/10 border-border/60 py-0">
-            <CardHeader className="px-5 pt-5 pb-0">
-              <CardTitle className="text-sm font-medium">Export Dataset</CardTitle>
-              <CardDescription className="text-xs mt-0.5">
-                Download semua data dari database
+          <Card className="flex flex-col justify-between">
+            <CardHeader>
+              <CardTitle className="text-base">Export Dataset</CardTitle>
+              <CardDescription>
+                Download semua data dari database dalam format Excel (.xlsx)
               </CardDescription>
             </CardHeader>
-            <CardContent className="px-5 pb-5 space-y-3">
+            <CardContent>
               <Select
                 value={exportTerm}
                 onValueChange={setExportTerm}
@@ -650,6 +650,8 @@ export default function DatabaseClientPage({
                   </SelectGroup>
                 </SelectContent>
               </Select>
+            </CardContent>
+            <CardFooter className="border-t pt-4">
               <Button
                 onClick={handleExport}
                 disabled={loading || !exportTerm}
@@ -659,16 +661,16 @@ export default function DatabaseClientPage({
                 <FileSpreadsheet size={14} />
                 Export .xlsx
               </Button>
-            </CardContent>
+            </CardFooter>
           </Card>
 
           {/* Template */}
-          <Card className="gap-3 shadow-none bg-muted/10 border-border/60 py-0">
-            <CardHeader className="px-5 pt-5 pb-0">
-              <CardTitle className="text-sm font-medium">Download Template</CardTitle>
-              <CardDescription className="text-xs mt-0.5">Template kosong siap diisi</CardDescription>
+          <Card className="flex flex-col justify-between">
+            <CardHeader>
+              <CardTitle className="text-base">Download Template</CardTitle>
+              <CardDescription>Template kosong siap diisi untuk impor data</CardDescription>
             </CardHeader>
-            <CardContent className="px-5 pb-5 space-y-3">
+            <CardContent>
               <div className="flex items-center gap-2">
                 <Input
                   required
@@ -699,6 +701,8 @@ export default function DatabaseClientPage({
                   </SelectContent>
                 </Select>
               </div>
+            </CardContent>
+            <CardFooter className="border-t pt-4">
               <Button
                 onClick={handleDownloadTemplate}
                 variant="outline"
@@ -708,7 +712,7 @@ export default function DatabaseClientPage({
                 <Download size={14} />
                 Download Template
               </Button>
-            </CardContent>
+            </CardFooter>
           </Card>
         </div>
       </section>
@@ -717,12 +721,12 @@ export default function DatabaseClientPage({
       {userRole === 'ADMIN' && (
         <>
           <section className="pb-10 mb-10 border-b border-border/40">
-            <div className="mb-6">
-              <div className="flex items-center gap-2 mb-1">
+            <div className="space-y-1 mb-6">
+              <div className="flex items-center gap-2">
                 <Activity className="h-4 w-4 text-muted-foreground" />
                 <h2 className="text-base font-semibold">System Control</h2>
               </div>
-              <p className="text-sm text-muted-foreground ml-6">
+              <p className="text-sm text-muted-foreground">
                 Kelola status sistem dan akses pengguna.
               </p>
             </div>
@@ -730,91 +734,88 @@ export default function DatabaseClientPage({
             {/* Maintenance Mode Toggles */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {/* Dashboard & Portal Asisten */}
-              <Card className="flex flex-col justify-between bg-muted/10 border-border/60 shadow-none">
-                <CardHeader className="p-5 pb-4">
-                  <CardTitle className="flex items-center justify-between text-sm font-semibold">
-                    Dashboard Manajemen
-                    {maintenanceStatuses.dashboard && (
-                      <Badge variant="destructive">
-                        ACTIVE
-                      </Badge>
-                    )}
-                  </CardTitle>
-                  <CardDescription className="text-xs">
+              <Card className="flex flex-col justify-between">
+                <CardHeader>
+                  <CardTitle className="text-base">Dashboard Manajemen</CardTitle>
+                  <CardDescription>
                     Kunci akses publik & non-admin pada portal manajemen praktikum & asisten.
                   </CardDescription>
+                  {maintenanceStatuses.dashboard && (
+                    <CardAction>
+                      <Badge variant="destructive">Maintenance</Badge>
+                    </CardAction>
+                  )}
                 </CardHeader>
-                <CardContent className="p-5 pt-0 mt-auto">
-                  <div className="flex items-center justify-between pt-4 border-t border-border/30">
-                    <span className="text-xs font-medium text-muted-foreground">Status Pemeliharaan</span>
-                    <Switch
-                      checked={maintenanceStatuses.dashboard}
-                      onCheckedChange={(checked) => handleToggleMaintenanceApp('dashboard', checked, 'Dashboard')}
-                      disabled={loadingMaintenanceApp === 'dashboard'}
-                    />
-                  </div>
-                </CardContent>
+                <CardFooter className="flex items-center justify-between border-t pt-4">
+                  <Label htmlFor="switch-dashboard" className="text-xs font-medium text-muted-foreground cursor-pointer">
+                    Status Pemeliharaan
+                  </Label>
+                  <Switch
+                    id="switch-dashboard"
+                    checked={maintenanceStatuses.dashboard}
+                    onCheckedChange={(checked) => handleToggleMaintenanceApp('dashboard', checked, 'Dashboard')}
+                    disabled={loadingMaintenanceApp === 'dashboard'}
+                  />
+                </CardFooter>
               </Card>
 
               {/* Web Publik Informatics Web/Blog */}
-              <Card className="flex flex-col justify-between bg-muted/10 border-border/60 shadow-none">
-                <CardHeader className="p-5 pb-4">
-                  <CardTitle className="flex items-center justify-between text-sm font-semibold">
-                    Informatics Web / Blog
-                    {maintenanceStatuses.informaticsweb && (
-                      <Badge variant="destructive">
-                        ACTIVE
-                      </Badge>
-                    )}
-                  </CardTitle>
-                  <CardDescription className="text-xs">
+              <Card className="flex flex-col justify-between">
+                <CardHeader>
+                  <CardTitle className="text-base">Informatics Web / Blog</CardTitle>
+                  <CardDescription>
                     Tutup sementara akses blog, pengumuman, dan artikel publik laboratorium.
                   </CardDescription>
+                  {maintenanceStatuses.informaticsweb && (
+                    <CardAction>
+                      <Badge variant="destructive">Maintenance</Badge>
+                    </CardAction>
+                  )}
                 </CardHeader>
-                <CardContent className="p-5 pt-0 mt-auto">
-                  <div className="flex items-center justify-between pt-4 border-t border-border/30">
-                    <span className="text-xs font-medium text-muted-foreground">Status Pemeliharaan</span>
-                    <Switch
-                      checked={maintenanceStatuses.informaticsweb}
-                      onCheckedChange={(checked) => handleToggleMaintenanceApp('informaticsweb', checked, 'Informatics Web')}
-                      disabled={loadingMaintenanceApp === 'informaticsweb'}
-                    />
-                  </div>
-                </CardContent>
+                <CardFooter className="flex items-center justify-between border-t pt-4">
+                  <Label htmlFor="switch-informaticsweb" className="text-xs font-medium text-muted-foreground cursor-pointer">
+                    Status Pemeliharaan
+                  </Label>
+                  <Switch
+                    id="switch-informaticsweb"
+                    checked={maintenanceStatuses.informaticsweb}
+                    onCheckedChange={(checked) => handleToggleMaintenanceApp('informaticsweb', checked, 'Informatics Web')}
+                    disabled={loadingMaintenanceApp === 'informaticsweb'}
+                  />
+                </CardFooter>
               </Card>
 
               {/* Generator Kursi V2 */}
-              <Card className="flex flex-col justify-between bg-muted/10 border-border/60 shadow-none">
-                <CardHeader className="p-5 pb-4">
-                  <CardTitle className="flex items-center justify-between text-sm font-semibold">
-                    Generator Kursi Praktikum
-                    {maintenanceStatuses.generator_kursi && (
-                      <Badge variant="destructive">
-                        ACTIVE
-                      </Badge>
-                    )}
-                  </CardTitle>
-                  <CardDescription className="text-xs">
+              <Card className="flex flex-col justify-between">
+                <CardHeader>
+                  <CardTitle className="text-base">Generator Kursi Praktikum</CardTitle>
+                  <CardDescription>
                     Kunci aplikasi pengacak nomor bangku & tempat duduk sesi laboratorium.
                   </CardDescription>
+                  {maintenanceStatuses.generator_kursi && (
+                    <CardAction>
+                      <Badge variant="destructive">Maintenance</Badge>
+                    </CardAction>
+                  )}
                 </CardHeader>
-                <CardContent className="p-5 pt-0 mt-auto">
-                  <div className="flex items-center justify-between pt-4 border-t border-border/30">
-                    <span className="text-xs font-medium text-muted-foreground">Status Pemeliharaan</span>
-                    <Switch
-                      checked={maintenanceStatuses.generator_kursi}
-                      onCheckedChange={(checked) => handleToggleMaintenanceApp('generator_kursi', checked, 'Generator Kursi')}
-                      disabled={loadingMaintenanceApp === 'generator_kursi'}
-                    />
-                  </div>
-                </CardContent>
+                <CardFooter className="flex items-center justify-between border-t pt-4">
+                  <Label htmlFor="switch-generator-kursi" className="text-xs font-medium text-muted-foreground cursor-pointer">
+                    Status Pemeliharaan
+                  </Label>
+                  <Switch
+                    id="switch-generator-kursi"
+                    checked={maintenanceStatuses.generator_kursi}
+                    onCheckedChange={(checked) => handleToggleMaintenanceApp('generator_kursi', checked, 'Generator Kursi')}
+                    disabled={loadingMaintenanceApp === 'generator_kursi'}
+                  />
+                </CardFooter>
               </Card>
             </div>
           </section>
 
           {/* Security & 2FA Section */}
           <section className="pb-10 mb-10 border-b border-border/40">
-            <div className="mb-6">
+            <div className="space-y-1 mb-6">
               <h2 className="text-base font-semibold">Keamanan Akun & 2FA</h2>
               <p className="text-sm text-muted-foreground">
                 Pengaturan autentikasi dua langkah (Two-Factor Authentication) untuk perlindungan akses data.
@@ -825,128 +826,130 @@ export default function DatabaseClientPage({
 
           {/* Danger Zone */}
           <section className="pb-10">
-            <div className="mb-6">
-              <div className="flex items-center gap-2 mb-1">
+            <div className="space-y-1 mb-6">
+              <div className="flex items-center gap-2">
                 <ShieldAlert className="h-4 w-4 text-destructive" />
                 <h2 className="text-base font-semibold text-destructive">Danger Zone</h2>
               </div>
-              <p className="text-sm text-muted-foreground ml-6">
+              <p className="text-sm text-muted-foreground">
                 Tindakan ini bersifat permanen dan tidak dapat dibatalkan.
               </p>
             </div>
 
-            <div className="rounded-lg border border-destructive/30 divide-y divide-destructive/20">
-              {/* Delete Jadwal by Term */}
-              <div className="p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                <div className="space-y-0.5">
-                  <p className="text-sm font-medium">Hapus Jadwal per Tahun Ajaran</p>
-                  <p className="text-xs text-muted-foreground max-w-xs">
-                    Menghapus jadwal untuk term tertentu, tidak menghapus Mata Kuliah dan Praktikum.
-                  </p>
-                  <div className="pt-2">
-                    <Select
-                      value={deleteTerm}
-                      onValueChange={setDeleteTerm}
-                      disabled={loading || loadingTahunAjaran}
-                    >
-                      <SelectTrigger className="h-8 w-48 text-xs">
-                        <SelectValue
-                          placeholder={loadingTahunAjaran ? 'Memuat...' : 'Pilih Tahun Ajaran'}
-                        />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectGroup>
-                          {tahunAjaranList.map((term) => (
-                            <SelectItem key={term} value={term}>
-                              {term}
-                            </SelectItem>
-                          ))}
-                          {tahunAjaranList.length === 0 && !loadingTahunAjaran && (
-                            <SelectItem value="none" disabled>
-                              Tidak ada data
-                            </SelectItem>
-                          )}
-                        </SelectGroup>
-                      </SelectContent>
-                    </Select>
+            <Card className="border-destructive/30 shadow-none">
+              <CardContent className="p-0 divide-y divide-destructive/20">
+                {/* Delete Jadwal by Term */}
+                <div className="p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium">Hapus Jadwal per Tahun Ajaran</p>
+                    <p className="text-xs text-muted-foreground max-w-sm">
+                      Menghapus jadwal untuk term tertentu, tidak menghapus Mata Kuliah dan Praktikum.
+                    </p>
+                    <div className="pt-2">
+                      <Select
+                        value={deleteTerm}
+                        onValueChange={setDeleteTerm}
+                        disabled={loading || loadingTahunAjaran}
+                      >
+                        <SelectTrigger className="h-8 w-48 text-xs">
+                          <SelectValue
+                            placeholder={loadingTahunAjaran ? 'Memuat...' : 'Pilih Tahun Ajaran'}
+                          />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectGroup>
+                            {tahunAjaranList.map((term) => (
+                              <SelectItem key={term} value={term}>
+                                {term}
+                              </SelectItem>
+                            ))}
+                            {tahunAjaranList.length === 0 && !loadingTahunAjaran && (
+                              <SelectItem value="none" disabled>
+                                Tidak ada data
+                              </SelectItem>
+                            )}
+                          </SelectGroup>
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={handleDeleteJadwalTermTrigger}
+                    disabled={loading || !deleteTerm}
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Hapus Jadwal {deleteTerm || ''}
+                  </Button>
                 </div>
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  onClick={handleDeleteJadwalTermTrigger}
-                  disabled={loading || !deleteTerm}
-                >
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  Hapus Jadwal {deleteTerm || ''}
-                </Button>
-              </div>
 
-              {/* Hapus Semua Data by Term */}
-              <div className="p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                <div className="space-y-0.5">
-                  <p className="text-sm font-medium">Hapus Semua Data per Tahun Ajaran</p>
-                  <p className="text-xs text-muted-foreground max-w-xs">
-                    Menghapus Praktikum, Mata Kuliah, Jadwal, Plotting Asprak, dan Pelanggaran untuk term terkait.
-                  </p>
-                  <div className="pt-2">
-                    <Select
-                      value={deleteDataTerm}
-                      onValueChange={setDeleteDataTerm}
-                      disabled={loading || loadingTahunAjaran}
-                    >
-                      <SelectTrigger className="h-8 w-48 text-xs">
-                        <SelectValue
-                          placeholder={loadingTahunAjaran ? 'Memuat...' : 'Pilih Tahun Ajaran'}
-                        />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectGroup>
-                          {tahunAjaranList.map((term) => (
-                            <SelectItem key={term} value={term}>
-                              {term}
-                            </SelectItem>
-                          ))}
-                          {tahunAjaranList.length === 0 && !loadingTahunAjaran && (
-                            <SelectItem value="none" disabled>
-                              Tidak ada data
-                            </SelectItem>
-                          )}
-                        </SelectGroup>
-                      </SelectContent>
-                    </Select>
+                {/* Hapus Semua Data by Term */}
+                <div className="p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium">Hapus Semua Data per Tahun Ajaran</p>
+                    <p className="text-xs text-muted-foreground max-w-sm">
+                      Menghapus Praktikum, Mata Kuliah, Jadwal, Plotting Asprak, dan Pelanggaran untuk term terkait.
+                    </p>
+                    <div className="pt-2">
+                      <Select
+                        value={deleteDataTerm}
+                        onValueChange={setDeleteDataTerm}
+                        disabled={loading || loadingTahunAjaran}
+                      >
+                        <SelectTrigger className="h-8 w-48 text-xs">
+                          <SelectValue
+                            placeholder={loadingTahunAjaran ? 'Memuat...' : 'Pilih Tahun Ajaran'}
+                          />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectGroup>
+                            {tahunAjaranList.map((term) => (
+                              <SelectItem key={term} value={term}>
+                                {term}
+                              </SelectItem>
+                            ))}
+                            {tahunAjaranList.length === 0 && !loadingTahunAjaran && (
+                              <SelectItem value="none" disabled>
+                                Tidak ada data
+                              </SelectItem>
+                            )}
+                          </SelectGroup>
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={handleDeleteDataTermTrigger}
+                    disabled={loading || !deleteDataTerm}
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Hapus Semua Data {deleteDataTerm || ''}
+                  </Button>
                 </div>
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  onClick={handleDeleteDataTermTrigger}
-                  disabled={loading || !deleteDataTerm}
-                >
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  Hapus Semua Data {deleteDataTerm || ''}
-                </Button>
-              </div>
 
-              {/* Clear Entire Database */}
-              <div className="p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                <div className="space-y-0.5">
-                  <p className="text-sm font-medium">Clear Entire Database</p>
-                  <p className="text-xs text-muted-foreground max-w-xs">
-                    Menghapus SEMUA data dari semua tabel (kecuali data login).
-                  </p>
+                {/* Clear Entire Database */}
+                <div className="p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium">Clear Entire Database</p>
+                    <p className="text-xs text-muted-foreground max-w-sm">
+                      Menghapus SEMUA data dari semua tabel (kecuali data login).
+                    </p>
+                  </div>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={handleClearTrigger}
+                    disabled={loading}
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Reset Database
+                  </Button>
                 </div>
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  onClick={handleClearTrigger}
-                  disabled={loading}
-                >
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  Reset Database
-                </Button>
-              </div>
-            </div>
+              </CardContent>
+            </Card>
           </section>
         </>
       )}

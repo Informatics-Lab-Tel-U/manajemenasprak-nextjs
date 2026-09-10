@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { ShieldCheck, ShieldAlert, Loader2, KeyRound } from 'lucide-react';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter, CardAction } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { getMfaStatus, unenrollTotp } from '@/app/actions/mfa';
@@ -67,63 +67,54 @@ export function TwoFactorSecurityCard() {
 
   return (
     <>
-      <Card className="bg-card shadow-sm border-border/60">
+      <Card>
         <CardHeader>
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-            <div className="flex items-center gap-2.5">
-              <div>
-                <CardTitle className="text-base font-bold">Autentikasi Dua Langkah (2FA)</CardTitle>
-                <CardDescription className="text-xs">
-                  Amankan akses akun dengan kode TOTP (Google Authenticator / Microsoft Authenticator)
-                </CardDescription>
-              </div>
-            </div>
-            {!isLoading && (
-              <Badge variant={hasVerifiedFactor ? 'default' : 'outline'} className="text-xs self-start sm:self-auto font-mono">
+          <CardTitle className="text-base">Autentikasi Dua Langkah (2FA)</CardTitle>
+          <CardDescription>
+            Amankan akses akun dengan kode TOTP (Google Authenticator / Microsoft Authenticator)
+          </CardDescription>
+          {!isLoading && (
+            <CardAction>
+              <Badge variant={hasVerifiedFactor ? 'default' : 'secondary'}>
                 {hasVerifiedFactor ? 'Aktif' : 'Belum Aktif'}
               </Badge>
+            </CardAction>
+          )}
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            {hasVerifiedFactor
+              ? 'Akun ini dilindungi dengan verifikasi dua langkah (AAL2). Setiap login baru akan meminta kode verifikasi dari aplikasi authenticator Anda.'
+              : 'Autentikasi 2FA belum dikonfigurasi pada akun ini. Sangat disarankan untuk mengaktifkan 2FA demi perlindungan data praktikum dan akses sistem.'}
+          </p>
+        </CardContent>
+        <CardFooter className="flex items-center justify-between border-t pt-4">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <KeyRound className="size-3.5" />
+            <span>{hasVerifiedFactor ? 'Perangkat Authenticator Terdaftar' : 'Standar Keamanan TOTP'}</span>
+          </div>
+          <div>
+            {isLoading ? (
+              <Loader2 className="size-4 animate-spin text-muted-foreground" />
+            ) : hasVerifiedFactor ? (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsModalOpen(true)}
+                className="text-destructive hover:bg-destructive/10"
+              >
+                Reset / Hapus 2FA
+              </Button>
+            ) : (
+              <Button
+                size="sm"
+                onClick={() => router.push(AUTH_CONFIG.paths.setup2fa)}
+              >
+                Konfigurasi 2FA
+              </Button>
             )}
           </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="p-4 rounded-xl border border-border/50 bg-muted/20 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="space-y-1">
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-semibold">
-                  {hasVerifiedFactor ? 'Perangkat Authenticator Terdaftar' : 'Autentikasi 2FA Belum Dikonfigurasi'}
-                </span>
-              </div>
-              <p className="text-xs text-muted-foreground leading-relaxed max-w-xl">
-                {hasVerifiedFactor
-                  ? 'Akun ini dilindungi dengan verifikasi dua langkah (AAL2).'
-                  : 'Sangat direkomendasikan untuk mengaktifkan 2FA.'}
-              </p>
-            </div>
-
-            <div className="shrink-0 flex items-center gap-2">
-              {isLoading ? (
-                <Loader2 className="size-4 animate-spin text-muted-foreground" />
-              ) : hasVerifiedFactor ? (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setIsModalOpen(true)}
-                  className="text-xs text-destructive hover:bg-destructive/10"
-                >
-                  Reset / Hapus 2FA
-                </Button>
-              ) : (
-                <Button
-                  size="sm"
-                  onClick={() => router.push(AUTH_CONFIG.paths.setup2fa)}
-                  className="text-xs"
-                >
-                  Konfigurasi 2FA
-                </Button>
-              )}
-            </div>
-          </div>
-        </CardContent>
+        </CardFooter>
       </Card>
 
       {/* Confirmation Dialog to Unenroll */}
