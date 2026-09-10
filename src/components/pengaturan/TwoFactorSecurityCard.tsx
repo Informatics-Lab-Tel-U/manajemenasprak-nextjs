@@ -70,9 +70,6 @@ export function TwoFactorSecurityCard() {
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Autentikasi Dua Langkah (2FA)</CardTitle>
-          <CardDescription>
-            Tambahkan lapisan keamanan ekstra dengan meminta kode verifikasi saat login.
-          </CardDescription>
           {!isLoading && (
             <CardAction>
               <Badge variant={hasVerifiedFactor ? 'default' : 'secondary'}>
@@ -89,9 +86,11 @@ export function TwoFactorSecurityCard() {
           </p>
         </CardContent>
         <CardFooter className="flex items-center justify-between border-t pt-4">
-          <p className="text-xs text-muted-foreground">
-            {hasVerifiedFactor ? 'Aplikasi authenticator terhubung' : 'Aplikasi belum terhubung'}
-          </p>
+          {hasVerifiedFactor ? (
+            <p className="text-xs text-muted-foreground">Aplikasi authenticator terhubung</p>
+          ) : (
+            <span />
+          )}
           <div>
             {isLoading ? (
               <Loader2 className="size-4 animate-spin text-muted-foreground" />
