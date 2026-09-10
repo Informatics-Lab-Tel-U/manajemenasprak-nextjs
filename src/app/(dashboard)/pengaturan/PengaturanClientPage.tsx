@@ -617,7 +617,7 @@ export default function DatabaseClientPage({
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
           {/* Export */}
-          <Card className="gap-3 shadow-none bg-muted/10 border-border/60">
+          <Card className="gap-3 shadow-none bg-muted/10 border-border/60 py-0">
             <CardHeader className="px-5 pt-5 pb-0">
               <CardTitle className="text-sm font-medium">Export Dataset</CardTitle>
               <CardDescription className="text-xs mt-0.5">
@@ -663,7 +663,7 @@ export default function DatabaseClientPage({
           </Card>
 
           {/* Template */}
-          <Card className="gap-3 shadow-none bg-muted/10 border-border/60">
+          <Card className="gap-3 shadow-none bg-muted/10 border-border/60 py-0">
             <CardHeader className="px-5 pt-5 pb-0">
               <CardTitle className="text-sm font-medium">Download Template</CardTitle>
               <CardDescription className="text-xs mt-0.5">Template kosong siap diisi</CardDescription>
