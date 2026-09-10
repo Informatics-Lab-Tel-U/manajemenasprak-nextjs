@@ -647,7 +647,7 @@ export default function DatabaseClientPage({
                 </SelectContent>
               </Select>
             </CardContent>
-            <CardFooter className="border-t pt-4">
+            <CardFooter className="border-t pt-6">
               <Button
                 onClick={handleExport}
                 disabled={loading || !exportTerm}
@@ -698,7 +698,7 @@ export default function DatabaseClientPage({
                 </Select>
               </div>
             </CardContent>
-            <CardFooter className="border-t pt-4">
+            <CardFooter className="border-t pt-6">
               <Button
                 onClick={handleDownloadTemplate}
                 variant="outline"
@@ -725,7 +725,7 @@ export default function DatabaseClientPage({
             </div>
 
             {/* Maintenance Mode Toggles */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {/* Dashboard & Portal Asisten */}
               <Card className="flex flex-col justify-between">
                 <CardHeader>
@@ -739,7 +739,7 @@ export default function DatabaseClientPage({
                     </CardAction>
                   )}
                 </CardHeader>
-                <CardFooter className="flex items-center justify-between border-t pt-4">
+                <CardFooter className="flex items-center justify-between border-t pt-6">
                   <Label htmlFor="switch-dashboard" className="text-xs font-medium text-muted-foreground cursor-pointer">
                     {maintenanceStatuses.dashboard ? 'Pemeliharaan Aktif' : 'Operasional Normal'}
                   </Label>
@@ -765,7 +765,7 @@ export default function DatabaseClientPage({
                     </CardAction>
                   )}
                 </CardHeader>
-                <CardFooter className="flex items-center justify-between border-t pt-4">
+                <CardFooter className="flex items-center justify-between border-t pt-6">
                   <Label htmlFor="switch-informaticsweb" className="text-xs font-medium text-muted-foreground cursor-pointer">
                     {maintenanceStatuses.informaticsweb ? 'Pemeliharaan Aktif' : 'Operasional Normal'}
                   </Label>
@@ -791,7 +791,7 @@ export default function DatabaseClientPage({
                     </CardAction>
                   )}
                 </CardHeader>
-                <CardFooter className="flex items-center justify-between border-t pt-4">
+                <CardFooter className="flex items-center justify-between border-t pt-6">
                   <Label htmlFor="switch-generator-kursi" className="text-xs font-medium text-muted-foreground cursor-pointer">
                     {maintenanceStatuses.generator_kursi ? 'Pemeliharaan Aktif' : 'Operasional Normal'}
                   </Label>
@@ -826,7 +826,7 @@ export default function DatabaseClientPage({
               </p>
             </div>
 
-            <Card className="border-destructive/30 shadow-none">
+            <Card className="border-destructive/30 shadow-none py-0 gap-0">
               <CardContent className="p-0 divide-y divide-destructive/20">
                 {/* Delete Jadwal by Term */}
                 <div className="p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">

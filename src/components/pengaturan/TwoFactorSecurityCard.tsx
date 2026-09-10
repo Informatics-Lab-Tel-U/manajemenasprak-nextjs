@@ -85,7 +85,7 @@ export function TwoFactorSecurityCard() {
               : 'Gunakan aplikasi seperti Google Authenticator atau Microsoft Authenticator untuk menghasilkan kode masuk sekali pakai.'}
           </p>
         </CardContent>
-        <CardFooter className="flex items-center justify-between border-t pt-4">
+        <CardFooter className="flex items-center justify-between border-t pt-6">
           {hasVerifiedFactor ? (
             <p className="text-xs text-muted-foreground">Aplikasi authenticator terhubung</p>
           ) : (
