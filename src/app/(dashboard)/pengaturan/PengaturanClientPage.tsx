@@ -3,7 +3,7 @@
 /* eslint-disable react-doctor/no-impure-state-updater */
 import React, { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { Trash2, Upload, FileSpreadsheet, Download, ShieldAlert, Activity } from 'lucide-react';
+import { Trash2, FileSpreadsheet, Download } from 'lucide-react';
 import { useDropzone } from 'react-dropzone';
 import * as importFetcher from '@/lib/fetchers/importFetcher';
 import * as jadwalFetcher from '@/lib/fetchers/jadwalFetcher';
@@ -397,9 +397,8 @@ export default function DatabaseClientPage({
 
       {/* Section: Import Excel Dataset */}
       <section className="pb-10 mb-10 border-b border-border/40">
-        <div className="mb-6">
-          <div className="flex items-center gap-2 mb-1">
-            <Upload className="h-4 w-4 text-muted-foreground" />
+        <div className="space-y-1 mb-6">
+          <div className="flex items-center gap-2">
             <h2 className="text-base font-semibold">Import Excel Dataset</h2>
             {wizardStep > 0 && (
               <Badge variant="secondary" className="text-xs">
@@ -407,7 +406,7 @@ export default function DatabaseClientPage({
               </Badge>
             )}
           </div>
-          <p className="text-sm text-muted-foreground ml-6">
+          <p className="text-sm text-muted-foreground">
             Upload file .xlsx untuk mengimpor data ke dalam sistem.
           </p>
         </div>
@@ -606,10 +605,7 @@ export default function DatabaseClientPage({
       {/* Section: Export & Template */}
       <section className="pb-10 mb-10 border-b border-border/40">
         <div className="space-y-1 mb-6">
-          <div className="flex items-center gap-2">
-            <Download className="h-4 w-4 text-muted-foreground" />
-            <h2 className="text-base font-semibold">Export & Template</h2>
-          </div>
+          <h2 className="text-base font-semibold">Export & Template</h2>
           <p className="text-sm text-muted-foreground">
             Download dataset aktif atau template kosong untuk diisi.
           </p>
@@ -722,10 +718,7 @@ export default function DatabaseClientPage({
         <>
           <section className="pb-10 mb-10 border-b border-border/40">
             <div className="space-y-1 mb-6">
-              <div className="flex items-center gap-2">
-                <Activity className="h-4 w-4 text-muted-foreground" />
-                <h2 className="text-base font-semibold">System Control</h2>
-              </div>
+              <h2 className="text-base font-semibold">System Control</h2>
               <p className="text-sm text-muted-foreground">
                 Kelola status sistem dan akses pengguna.
               </p>
@@ -827,10 +820,7 @@ export default function DatabaseClientPage({
           {/* Danger Zone */}
           <section className="pb-10">
             <div className="space-y-1 mb-6">
-              <div className="flex items-center gap-2">
-                <ShieldAlert className="h-4 w-4 text-destructive" />
-                <h2 className="text-base font-semibold text-destructive">Danger Zone</h2>
-              </div>
+              <h2 className="text-base font-semibold text-destructive">Danger Zone</h2>
               <p className="text-sm text-muted-foreground">
                 Tindakan ini bersifat permanen dan tidak dapat dibatalkan.
               </p>
