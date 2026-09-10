@@ -25,7 +25,7 @@ export default function JadwalJagaClient({
   userRole?: string;
 }) {
   const { activeTerm } = useTermStore();
-  const selectedTerm = activeTerm || '';
+  const selectedTerm = activeTerm || initialTerms[0] || '';
   const [selectedModul, setSelectedModul] = useState('Modul 1');
   const [selectedDay, setSelectedDay] = useState('SENIN');
   const [isModalOpen, setIsModalOpen] = useState(false);

@@ -130,7 +130,16 @@ export async function updateSession(request: NextRequest) {
     if (!user || !pengguna) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    return supabaseResponse;
+    // Simpan auth user ke header agar forwardToHono tidak perlu re-auth
+    if (token) {
+      const authUser = { id: user.id, email: user.email ?? '', token, pengguna };
+      requestHeaders.set('x-auth-user', Buffer.from(JSON.stringify(authUser)).toString('base64'));
+    }
+    const apiResponse = NextResponse.next({ request: { headers: requestHeaders } });
+    supabaseResponse.cookies.getAll().forEach((cookie) => {
+      apiResponse.cookies.set(cookie.name, cookie.value);
+    });
+    return apiResponse;
   }
 
   if (isPublicPath(pathname)) {
