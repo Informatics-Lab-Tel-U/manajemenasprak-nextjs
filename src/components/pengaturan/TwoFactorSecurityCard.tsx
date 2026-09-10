@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { ShieldCheck, ShieldAlert, Loader2, KeyRound } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter, CardAction } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -71,7 +71,7 @@ export function TwoFactorSecurityCard() {
         <CardHeader>
           <CardTitle className="text-base">Autentikasi Dua Langkah (2FA)</CardTitle>
           <CardDescription>
-            Amankan akses akun dengan kode TOTP (Google Authenticator / Microsoft Authenticator)
+            Tambahkan lapisan keamanan ekstra dengan meminta kode verifikasi saat login.
           </CardDescription>
           {!isLoading && (
             <CardAction>
@@ -84,15 +84,14 @@ export function TwoFactorSecurityCard() {
         <CardContent>
           <p className="text-sm text-muted-foreground leading-relaxed">
             {hasVerifiedFactor
-              ? 'Akun ini dilindungi dengan verifikasi dua langkah (AAL2). Setiap login baru akan meminta kode verifikasi dari aplikasi authenticator Anda.'
-              : 'Autentikasi 2FA belum dikonfigurasi pada akun ini. Sangat disarankan untuk mengaktifkan 2FA demi perlindungan data praktikum dan akses sistem.'}
+              ? 'Akun Anda terlindungi dengan kode verifikasi 6 digit dari aplikasi authenticator.'
+              : 'Gunakan aplikasi seperti Google Authenticator atau Microsoft Authenticator untuk menghasilkan kode masuk sekali pakai.'}
           </p>
         </CardContent>
         <CardFooter className="flex items-center justify-between border-t pt-4">
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <KeyRound className="size-3.5" />
-            <span>{hasVerifiedFactor ? 'Perangkat Authenticator Terdaftar' : 'Standar Keamanan TOTP'}</span>
-          </div>
+          <p className="text-xs text-muted-foreground">
+            {hasVerifiedFactor ? 'Aplikasi authenticator terhubung' : 'Aplikasi belum terhubung'}
+          </p>
           <div>
             {isLoading ? (
               <Loader2 className="size-4 animate-spin text-muted-foreground" />
@@ -103,7 +102,7 @@ export function TwoFactorSecurityCard() {
                 onClick={() => setIsModalOpen(true)}
                 className="text-destructive hover:bg-destructive/10"
               >
-                Reset / Hapus 2FA
+                Hapus 2FA
               </Button>
             ) : (
               <Button

@@ -607,7 +607,7 @@ export default function DatabaseClientPage({
         <div className="space-y-1 mb-6">
           <h2 className="text-base font-semibold">Export & Template</h2>
           <p className="text-sm text-muted-foreground">
-            Download dataset aktif atau template kosong untuk diisi.
+            Unduh data aktif atau format template kosong untuk impor.
           </p>
         </div>
 
@@ -617,7 +617,7 @@ export default function DatabaseClientPage({
             <CardHeader>
               <CardTitle className="text-base">Export Dataset</CardTitle>
               <CardDescription>
-                Download semua data dari database dalam format Excel (.xlsx)
+                Unduh seluruh data database dalam format Excel (.xlsx)
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -655,7 +655,7 @@ export default function DatabaseClientPage({
                 size="sm"
               >
                 <FileSpreadsheet size={14} />
-                Export .xlsx
+                Unduh Dataset (.xlsx)
               </Button>
             </CardFooter>
           </Card>
@@ -663,8 +663,8 @@ export default function DatabaseClientPage({
           {/* Template */}
           <Card className="flex flex-col justify-between">
             <CardHeader>
-              <CardTitle className="text-base">Download Template</CardTitle>
-              <CardDescription>Template kosong siap diisi untuk impor data</CardDescription>
+              <CardTitle className="text-base">Template Excel</CardTitle>
+              <CardDescription>Format spreadsheet kosong siap diisi untuk impor data</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="flex items-center gap-2">
@@ -706,7 +706,7 @@ export default function DatabaseClientPage({
                 size="sm"
               >
                 <Download size={14} />
-                Download Template
+                Unduh Template (.xlsx)
               </Button>
             </CardFooter>
           </Card>
@@ -741,7 +741,7 @@ export default function DatabaseClientPage({
                 </CardHeader>
                 <CardFooter className="flex items-center justify-between border-t pt-4">
                   <Label htmlFor="switch-dashboard" className="text-xs font-medium text-muted-foreground cursor-pointer">
-                    Status Pemeliharaan
+                    {maintenanceStatuses.dashboard ? 'Pemeliharaan Aktif' : 'Operasional Normal'}
                   </Label>
                   <Switch
                     id="switch-dashboard"
@@ -767,7 +767,7 @@ export default function DatabaseClientPage({
                 </CardHeader>
                 <CardFooter className="flex items-center justify-between border-t pt-4">
                   <Label htmlFor="switch-informaticsweb" className="text-xs font-medium text-muted-foreground cursor-pointer">
-                    Status Pemeliharaan
+                    {maintenanceStatuses.informaticsweb ? 'Pemeliharaan Aktif' : 'Operasional Normal'}
                   </Label>
                   <Switch
                     id="switch-informaticsweb"
@@ -793,7 +793,7 @@ export default function DatabaseClientPage({
                 </CardHeader>
                 <CardFooter className="flex items-center justify-between border-t pt-4">
                   <Label htmlFor="switch-generator-kursi" className="text-xs font-medium text-muted-foreground cursor-pointer">
-                    Status Pemeliharaan
+                    {maintenanceStatuses.generator_kursi ? 'Pemeliharaan Aktif' : 'Operasional Normal'}
                   </Label>
                   <Switch
                     id="switch-generator-kursi"
@@ -806,12 +806,12 @@ export default function DatabaseClientPage({
             </div>
           </section>
 
-          {/* Security & 2FA Section */}
+          {/* Security Section */}
           <section className="pb-10 mb-10 border-b border-border/40">
             <div className="space-y-1 mb-6">
-              <h2 className="text-base font-semibold">Keamanan Akun & 2FA</h2>
+              <h2 className="text-base font-semibold">Keamanan</h2>
               <p className="text-sm text-muted-foreground">
-                Pengaturan autentikasi dua langkah (Two-Factor Authentication) untuk perlindungan akses data.
+                Kelola autentikasi dan perlindungan akses akun.
               </p>
             </div>
             <TwoFactorSecurityCard />
