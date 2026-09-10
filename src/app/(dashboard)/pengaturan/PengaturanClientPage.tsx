@@ -22,6 +22,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Switch } from '@/components/ui/switch';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { cn } from '@/lib/utils';
 import type { Role } from '@/config/rbac';
 import { toast } from 'sonner';
@@ -382,16 +383,16 @@ export default function DatabaseClientPage({
 
       {/* Global Status */}
       {status && (
-        <div
+        <Alert
+          variant={status.type === 'error' ? 'destructive' : 'default'}
           className={cn(
-            'mb-8 px-4 py-3 rounded-md text-sm border-l-2 bg-muted/30',
-            status.type === 'error' && 'border-destructive text-destructive',
-            status.type === 'success' && 'border-green-500 text-green-600 dark:text-green-400',
-            status.type === 'info' && 'border-blue-500 text-blue-600 dark:text-blue-400'
+            'mb-8',
+            status.type === 'success' && 'border-green-500 text-green-700 dark:text-green-400',
+            status.type === 'info' && 'border-blue-500 text-blue-700 dark:text-blue-400'
           )}
         >
-          {status.message}
-        </div>
+          <AlertDescription>{status.message}</AlertDescription>
+        </Alert>
       )}
 
       {/* Section: Import Excel Dataset */}
@@ -427,9 +428,12 @@ export default function DatabaseClientPage({
                   className="w-20 text-center"
                 />
                 <span className="text-muted-foreground">/</span>
-                <div className="w-20 px-3 py-2 bg-muted/40 rounded-md text-muted-foreground text-center text-sm">
-                  {termYear ? parseInt(termYear) + 1 : 'YY'}
-                </div>
+                <Input
+                  readOnly
+                  tabIndex={-1}
+                  value={termYear ? parseInt(termYear) + 1 : 'YY'}
+                  className="w-20 text-center pointer-events-none"
+                />
                 <span className="text-muted-foreground">-</span>
                 <Select value={termSem} onValueChange={(val) => setTermSem(val as '1' | '2')}>
                   <SelectTrigger className="flex-1">
@@ -613,92 +617,99 @@ export default function DatabaseClientPage({
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
           {/* Export */}
-          <div className="space-y-3 p-5 rounded-lg border border-border/60 bg-muted/10">
-            <div>
-              <p className="text-sm font-medium">Export Dataset</p>
-              <p className="text-xs text-muted-foreground mt-0.5">
+          <Card className="gap-3 shadow-none bg-muted/10 border-border/60">
+            <CardHeader className="px-5 pt-5 pb-0">
+              <CardTitle className="text-sm font-medium">Export Dataset</CardTitle>
+              <CardDescription className="text-xs mt-0.5">
                 Download semua data dari database
-              </p>
-            </div>
-            <Select
-              value={exportTerm}
-              onValueChange={setExportTerm}
-              disabled={loading || loadingTahunAjaran}
-            >
-              <SelectTrigger className="w-full h-9">
-                <SelectValue
-                  placeholder={loadingTahunAjaran ? 'Memuat...' : 'Pilih Tahun Ajaran'}
-                />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectGroup>
-                  {tahunAjaranList.map((term) => (
-                    <SelectItem key={term} value={term}>
-                      {term}
-                    </SelectItem>
-                  ))}
-                  {tahunAjaranList.length === 0 && !loadingTahunAjaran && (
-                    <SelectItem value="none" disabled>
-                      Tidak ada data di database
-                    </SelectItem>
-                  )}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
-            <Button
-              onClick={handleExport}
-              disabled={loading || !exportTerm}
-              className="w-full h-9 gap-2"
-              size="sm"
-            >
-              <FileSpreadsheet size={14} />
-              Export .xlsx
-            </Button>
-          </div>
-
-          {/* Template */}
-          <div className="space-y-3 p-5 rounded-lg border border-border/60 bg-muted/10">
-            <div>
-              <p className="text-sm font-medium">Download Template</p>
-              <p className="text-xs text-muted-foreground mt-0.5">Template kosong siap diisi</p>
-            </div>
-            <div className="flex items-center gap-2">
-              <Input
-                required
-                type="number"
-                min="10"
-                max="99"
-                placeholder="YY"
-                value={termYear}
-                onChange={(e) => setTermYear(e.target.value)}
-                className="w-20 text-center h-9"
-              />
-              <span className="text-muted-foreground text-sm">/</span>
-              <div className="w-20 px-3 py-2 bg-muted/40 rounded-md text-muted-foreground text-center text-sm">
-                {termYear ? parseInt(termYear) + 1 : 'YY'}
-              </div>
-              <Select value={termSem} onValueChange={(val) => setTermSem(val as '1' | '2')}>
-                <SelectTrigger className="flex-1 h-9">
-                  <SelectValue />
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="px-5 pb-5 space-y-3">
+              <Select
+                value={exportTerm}
+                onValueChange={setExportTerm}
+                disabled={loading || loadingTahunAjaran}
+              >
+                <SelectTrigger className="w-full h-9">
+                  <SelectValue
+                    placeholder={loadingTahunAjaran ? 'Memuat...' : 'Pilih Tahun Ajaran'}
+                  />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectGroup>
-                    <SelectItem value="1">1 (Ganjil)</SelectItem>
-                    <SelectItem value="2">2 (Genap)</SelectItem>
+                    {tahunAjaranList.map((term) => (
+                      <SelectItem key={term} value={term}>
+                        {term}
+                      </SelectItem>
+                    ))}
+                    {tahunAjaranList.length === 0 && !loadingTahunAjaran && (
+                      <SelectItem value="none" disabled>
+                        Tidak ada data di database
+                      </SelectItem>
+                    )}
                   </SelectGroup>
                 </SelectContent>
               </Select>
-            </div>
-            <Button
-              onClick={handleDownloadTemplate}
-              variant="outline"
-              className="w-full h-9 gap-2"
-              size="sm"
-            >
-              <Download size={14} />
-              Download Template
-            </Button>
-          </div>
+              <Button
+                onClick={handleExport}
+                disabled={loading || !exportTerm}
+                className="w-full h-9 gap-2"
+                size="sm"
+              >
+                <FileSpreadsheet size={14} />
+                Export .xlsx
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Template */}
+          <Card className="gap-3 shadow-none bg-muted/10 border-border/60">
+            <CardHeader className="px-5 pt-5 pb-0">
+              <CardTitle className="text-sm font-medium">Download Template</CardTitle>
+              <CardDescription className="text-xs mt-0.5">Template kosong siap diisi</CardDescription>
+            </CardHeader>
+            <CardContent className="px-5 pb-5 space-y-3">
+              <div className="flex items-center gap-2">
+                <Input
+                  required
+                  type="number"
+                  min="10"
+                  max="99"
+                  placeholder="YY"
+                  value={termYear}
+                  onChange={(e) => setTermYear(e.target.value)}
+                  className="w-20 text-center h-9"
+                />
+                <span className="text-muted-foreground text-sm">/</span>
+                <Input
+                  readOnly
+                  tabIndex={-1}
+                  value={termYear ? parseInt(termYear) + 1 : 'YY'}
+                  className="w-20 text-center h-9 pointer-events-none"
+                />
+                <Select value={termSem} onValueChange={(val) => setTermSem(val as '1' | '2')}>
+                  <SelectTrigger className="flex-1 h-9">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      <SelectItem value="1">1 (Ganjil)</SelectItem>
+                      <SelectItem value="2">2 (Genap)</SelectItem>
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button
+                onClick={handleDownloadTemplate}
+                variant="outline"
+                className="w-full h-9 gap-2"
+                size="sm"
+              >
+                <Download size={14} />
+                Download Template
+              </Button>
+            </CardContent>
+          </Card>
         </div>
       </section>
 

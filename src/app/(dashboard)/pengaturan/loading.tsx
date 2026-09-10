@@ -53,8 +53,8 @@ export default function PengaturanLoading() {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-          <div className="h-40 rounded-lg border bg-muted/5 animate-pulse" />
-          <div className="h-40 rounded-lg border bg-muted/5 animate-pulse" />
+          <Skeleton className="h-40 rounded-lg" />
+          <Skeleton className="h-40 rounded-lg" />
         </div>
       </section>
     </div>
