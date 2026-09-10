@@ -107,6 +107,18 @@ export async function assignRfidToAsprak(
   return result.ok ? { success: true, message: result.data?.message } : { error: result.error };
 }
 
+export async function transferRfidToAsprak(payload: {
+  from_asprak_id?: string;
+  to_asprak_id: string;
+  rfid_uid?: string;
+}): Promise<{ success?: boolean; message?: string; error?: string }> {
+  const result = await apiFetch<any>('/api/jaga/rfid-transfer', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+  return result.ok ? { success: true, message: result.data?.message } : { error: result.error };
+}
+
 export async function submitManualPresensi(payload: {
   idAsprak: string;
   tahunAjaran: string;
