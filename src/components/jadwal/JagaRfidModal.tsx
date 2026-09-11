@@ -10,7 +10,8 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Tabs, TabsContent } from '@/components/ui/tabs';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -308,11 +309,26 @@ export default function JagaRfidModal({
           onValueChange={(val) => setActiveTab(val as 'rfid' | 'transfer' | 'manual')}
           className="w-full"
         >
-          <TabsList className="grid grid-cols-3 w-full mt-2 mb-4">
-            <TabsTrigger value="rfid" className="text-xs">Daftarkan RFID</TabsTrigger>
-            <TabsTrigger value="transfer" className="text-xs">Pindahkan RFID</TabsTrigger>
-            <TabsTrigger value="manual" className="text-xs">Presensi Manual</TabsTrigger>
-          </TabsList>
+          <ToggleGroup
+            type="single"
+            value={activeTab}
+            onValueChange={(val) => {
+              if (val) setActiveTab(val as 'rfid' | 'transfer' | 'manual');
+            }}
+            variant="outline"
+            className="grid grid-cols-3 w-full mt-2 mb-4"
+            aria-label="Kelola RFID dan presensi asisten"
+          >
+            <ToggleGroupItem value="rfid" className="w-full">
+              Daftarkan RFID
+            </ToggleGroupItem>
+            <ToggleGroupItem value="transfer" className="w-full">
+              Pindahkan RFID
+            </ToggleGroupItem>
+            <ToggleGroupItem value="manual" className="w-full">
+              Presensi Manual
+            </ToggleGroupItem>
+          </ToggleGroup>
 
           {/* TAB 1: DAFTARKAN / HUBUNGKAN RFID */}
           <TabsContent value="rfid" className="mt-0">

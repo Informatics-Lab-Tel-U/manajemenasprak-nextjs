@@ -90,7 +90,8 @@ export default function RekapJagaClient({ initialTerms: _initialTerms }: { initi
               if (val) setRoleFilter(val as 'ALL' | 'ASLAB' | 'ASPRAK');
             }}
             variant="outline"
-            className="*:data-[slot=toggle-group-item]:px-3 *:data-[slot=toggle-group-item]:text-xs shadow-sm bg-card/50 backdrop-blur-sm"
+            className="*:data-[slot=toggle-group-item]:px-4! shadow-sm bg-card/50 backdrop-blur-sm"
+            aria-label="Filter role asisten"
           >
             <ToggleGroupItem value="ALL">Semua</ToggleGroupItem>
             <ToggleGroupItem value="ASLAB">ASLAB</ToggleGroupItem>
