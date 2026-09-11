@@ -90,10 +90,12 @@ export default function JagaPanel({
     shift: number;
   } | null>(null);
   const [deleteScope, setDeleteScope] = useState<'single' | 'bulk'>('single');
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const handleConfirmedDelete = async () => {
     if (!deletingItem) return;
     const { id, code, id_asprak, shift } = deletingItem;
+    setIsDeleting(true);
     try {
       if (deleteScope === 'bulk') {
         const { success, error } = await bulkDeleteJadwalJaga({
@@ -121,6 +123,7 @@ export default function JagaPanel({
     } catch {
       toast.error('Gagal menghapus jadwal jaga');
     } finally {
+      setIsDeleting(false);
       setIsDeleteDialogOpen(false);
       setDeletingItem(null);
     }
@@ -419,16 +422,16 @@ export default function JagaPanel({
           </div>
 
           <AlertDialogFooter className="border-t px-6 py-4 sm:justify-end gap-2">
-            <AlertDialogCancel disabled={loading}>Batal</AlertDialogCancel>
+            <AlertDialogCancel disabled={isDeleting}>Batal</AlertDialogCancel>
             <AlertDialogAction
               onClick={(e) => {
                 e.preventDefault();
                 handleConfirmedDelete();
               }}
               variant="destructive"
-              disabled={loading}
+              disabled={isDeleting}
             >
-              {loading ? (
+              {isDeleting ? (
                 <>
                   <Spinner className="mr-2 h-4 w-4" /> Menghapus...
                 </>

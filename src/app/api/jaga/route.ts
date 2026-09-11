@@ -11,7 +11,15 @@ export async function POST(request: NextRequest) {
   return forwardToHono(request, '/api/jaga');
 }
 
+export async function PUT(request: NextRequest) {
+  return forwardToHono(request, '/api/jaga');
+}
+
 export async function DELETE(request: NextRequest) {
   const id = request.nextUrl.searchParams.get('id');
-  return forwardToHono(request, `/api/jaga/${id ?? ''}`);
+  if (id) {
+    return forwardToHono(request, `/api/jaga/${id}`);
+  }
+  return forwardToHono(request, '/api/jaga');
 }
+
