@@ -3,10 +3,17 @@ export interface AsprakEntry {
   kode: string;
 }
 
+export interface PresensiReducibility {
+  enabled: boolean;
+  targetComponent: 'jurnal' | 'tesAkhir' | 'tp';
+  reductionPercent: number;
+}
+
 export interface PresensiComponent {
   enabled: boolean;
   weight: number;
   inputType: 'number' | 'boolean';
+  reducibility?: PresensiReducibility;
 }
 
 export interface PresensiFormOptions {
@@ -35,4 +42,7 @@ export interface PresensiGeneratorOptions {
   asprakList?: AsprakEntry[];
   generateRekapSheet?: boolean;
   theme?: ThemeKey;
+  /** Tanggal Senin minggu pertama praktikum — dipakai khusus di sheet REKAP kolom J (Tanggal Senin).
+   *  Berbeda dari kelasSettings[i].tanggalMulai yang sudah di-offset sesuai hari jadwal kelas. */
+  tanggalMulaiSenin?: Date;
 }

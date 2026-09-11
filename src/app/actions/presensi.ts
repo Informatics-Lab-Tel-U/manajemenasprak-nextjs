@@ -22,7 +22,11 @@ export async function getPraktikumClasses(praktikumId: string) {
     await requireAuth();
 
     const details = await getPraktikumDetails(praktikumId);
-    return { success: true, data: details.classes.map((c) => c.kelas) };
+    return {
+      success: true,
+      data: details.classes.map((c) => c.kelas),
+      classes: details.classes,
+    };
   } catch (error: any) {
     console.error('Error fetching praktikum classes:', error);
     return { success: false, error: error.message };

@@ -1,9 +1,29 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { addDays, startOfDay } from 'date-fns';
 import { toast } from 'sonner';
 import { useTermStore } from '@/store/useTermStore';
 import { getPraktikumList, getPraktikumClasses, getAsprakListByPraktikum } from '@/app/actions/presensi';
 import { AsprakEntry, KelasSetting, PresensiFormOptions, ThemeKey } from '@/types/presensi';
 import { fetchModulSchedule } from '@/lib/fetchers/modulScheduleFetcher';
+
+export const HARI_OFFSET: Record<string, number> = {
+  senin: 0,
+  selasa: 1,
+  rabu: 2,
+  kamis: 3,
+  jumat: 4,
+  sabtu: 5,
+  minggu: 6,
+};
+
+export function calcTanggalModul1(baseMonday: Date | undefined, hari: string | undefined): Date | undefined {
+  if (!baseMonday) return undefined;
+  if (!hari) return baseMonday;
+  const cleanHari = hari.trim().toLowerCase();
+  const offset = HARI_OFFSET[cleanHari];
+  if (offset === undefined) return baseMonday;
+  return addDays(startOfDay(baseMonday), offset);
+}
 
 export function usePresensi() {
   const { activeTerm } = useTermStore();
@@ -15,9 +35,24 @@ export function usePresensi() {
   const [globalTanggalMulai, setGlobalTanggalMulai] = useState<Date | undefined>(undefined);
   const [theme, setTheme] = useState<ThemeKey>('BLUE');
   const [opsi, setOpsi] = useState<PresensiFormOptions>({
-    tp: { enabled: true, weight: 30, inputType: 'number' },
-    jurnal: { enabled: true, weight: 40, inputType: 'number' },
-    tesAkhir: { enabled: true, weight: 30, inputType: 'number' },
+    tp: {
+      enabled: true,
+      weight: 30,
+      inputType: 'number',
+      reducibility: { enabled: false, targetComponent: 'jurnal', reductionPercent: 30 },
+    },
+    jurnal: {
+      enabled: true,
+      weight: 40,
+      inputType: 'number',
+      reducibility: { enabled: false, targetComponent: 'tesAkhir', reductionPercent: 30 },
+    },
+    tesAkhir: {
+      enabled: true,
+      weight: 30,
+      inputType: 'number',
+      reducibility: { enabled: false, targetComponent: 'jurnal', reductionPercent: 30 },
+    },
     rate: true,
   });
 
@@ -36,6 +71,7 @@ export function usePresensi() {
   const [availableJurusans, setAvailableJurusans] = useState<string[]>([]);
   const [asprakList, setAsprakList] = useState<AsprakEntry[]>([]);
   const [loadingAsprak, setLoadingAsprak] = useState(false);
+  const [kelasJadwalMap, setKelasJadwalMap] = useState<Record<string, { hari: string; jam: string; ruangan: string }[]>>({});
 
   const totalWeight =
     Math.round(
@@ -81,17 +117,30 @@ export function usePresensi() {
     });
   }, []);
 
+  const selectKelasJadwal = useCallback((index: number, hari: string) => {
+    const computedDate = calcTanggalModul1(globalTanggalMulai, hari);
+    if (computedDate) {
+      updateKelasSetting(index, 'tanggalMulai', computedDate);
+    }
+  }, [globalTanggalMulai, updateKelasSetting]);
+
   const applyGlobalToAll = useCallback(() => {
     setKelasSettings((prev) =>
-      prev.map((s) => ({
-        ...s,
-        tanggalMulai: globalTanggalMulai !== undefined ? globalTanggalMulai : s.tanggalMulai,
-        jumlahPraktikan: globalJumlahPraktikan,
-        jumlahAsprak: globalJumlahAsprak,
-      }))
+      prev.map((s, i) => {
+        const kName = kelasNames[i];
+        const jadwalList = kName ? (kelasJadwalMap[kName] || []) : [];
+        const hari = jadwalList[0]?.hari;
+        const computedDate = calcTanggalModul1(globalTanggalMulai, hari) || globalTanggalMulai;
+        return {
+          ...s,
+          tanggalMulai: computedDate !== undefined ? computedDate : s.tanggalMulai,
+          jumlahPraktikan: globalJumlahPraktikan,
+          jumlahAsprak: globalJumlahAsprak,
+        };
+      })
     );
     toast.success('Parameter global diterapkan ke semua kelas');
-  }, [globalJumlahPraktikan, globalJumlahAsprak, globalTanggalMulai]);
+  }, [globalJumlahPraktikan, globalJumlahAsprak, globalTanggalMulai, kelasNames, kelasJadwalMap]);
 
   useEffect(() => {
     async function fetchPraktikum() {
@@ -144,6 +193,13 @@ export function usePresensi() {
       const res = await getPraktikumClasses(selectedPraktikumId);
       if (res.success && res.data) {
         setAllFetchedKelas(res.data);
+        if (res.classes) {
+          const map: Record<string, { hari: string; jam: string; ruangan: string }[]> = {};
+          res.classes.forEach((c: any) => {
+            map[c.kelas] = c.jadwal || [];
+          });
+          setKelasJadwalMap(map);
+        }
 
         const jurusansSet = new Set<string>();
         res.data.forEach((k) => {
@@ -204,15 +260,34 @@ export function usePresensi() {
         };
       });
       
-      const newSettings = Array.from({ length: filtered.length }).map(() => ({
-        tanggalMulai: globalTanggalMulai,
-        jumlahPraktikan: globalJumlahPraktikan,
-        jumlahAsprak: globalJumlahAsprak,
-      }));
+      const newSettings = filtered.map((k) => {
+        const idx = prevNames.indexOf(k);
+        if (idx !== -1 && prevSettings[idx]) {
+          const existing = prevSettings[idx];
+          // Jika tanggalMulai sudah terisi (user set atau auto-set sebelumnya), preserve sepenuhnya.
+          // Jika masih undefined (race condition: globalTanggalMulai belum load saat pertama kali),
+          // recalculate sekarang karena globalTanggalMulai sudah tersedia.
+          if (existing.tanggalMulai !== undefined) {
+            return existing;
+          }
+          const jadwalList = kelasJadwalMap[k] || [];
+          const hari = jadwalList[0]?.hari;
+          const tanggalMulai = calcTanggalModul1(globalTanggalMulai, hari) || globalTanggalMulai;
+          return { ...existing, tanggalMulai };
+        }
+        const jadwalList = kelasJadwalMap[k] || [];
+        const hari = jadwalList[0]?.hari;
+        const tanggalMulai = calcTanggalModul1(globalTanggalMulai, hari) || globalTanggalMulai;
+        return {
+          tanggalMulai,
+          jumlahPraktikan: globalJumlahPraktikan,
+          jumlahAsprak: globalJumlahAsprak,
+        };
+      });
       
       return [...newSettings, ...customSettings];
     });
-  }, [selectedJurusan, allFetchedKelas, globalJumlahPraktikan, globalJumlahAsprak, globalTanggalMulai]);
+  }, [selectedJurusan, allFetchedKelas, globalJumlahPraktikan, globalJumlahAsprak, globalTanggalMulai, kelasJadwalMap]);
 
   useEffect(() => {
     async function fetchAsprak() {
@@ -268,6 +343,8 @@ export function usePresensi() {
     setCustomKelasInput,
     handleAddCustomKelas,
     handleRemoveKelas,
+    kelasJadwalMap,
+    selectKelasJadwal,
     updateKelasSetting,
     applyGlobalToAll,
   };

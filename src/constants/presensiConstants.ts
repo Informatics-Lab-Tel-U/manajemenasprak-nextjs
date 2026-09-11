@@ -113,7 +113,7 @@ export const PRESENSI_STYLES = {
 export const PRESENSI_COLUMN_WIDTHS = {
   BASE: {
     NO: 4.28,
-    NIM: 13.85,
+    NIM: 15,
     NAMA: 44.57,
     KODE_ASPRAK: 13.42,
   },

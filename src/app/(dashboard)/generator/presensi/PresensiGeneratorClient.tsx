@@ -50,6 +50,7 @@ export default function PresensiGeneratorClient() {
         asprakList: data.asprakList,
         generateRekapSheet: state.generateRekapSheet,
         theme: state.theme,
+        tanggalMulaiSenin: state.globalTanggalMulai,
       });
       toast.success('File excel berhasil di-generate dan diunduh!');
     } catch (error: any) {
@@ -200,14 +201,44 @@ export default function PresensiGeneratorClient() {
             </div>
           </CardHeader>
           <CardContent className="space-y-3">
-            {state.kelasNames.map((kelasName, i) => (
-              <div key={kelasName} className="p-4 rounded-xl border border-border/50 bg-muted/20 space-y-3">
-                <div className="flex items-center justify-between">
-                  <Badge variant="default" className="font-mono text-xs px-2.5 py-0.5">
-                    {kelasName}
-                  </Badge>
-                  <span className="text-xs text-muted-foreground font-medium">Kelas #{i + 1}</span>
-                </div>
+            {state.kelasNames.map((kelasName, i) => {
+              const jadwalList = state.kelasJadwalMap?.[kelasName] || [];
+              return (
+                <div key={kelasName} className="p-4 rounded-xl border border-border/50 bg-muted/20 space-y-3">
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Badge variant="default" className="font-mono text-xs px-2.5 py-0.5">
+                        {kelasName}
+                      </Badge>
+                      {jadwalList.length === 1 && (
+                        <Badge variant="outline" className="text-[11px] font-normal text-muted-foreground">
+                          {jadwalList[0].hari} ({jadwalList[0].jam}{jadwalList[0].ruangan ? ` • ${jadwalList[0].ruangan}` : ''})
+                        </Badge>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {jadwalList.length > 1 && (
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[11px] text-muted-foreground">Jadwal:</span>
+                          <Select
+                            onValueChange={(hari) => state.selectKelasJadwal(i, hari)}
+                          >
+                            <SelectTrigger className="h-7 text-xs w-[180px]">
+                              <SelectValue placeholder="Pilih Jadwal" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {jadwalList.map((j, jIdx) => (
+                                <SelectItem key={jIdx} value={j.hari}>
+                                  {j.hari} ({j.jam})
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
+                      <span className="text-xs text-muted-foreground font-medium">Kelas #{i + 1}</span>
+                    </div>
+                  </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
                   <div className="space-y-1.5">
@@ -261,7 +292,8 @@ export default function PresensiGeneratorClient() {
                   </div>
                 </div>
               </div>
-            ))}
+            );
+          })}
           </CardContent>
         </Card>
       )}

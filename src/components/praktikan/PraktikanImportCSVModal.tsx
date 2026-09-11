@@ -1,11 +1,12 @@
 'use client';
 
-import { useCallback, useMemo, useState, memo } from 'react';
+import { useCallback, useEffect, useMemo, useState, memo } from 'react';
 import { useDropzone } from 'react-dropzone';
-import { FileSpreadsheet, FileText, Download, Save } from 'lucide-react';
+import { FileSpreadsheet, FileText, Download, Save, Layers } from 'lucide-react';
 import { Spinner } from '@/components/ui/spinner';
 import { toast } from 'sonner';
-import { parseSpreadsheet, downloadTemplate } from '@/lib/spreadsheet';
+import { parseAllSheets, downloadTemplate } from '@/lib/spreadsheet';
+
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -18,6 +19,13 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import {
   Table,
   TableBody,
@@ -76,6 +84,65 @@ function isHeaderRow(row: string[]) {
       'mk',
     ].some((candidate) => header.includes(candidate))
   );
+}
+
+const NON_CLASS_SHEETS = new Set(['ASPRAK BELUM NILAI', 'REKAP', 'LIST ASPRAK', 'REKAP BROADCAST']);
+
+function isPresensiSheet(sheet: { name: string; data: string[][] }): boolean {
+  if (NON_CLASS_SHEETS.has(sheet.name.trim().toUpperCase())) return false;
+  const r0 = sheet.data[0];
+  if (!r0 || r0.length < 4) return false;
+  const colC = String(r0[2] ?? '').trim().toUpperCase();
+  const colD = String(r0[3] ?? '').trim().toUpperCase();
+  return colC.includes('NAMA') && (colD.includes('ASPRAK') || colD.includes('KODE'));
+}
+
+function isPresensiSheets(sheets: { name: string; data: string[][] }[]): boolean {
+  // Mode presensi aktif jika ada sheet yang memiliki struktur header presensi (NAMA di col C, KODE ASPRAK di col D)
+  // atau sheet berjumlah > 1 dengan nama non-generic
+  if (sheets.some(isPresensiSheet)) return true;
+  if (sheets.length <= 1) return false;
+  return sheets.every((s) => !/^sheet\d*$/i.test(s.name.trim()));
+}
+
+function rowsFromPresensiSheets(
+  sheets: { name: string; data: string[][] }[],
+  defaultMataKuliah: string
+): PreviewRow[] {
+  const rows: PreviewRow[] = [];
+  const classSheets = sheets.filter((s) => !NON_CLASS_SHEETS.has(s.name.trim().toUpperCase()));
+
+  for (const sheet of classSheets) {
+    const kelas = sheet.name.toUpperCase();
+    // Presensi format: 3 header rows (row 1-3), data mulai row 4
+    const dataRows = sheet.data.slice(3);
+    let lastKode = '';
+    for (const row of dataRows) {
+      const nama = String(row[2] ?? '').trim().toUpperCase(); // col C = NAMA
+      const rawKode = String(row[3] ?? '').trim().toUpperCase(); // col D = KODE ASPRAK
+      if (rawKode) lastKode = rawKode;
+      if (!nama) continue;
+      const kode_asprak = rawKode || lastKode;
+      const mata_kuliah = defaultMataKuliah.toUpperCase();
+      const missing = [
+        !nama ? 'nama kosong' : '',
+        !kelas ? 'kelas kosong' : '',
+        !mata_kuliah ? 'mata_kuliah kosong' : '',
+        !kode_asprak ? 'kode_asprak kosong' : '',
+      ].filter(Boolean);
+      rows.push({
+        id: makePraktikanId(),
+        nama,
+        kelas,
+        kode_asprak,
+        mata_kuliah,
+        selected: missing.length === 0,
+        status: missing.length === 0 ? 'ok' : 'warning',
+        note: missing.length === 0 ? 'Siap ditambahkan' : missing.join(', '),
+      });
+    }
+  }
+  return rows;
 }
 
 function rowsFromMatrix(
@@ -236,7 +303,21 @@ export default function PraktikanImportCSVModal({
   const [previewRows, setPreviewRows] = useState<PreviewRow[]>([]);
   const [parsing, setParsing] = useState(false);
   const [saving, setSaving] = useState(false);
-  
+  const [isPresensiMode, setIsPresensiMode] = useState(false);
+
+  const [matkulOptions, setMatkulOptions] = useState<string[]>([]);
+  const [matkulLoading, setMatkulLoading] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    setMatkulLoading(true);
+    fetch('/api/praktikan/mata-kuliah')
+      .then((r) => r.json())
+      .then((r) => setMatkulOptions(r.data ?? []))
+      .catch(() => setMatkulOptions([]))
+      .finally(() => setMatkulLoading(false));
+  }, [open]);
+
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 100;
 
@@ -248,6 +329,7 @@ export default function PraktikanImportCSVModal({
   const handleClose = () => {
     if (saving) return;
     setPreviewRows([]);
+    setIsPresensiMode(false);
     setPasteValue('');
     setFileName('');
     setDefaultKelas('');
@@ -273,14 +355,26 @@ export default function PraktikanImportCSVModal({
 
   const parseSpreadsheetFile = useCallback(async (file: File) => {
     try {
-      const matrix = await parseSpreadsheet(file) as SheetMatrix;
-      applyPreviewRows(matrix, file.name);
+      // Coba parse semua sheet untuk deteksi format presensi
+      const sheets = await parseAllSheets(file);
+      if (isPresensiSheets(sheets)) {
+        // Format presensi: tiap tab = kelas, col C = nama, col D = kode asprak
+        setIsPresensiMode(true);
+        const rows = rowsFromPresensiSheets(sheets, defaultMataKuliah);
+        setPreviewRows(rows);
+        setCurrentPage(1);
+        toast.success(`${rows.length} baris dari ${sheets.length} kelas (format presensi) siap ditinjau.`);
+      } else {
+        // Format biasa: baca sheet pertama
+        setIsPresensiMode(false);
+        applyPreviewRows(sheets[0]?.data ?? [], file.name);
+      }
     } catch (error: any) {
       toast.error(`Gagal memproses file: ${error.message}`);
     } finally {
       setParsing(false);
     }
-  }, [applyPreviewRows]);
+  }, [applyPreviewRows, defaultMataKuliah]);
 
   const onDrop = useCallback(
     (acceptedFiles: File[]) => {
@@ -383,13 +477,27 @@ export default function PraktikanImportCSVModal({
               </div>
               <div className="space-y-2">
                 <label htmlFor="default-mata-kuliah" className="text-sm font-medium">Mata Kuliah Default</label>
-                <Input
-                  id="default-mata-kuliah"
-                  value={defaultMataKuliah}
-                  onChange={(event) => setDefaultMataKuliah(event.target.value)}
-                  placeholder="Dipakai jika kolom matkul tidak ada"
-                  className="h-10 bg-background"
-                />
+                {matkulOptions.length > 0 ? (
+                  <Select value={defaultMataKuliah} onValueChange={setDefaultMataKuliah}>
+                    <SelectTrigger id="default-mata-kuliah" className="h-10 bg-background">
+                      <SelectValue placeholder="Pilih mata kuliah..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {matkulOptions.map((mk) => (
+                        <SelectItem key={mk} value={mk}>{mk}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <Input
+                    id="default-mata-kuliah"
+                    value={defaultMataKuliah}
+                    onChange={(event) => setDefaultMataKuliah(event.target.value)}
+                    placeholder={matkulLoading ? 'Memuat...' : 'Dipakai jika kolom matkul tidak ada'}
+                    disabled={matkulLoading}
+                    className="h-10 bg-background"
+                  />
+                )}
                 <p className="text-xs text-muted-foreground mt-1">
                   Format dua kolom memakai nilai default ini. Kode kosong diisi dari kode asprak sebelumnya.
                 </p>
@@ -471,7 +579,15 @@ export default function PraktikanImportCSVModal({
             <div className="rounded-2xl border bg-background shadow-sm overflow-hidden flex flex-col h-full">
               <div className="flex flex-col gap-3 border-b bg-muted/20 p-4 lg:flex-row lg:items-center lg:justify-between shrink-0">
                 <div>
-                  <h2 className="font-semibold">Preview Import</h2>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h2 className="font-semibold">Preview Import</h2>
+                    {isPresensiMode && (
+                      <span className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full bg-violet-500/10 text-violet-600 dark:text-violet-400 border border-violet-500/30">
+                        <Layers size={11} />
+                        Format Presensi
+                      </span>
+                    )}
+                  </div>
                   <p className="text-sm text-muted-foreground">
                     Edit, pilih, dan validasi baris sebelum dikirim ke database.
                   </p>

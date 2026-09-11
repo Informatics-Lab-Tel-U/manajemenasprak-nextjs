@@ -111,6 +111,7 @@ export function addBase(sheet: any, colors: ThemeColors = PRESENSI_STYLES.COLORS
 
   sheet.getColumn(1).width = PRESENSI_COLUMN_WIDTHS.BASE.NO;
   sheet.getColumn(2).width = PRESENSI_COLUMN_WIDTHS.BASE.NIM;
+  sheet.getColumn(2).numFmt = '0';
   sheet.getColumn(3).width = PRESENSI_COLUMN_WIDTHS.BASE.NAMA;
   sheet.getColumn(4).width = PRESENSI_COLUMN_WIDTHS.BASE.KODE_ASPRAK;
 
@@ -149,7 +150,18 @@ export function createModul(
   // Merge for Date
   sheet.mergeCells(2, startCol, 2, startCol + totalColsThisModule - 1);
   const dateCell = sheet.getCell(2, startCol);
-  dateCell.value = format(modulDate, 'dd/MM/yyyy');
+  if (modulNum === 1) {
+    dateCell.value = parsedStartDate;
+    dateCell.numFmt = 'dd/mm/yyyy';
+  } else {
+    const prevStartCol = (modulNum - 2) * totalColsThisModule + 5;
+    const prevDateRef = `${colNumToLetter(prevStartCol)}2`;
+    dateCell.value = {
+      formula: `${prevDateRef}+7`,
+      result: modulDate,
+    };
+    dateCell.numFmt = 'dd/mm/yyyy';
+  }
 
   // Add sub-headers in row 3
   let colPointer = startCol;
@@ -212,7 +224,14 @@ function injectRowValidationAndFormulas(
     const cell = sheet.getCell(r, c);
     cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: fillColor } };
     cell.border = PRESENSI_STYLES.BORDERS;
-    if (c === 1) cell.alignment = { horizontal: 'center', vertical: 'middle' };
+    if (c === 1) {
+      cell.value = r - 3;
+      cell.alignment = { horizontal: 'center', vertical: 'middle' };
+    }
+    if (c === 2) {
+      cell.numFmt = '0';
+      cell.alignment = { horizontal: 'center', vertical: 'middle' };
+    }
   }
 
   // Module cells
@@ -281,18 +300,47 @@ function injectRowValidationAndFormulas(
       currentOffset++;
     }
 
+    // Reducibility multiplier checks
+    let tpReduction = '';
+    let jurnalReduction = '';
+    let tesAkhirReduction = '';
+
+    if (opsi.tp.enabled && opsi.tp.inputType === 'boolean' && opsi.tp.reducibility?.enabled && tpCol) {
+      const factor = (100 - (opsi.tp.reducibility.reductionPercent || 0)) / 100;
+      const term = `*IF(${tpCol}${r}="TIDAK",${factor},1)`;
+      if (opsi.tp.reducibility.targetComponent === 'jurnal') jurnalReduction += term;
+      else if (opsi.tp.reducibility.targetComponent === 'tesAkhir') tesAkhirReduction += term;
+      else if (opsi.tp.reducibility.targetComponent === 'tp') tpReduction += term;
+    }
+
+    if (opsi.jurnal.enabled && opsi.jurnal.inputType === 'boolean' && opsi.jurnal.reducibility?.enabled && jurnalCol) {
+      const factor = (100 - (opsi.jurnal.reducibility.reductionPercent || 0)) / 100;
+      const term = `*IF(${jurnalCol}${r}="TIDAK",${factor},1)`;
+      if (opsi.jurnal.reducibility.targetComponent === 'tesAkhir') tesAkhirReduction += term;
+      else if (opsi.jurnal.reducibility.targetComponent === 'tp') tpReduction += term;
+      else if (opsi.jurnal.reducibility.targetComponent === 'jurnal') jurnalReduction += term;
+    }
+
+    if (opsi.tesAkhir.enabled && opsi.tesAkhir.inputType === 'boolean' && opsi.tesAkhir.reducibility?.enabled && tesAkhirCol) {
+      const factor = (100 - (opsi.tesAkhir.reducibility.reductionPercent || 0)) / 100;
+      const term = `*IF(${tesAkhirCol}${r}="TIDAK",${factor},1)`;
+      if (opsi.tesAkhir.reducibility.targetComponent === 'jurnal') jurnalReduction += term;
+      else if (opsi.tesAkhir.reducibility.targetComponent === 'tp') tpReduction += term;
+      else if (opsi.tesAkhir.reducibility.targetComponent === 'tesAkhir') tesAkhirReduction += term;
+    }
+
     const totalNilaiCol = sheet.getColumn(startCol + totalColsThisModule - 1).letter;
     const totalNilaiCell = sheet.getCell(`${totalNilaiCol}${r}`);
 
     const formulaParts: string[] = [];
     if (tpCol && opsi.tp.inputType === 'number' && opsi.tp.weight > 0) {
-      formulaParts.push(`${tpCol}${r}*${opsi.tp.weight / 100}`);
+      formulaParts.push(`${tpCol}${r}${tpReduction}*${opsi.tp.weight / 100}`);
     }
     if (jurnalCol && opsi.jurnal.inputType === 'number' && opsi.jurnal.weight > 0) {
-      formulaParts.push(`${jurnalCol}${r}*${opsi.jurnal.weight / 100}`);
+      formulaParts.push(`${jurnalCol}${r}${jurnalReduction}*${opsi.jurnal.weight / 100}`);
     }
     if (tesAkhirCol && opsi.tesAkhir.inputType === 'number' && opsi.tesAkhir.weight > 0) {
-      formulaParts.push(`${tesAkhirCol}${r}*${opsi.tesAkhir.weight / 100}`);
+      formulaParts.push(`${tesAkhirCol}${r}${tesAkhirReduction}*${opsi.tesAkhir.weight / 100}`);
     }
 
     if (formulaParts.length > 0) {
@@ -406,6 +454,11 @@ export function addAsprakBelumNilaiSheet(
   asprakList: AsprakEntry[],
   colors: ThemeColors = PRESENSI_STYLES.COLORS
 ) {
+  const sortedAsprakList = [...asprakList].sort((a, b) =>
+    a.nama.localeCompare(b.nama, 'id', { sensitivity: 'base' })
+  );
+  asprakList = sortedAsprakList;
+
   const ws = workbook.addWorksheet('LIST ASPRAK');
   ws.properties.tabColor = { argb: colors.TAB_LIST_ASPRAK };
 
@@ -785,7 +838,10 @@ export function addRekapBroadcastEngine(
 
   ws.getCell('E11').value = 'Modul ke-'; ws.getCell('E11').style = tbl1HeaderStyle;
   ws.mergeCells('E11:F11');
-  const rawStartDate = options.kelasSettings[0]?.tanggalMulai || new Date();
+  // Gunakan tanggalMulaiSenin (Senin murni) untuk kolom J "Tanggal Senin" di REKAP.
+  // kelasSettings[i].tanggalMulai sudah di-offset sesuai hari kelas, sehingga TIDAK bisa
+  // dipakai sebagai acuan Senin. tanggalMulaiSenin adalah globalTanggalMulai dari hook.
+  const rawStartDate = options.tanggalMulaiSenin || options.kelasSettings[0]?.tanggalMulai || new Date();
   const startDate = typeof rawStartDate === 'string' ? new Date(rawStartDate) : rawStartDate;
   const year = startDate.getFullYear();
   const month = startDate.getMonth() + 1;

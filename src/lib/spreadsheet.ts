@@ -46,6 +46,24 @@ export async function parseSpreadsheet(file: File): Promise<any[]> {
   return result.data;
 }
 
+export async function parseAllSheets(file: File): Promise<{ name: string; data: string[][] }[]> {
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const response = await fetch('/api/util/parse-all-sheets', {
+    method: 'POST',
+    body: formData,
+  });
+
+  const result = await response.json();
+  if (!response.ok || !result.ok) {
+    throw new Error(result.error || 'Gagal memproses file');
+  }
+
+  return result.sheets;
+}
+
+
 export function downloadTemplate(type: string, format: 'csv' | 'xlsx' = 'csv') {
   const url = `/api/util/template?type=${type}&format=${format}`;
   const link = document.createElement('a');
