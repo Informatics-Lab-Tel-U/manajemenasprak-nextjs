@@ -217,7 +217,8 @@ function injectRowValidationAndFormulas(
   numModules: number,
   totalColsThisModule: number,
   opsi: PresensiGeneratorOptions['opsi'],
-  fillColor: string
+  fillColor: string,
+  isInternational: boolean = false
 ) {
   // Base cells A-D
   for (let c = 1; c <= 4; c++) {
@@ -248,12 +249,12 @@ function injectRowValidationAndFormulas(
       }
     }
 
-    // KEHADIRAN Dropdown
+    // KEHADIRAN Dropdown — kelas INT pakai PRESENT/ABSENT, reguler pakai HADIR/TIDAK HADIR
     const kehadiranColStr = sheet.getColumn(startCol + 1).letter;
     sheet.getCell(`${kehadiranColStr}${r}`).dataValidation = {
       type: 'list',
       allowBlank: true,
-      formulae: ['"HADIR, TIDAK HADIR"'],
+      formulae: [isInternational ? '"PRESENT, ABSENT"' : '"HADIR, TIDAK HADIR"'],
       showErrorMessage: true,
       showInputMessage: true,
     };
@@ -390,7 +391,8 @@ export function formatRows(
   opsi: PresensiGeneratorOptions['opsi'],
   jumlahPraktikan: number,
   jumlahAsprak: number,
-  colors: ThemeColors = PRESENSI_STYLES.COLORS
+  colors: ThemeColors = PRESENSI_STYLES.COLORS,
+  isInternational: boolean = false
 ) {
   const numOption = [opsi.tp.enabled, opsi.jurnal.enabled, opsi.tesAkhir.enabled, opsi.rate].filter(Boolean).length;
   const totalColsThisModule = 4 + numOption;
@@ -419,7 +421,7 @@ export function formatRows(
 
     for (let i = 0; i < rowsInGroup; i++) {
       const r = currentRow + i;
-      injectRowValidationAndFormulas(sheet, r, numModules, totalColsThisModule, opsi, fillColor);
+      injectRowValidationAndFormulas(sheet, r, numModules, totalColsThisModule, opsi, fillColor, isInternational);
 
       // RATA RATA Formula
       const rataCellRow = sheet.getCell(r, rataCol);
@@ -1053,6 +1055,7 @@ export async function generatePresensiExcelClient(options: PresensiGeneratorOpti
     const rawStartDate = setting?.tanggalMulai || new Date();
     const startDate = typeof rawStartDate === 'string' ? new Date(rawStartDate) : rawStartDate;
     
+    const isInternational = options.kelasNames[idxWs]?.includes('-INT');
     for (let iModul = 0; iModul < options.jumlahModul; iModul++) {
       createModul(ws, startDate, options.opsi, iModul + 1, colors);
     }
@@ -1062,7 +1065,8 @@ export async function generatePresensiExcelClient(options: PresensiGeneratorOpti
       options.opsi,
       setting?.jumlahPraktikan || 40,
       setting?.jumlahAsprak || 4,
-      colors
+      colors,
+      isInternational
     );
   });
 
