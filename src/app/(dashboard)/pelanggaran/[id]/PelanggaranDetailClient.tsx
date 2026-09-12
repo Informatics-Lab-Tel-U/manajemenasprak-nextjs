@@ -430,9 +430,7 @@ export default function PelanggaranDetailClient({
                 </Badge>
               )}
             </div>
-            <p className="text-sm 2xl:text-base text-muted-foreground mt-1">
-              {praktikum?.tahun_ajaran} · Detail log pelanggaran per asisten
-            </p>
+
           </div>
         </div>
 
@@ -481,8 +479,8 @@ export default function PelanggaranDetailClient({
             <Button
               onClick={() => setShowFinalize(true)}
               size="sm"
-              variant="outline"
-              className="h-9 gap-2 flex-1 sm:flex-none min-w-0 border-emerald-200 text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-300"
+              variant="destructive"
+              className="h-9 gap-2 flex-1 sm:flex-none min-w-0"
               disabled={loading}
             >
               <CheckCircle2 className="h-4 w-4 flex-shrink-0" />
@@ -733,7 +731,7 @@ export default function PelanggaranDetailClient({
                 handleFinalize();
               }}
               disabled={isFinalizing}
-              className="bg-emerald-600 hover:bg-emerald-700 font-medium"
+              variant="destructive"
             >
               {isFinalizing ? 'Memproses...' : 'Finalisasi'}
             </AlertDialogAction>

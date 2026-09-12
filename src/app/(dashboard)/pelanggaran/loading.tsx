@@ -9,7 +9,7 @@ export default function PelanggaranLoading() {
         <div>
           <h1 className="text-2xl 2xl:text-3xl font-bold tracking-tight">Pelanggaran</h1>
           <p className="text-sm 2xl:text-base text-muted-foreground mt-1">
-            Log indisipliner asisten praktikum per praktikum
+            Log pelanggaran asisten praktikum per praktikum
           </p>
         </div>
 
