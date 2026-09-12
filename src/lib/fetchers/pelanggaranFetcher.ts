@@ -49,9 +49,9 @@ export async function fetchKoorPraktikumList(userId: string): Promise<ServiceRes
   });
 }
 
-export async function fetchJadwalForPelanggaran(): Promise<ServiceResult<Jadwal[]>> {
+export async function fetchJadwalForPelanggaran(idPraktikum?: string): Promise<ServiceResult<Jadwal[]>> {
   return apiFetch<Jadwal[]>('/api/pelanggaran', {
-    params: { action: 'jadwal-list' },
+    params: { action: 'jadwal-list', idPraktikum },
     cache: 'no-store',
   });
 }

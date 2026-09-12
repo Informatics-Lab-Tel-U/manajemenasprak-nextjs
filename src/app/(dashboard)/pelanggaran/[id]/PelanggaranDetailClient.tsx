@@ -122,6 +122,8 @@ export default function PelanggaranDetailClient({
     asprakList,
     jadwalList,
     loading,
+    isModalDepsLoading,
+    loadModalDependencies,
     error: _error,
     isFinalized,
     selectedModul,
@@ -461,7 +463,11 @@ export default function PelanggaranDetailClient({
 
           {!isFinalized && (
             <Button
-              onClick={() => setIsAddOpen(true)}
+              onClick={() => {
+                loadModalDependencies();
+                setIsAddOpen(true);
+              }}
+              onMouseEnter={() => loadModalDependencies()}
               size="sm"
               className="h-9 gap-2 shadow-sm flex-1 sm:flex-none min-w-0"
               disabled={loading}
@@ -699,6 +705,7 @@ export default function PelanggaranDetailClient({
         onClose={() => setIsAddOpen(false)}
         onSubmit={handleAddViolation}
         isLoading={isSubmitting}
+        isDepsLoading={isModalDepsLoading}
         praktikumList={praktikum ? [praktikum] : []}
         tahunAjaranList={praktikum ? [praktikum.tahun_ajaran] : []}
         asprakList={asprakList}

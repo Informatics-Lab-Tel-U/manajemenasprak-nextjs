@@ -2,7 +2,7 @@
 /* eslint-disable react-doctor/exhaustive-deps */
 'use client';
 
-import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import React, { useState, useMemo, useCallback, useEffect, useDeferredValue } from 'react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -53,6 +53,7 @@ interface PelanggaranFormProps {
   }) => Promise<void>;
   onCancel: () => void;
   isLoading?: boolean;
+  isDepsLoading?: boolean;
   praktikumList: Praktikum[];
   tahunAjaranList: string[];
   asprakList: (Asprak & { praktikum_ids?: string[] })[];
@@ -66,6 +67,7 @@ export default function PelanggaranForm({
   onSubmit,
   onCancel,
   isLoading = false,
+  isDepsLoading = false,
   praktikumList,
   tahunAjaranList,
   asprakList,
@@ -102,6 +104,8 @@ export default function PelanggaranForm({
   const [sidePanel, setSidePanel] = useState<SidePanel>(null);
   const [asprakSearch, setAsprakSearch] = useState('');
   const [jadwalSearch, setJadwalSearch] = useState('');
+  const deferredAsprakSearch = useDeferredValue(asprakSearch);
+  const deferredJadwalSearch = useDeferredValue(jadwalSearch);
 
   function openPanel(panel: SidePanel) {
     setSidePanel(panel);
@@ -141,8 +145,8 @@ export default function PelanggaranForm({
         list = assigned;
       }
     }
-    if (asprakSearch.trim()) {
-      const q = asprakSearch.toLowerCase();
+    if (deferredAsprakSearch.trim()) {
+      const q = deferredAsprakSearch.toLowerCase();
       list = list.filter(
         (a) =>
           a.nama_lengkap.toLowerCase().includes(q) ||
@@ -151,15 +155,15 @@ export default function PelanggaranForm({
       );
     }
     return list;
-  }, [asprakList, selectedPraktikumId, asprakSearch]);
+  }, [asprakList, selectedPraktikumId, deferredAsprakSearch]);
 
   const filteredJadwal = useMemo(() => {
     let list = jadwalList;
     if (selectedPraktikumId) {
       list = list.filter((j) => j.id_praktikum === selectedPraktikumId);
     }
-    if (jadwalSearch.trim()) {
-      const q = jadwalSearch.toLowerCase();
+    if (deferredJadwalSearch.trim()) {
+      const q = deferredJadwalSearch.toLowerCase();
       list = list.filter(
         (j) =>
           j.kelas.toLowerCase().includes(q) ||
@@ -168,7 +172,7 @@ export default function PelanggaranForm({
       );
     }
     return list;
-  }, [jadwalList, selectedPraktikumId, jadwalSearch]);
+  }, [jadwalList, selectedPraktikumId, deferredJadwalSearch]);
 
   const selectedJadwal = useMemo(
     () => jadwalList.find((j) => j.id === idJadwal),
@@ -249,7 +253,12 @@ export default function PelanggaranForm({
 
         {/* list */}
         <div className="flex-1 overflow-y-auto">
-          {filteredAsprak.length === 0 ? (
+          {isDepsLoading ? (
+            <div className="flex flex-col items-center justify-center h-48 gap-2 text-muted-foreground">
+              <Spinner className="h-5 w-5" />
+              <span className="text-xs">Memuat daftar asprak...</span>
+            </div>
+          ) : filteredAsprak.length === 0 ? (
             <p className="py-10 text-center text-sm text-muted-foreground">Tidak ada asprak</p>
           ) : (
             (() => {
@@ -315,7 +324,12 @@ export default function PelanggaranForm({
         </div>
 
         <div className="flex-1 overflow-y-auto">
-          {filteredJadwal.length === 0 ? (
+          {isDepsLoading ? (
+            <div className="flex flex-col items-center justify-center h-48 gap-2 text-muted-foreground">
+              <Spinner className="h-5 w-5" />
+              <span className="text-xs">Memuat daftar jadwal...</span>
+            </div>
+          ) : filteredJadwal.length === 0 ? (
             <p className="py-10 text-center text-sm text-muted-foreground">Tidak ada jadwal</p>
           ) : (
             filteredJadwal.map((j) => {

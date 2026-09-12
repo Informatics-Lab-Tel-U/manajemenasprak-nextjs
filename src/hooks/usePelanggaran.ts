@@ -157,28 +157,58 @@ export function usePelanggaranDetail(
   const [asprakList, setAsprakList] = useState<(Asprak & { praktikum_ids?: string[] })[]>([]);
   const [jadwalList, setJadwalList] = useState<(Jadwal & { id_praktikum?: string })[]>([]);
   const [loading, setLoading] = useState(!initialViolations || !initialPraktikum);
+  const [isModalDepsLoading, setIsModalDepsLoading] = useState(false);
+  const [hasLoadedModalDeps, setHasLoadedModalDeps] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const [selectedModul, setSelectedModul] = useState<string>('1');
   const [finalizedModules, setFinalizedModules] = useState<number[]>([]);
 
+  // Fast primary fetch: only violation logs, basic praktikum info, and finalization status
   const fetchDetail = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const [vResult, pResult, asprakRes, jadwalRes, fResult] = await Promise.all([
+      const fetchGroup: Promise<any>[] = [
         pelanggaranFetcher.fetchPelanggaranByFilter(idPraktikum),
-        pelanggaranFetcher.fetchPraktikumDetail(idPraktikum),
-        asprakFetcher.fetchPlottingData(),
-        pelanggaranFetcher.fetchJadwalForPelanggaran(),
         pelanggaranFetcher.fetchFinalizedModules(idPraktikum),
-      ]);
+      ];
+
+      // Only fetch praktikum detail if not already available
+      if (!praktikum) {
+        fetchGroup.push(pelanggaranFetcher.fetchPraktikumDetail(idPraktikum));
+      }
+
+      const results = await Promise.all(fetchGroup);
+      const vResult = results[0];
+      const fResult = results[1];
 
       if (vResult.ok) setViolations(vResult.data || []);
       else setError(vResult.error || 'Gagal mengambil data pelanggaran');
 
-      if (pResult.ok) setPraktikum(pResult.data || null);
-      else setError((prev) => prev || pResult.error || 'Gagal mengambil detail praktikum');
+      if (fResult.ok) setFinalizedModules(fResult.data || []);
+
+      if (!praktikum && results[2]) {
+        const pResult = results[2];
+        if (pResult.ok) setPraktikum(pResult.data || null);
+        else setError((prev) => prev || pResult.error || 'Gagal mengambil detail praktikum');
+      }
+    } catch (err: any) {
+      setError(err.message || 'Terjadi kesalahan saat memuat data');
+    } finally {
+      setLoading(false);
+    }
+  }, [idPraktikum, praktikum]);
+
+  // Lazy / On-Demand loading for modal dependencies (plotting and schedules for this practical only)
+  const loadModalDependencies = useCallback(async () => {
+    if (hasLoadedModalDeps || isModalDepsLoading) return;
+    setIsModalDepsLoading(true);
+    try {
+      const [asprakRes, jadwalRes] = await Promise.all([
+        asprakFetcher.fetchPlottingData(),
+        pelanggaranFetcher.fetchJadwalForPelanggaran(idPraktikum),
+      ]);
 
       if (asprakRes.ok && asprakRes.data) {
         const formattedAsprak = asprakRes.data.map((a: any) => ({
@@ -188,15 +218,16 @@ export function usePelanggaranDetail(
         setAsprakList(formattedAsprak);
       }
 
-      if (jadwalRes.ok) setJadwalList((jadwalRes.data as any) || []);
-
-      if (fResult.ok) setFinalizedModules(fResult.data || []);
+      if (jadwalRes.ok) {
+        setJadwalList((jadwalRes.data as any) || []);
+      }
+      setHasLoadedModalDeps(true);
     } catch (err: any) {
-      setError(err.message || 'Terjadi kesalahan saat memuat data');
+      toast.error('Gagal memuat data pendukung form: ' + (err.message || 'Unknown error'));
     } finally {
-      setLoading(false);
+      setIsModalDepsLoading(false);
     }
-  }, [idPraktikum]);
+  }, [idPraktikum, hasLoadedModalDeps, isModalDepsLoading]);
 
   useEffect(() => {
     fetchDetail();
@@ -273,6 +304,9 @@ export function usePelanggaranDetail(
     asprakList,
     jadwalList,
     loading,
+    isModalDepsLoading,
+    hasLoadedModalDeps,
+    loadModalDependencies,
     error,
     isFinalized,
     selectedModul,

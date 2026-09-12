@@ -14,6 +14,7 @@ interface PelanggaranAddModalProps {
   onClose: () => void;
   open: boolean;
   isLoading?: boolean;
+  isDepsLoading?: boolean;
   praktikumList: Praktikum[];
   tahunAjaranList: string[];
   asprakList: (Asprak & { praktikum_ids?: string[] })[];
@@ -28,6 +29,7 @@ export default function PelanggaranAddModal({
   onClose,
   open,
   isLoading = false,
+  isDepsLoading = false,
   praktikumList,
   tahunAjaranList,
   asprakList,
@@ -42,6 +44,7 @@ export default function PelanggaranAddModal({
         onSubmit={onSubmit}
         onCancel={onClose}
         isLoading={isLoading}
+        isDepsLoading={isDepsLoading}
         praktikumList={praktikumList}
         tahunAjaranList={tahunAjaranList}
         asprakList={asprakList}

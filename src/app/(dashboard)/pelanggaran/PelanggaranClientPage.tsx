@@ -54,7 +54,7 @@ export default function PelanggaranClientPage({
   const displayedTahunList = tahunAjaranList;
   const displayedCountMap = countMap;
 
-  const currentTahun = filterTahun || initialTahunAjaranList[0] || '';
+  const currentTahun = (mounted ? filterTahun : null) || initialTahunAjaranList[0] || '';
 
   const filteredPraktikum = React.useMemo(
     () =>
@@ -64,26 +64,6 @@ export default function PelanggaranClientPage({
     // eslint-disable-next-line react-doctor/exhaustive-deps
     [displayedPraktikum, currentTahun]
   );
-
-  if (!mounted) {
-    return (
-      <div className="container mx-auto max-w-[2000px] 2xl:px-8">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-          <div>
-            <h1 className="text-2xl 2xl:text-3xl font-bold tracking-tight">Pelanggaran</h1>
-            <p className="text-sm 2xl:text-base text-muted-foreground mt-1">
-              Log indisipliner asisten praktikum per praktikum
-            </p>
-          </div>
-        </div>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 min-[2000px]:grid-cols-5">
-          {Array.from({ length: 12 }).map((_, i) => (
-            <PelanggaranCardSkeleton key={i} />
-          ))}
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="container mx-auto max-w-[2000px] 2xl:px-8">
