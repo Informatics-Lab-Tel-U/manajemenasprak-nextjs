@@ -16,6 +16,7 @@ import {
   ShieldCheck,
   Eye,
   Shield,
+  Clock,
 } from 'lucide-react';
 
 import {
@@ -322,23 +323,22 @@ const PanduanClientPageComponent = function PanduanClientPage({ role }: PanduanC
                   </AccordionContent>
                 </AccordionItem>
 
-                {/* 7. Penjagaan (Jadwal Jaga) */}
+                {/* 7. Penjagaan (Jadwal Jaga & Presensi RFID) */}
                 <AccordionItem value="penjagaan" className="border rounded-xl px-4 bg-card/30">
                   <AccordionTrigger className="hover:no-underline py-4">
                     <div className="flex items-center gap-3 text-muted-foreground">
                       <Shield size={20} />
                       <div className="text-left text-foreground">
-                        <h3 className="font-semibold text-base">Manajemen Penjagaan</h3>
+                        <h3 className="font-semibold text-base">Jaga Lab & Presensi RFID</h3>
                         <p className="text-sm font-normal text-muted-foreground">
-                          Input dan rekap jadwal jaga Aslab/Asprak per Modul.
+                          Jadwal jaga lab dan aturan presensi RFID asisten per shift.
                         </p>
                       </div>
                     </div>
                   </AccordionTrigger>
                   <AccordionContent className="pt-2 pb-10 space-y-6">
                     <p className="text-sm text-muted-foreground">
-                      Fitur ini digunakan untuk mendata kehadiran asisten yang bertugas menjaga
-                      praktikum di setiap modul (W1-W16).
+                      Fitur ini digunakan untuk mengelola plotting tugas jaga asisten laboratorium di setiap modul (W1 s.d. W16) serta validasi kehadiran real-time menggunakan kartu RFID di scanner laboratorium.
                     </p>
 
                     <div className="space-y-4">
@@ -369,8 +369,140 @@ const PanduanClientPageComponent = function PanduanClientPage({ role }: PanduanC
 
                     <div className="space-y-4">
                       <h4 className="font-medium text-sm flex items-center gap-2">
+                        <Clock size={14} className="text-primary" />
+                        Aturan Shift & Window Waktu Presensi RFID
+                      </h4>
+                      <p className="text-sm text-muted-foreground">
+                        Sistem backend memvalidasi kehadiran otomatis ke dalam 4 shift per hari dengan window waktu tap berdasarkan zona waktu server (WIB):
+                      </p>
+
+                      <div className="space-y-2">
+                        <span className="text-xs font-semibold text-foreground/80 uppercase tracking-wider">
+                          1. Jadwal Senin s/d Kamis
+                        </span>
+                        <div className="rounded-md border overflow-hidden">
+                          <Table>
+                            <TableHeader>
+                              <TableRow className="bg-muted/50 hover:bg-muted/50">
+                                <TableHead className="w-[80px]">Shift</TableHead>
+                                <TableHead>Jam Kerja</TableHead>
+                                <TableHead>Mulai Tap (Earliest)</TableHead>
+                                <TableHead>Batas Tepat Waktu</TableHead>
+                                <TableHead>Status Terlambat</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              <TableRow>
+                                <TableCell className="font-medium">Shift 1</TableCell>
+                                <TableCell className="font-mono text-xs">06:00 - 09:00</TableCell>
+                                <TableCell className="text-xs text-muted-foreground">05:45 WIB</TableCell>
+                                <TableCell className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">s/d 06:59 WIB (HADIR)</TableCell>
+                                <TableCell className="text-xs text-amber-600 dark:text-amber-400 font-medium">&gt;= 07:00 WIB (TERLAMBAT)</TableCell>
+                              </TableRow>
+                              <TableRow>
+                                <TableCell className="font-medium">Shift 2</TableCell>
+                                <TableCell className="font-mono text-xs">09:00 - 12:00</TableCell>
+                                <TableCell className="text-xs text-muted-foreground">08:45 WIB</TableCell>
+                                <TableCell className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">s/d 09:59 WIB (HADIR)</TableCell>
+                                <TableCell className="text-xs text-amber-600 dark:text-amber-400 font-medium">&gt;= 10:00 WIB (TERLAMBAT)</TableCell>
+                              </TableRow>
+                              <TableRow>
+                                <TableCell className="font-medium">Shift 3</TableCell>
+                                <TableCell className="font-mono text-xs">12:00 - 15:00</TableCell>
+                                <TableCell className="text-xs text-muted-foreground">11:45 WIB</TableCell>
+                                <TableCell className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">s/d 12:59 WIB (HADIR)</TableCell>
+                                <TableCell className="text-xs text-amber-600 dark:text-amber-400 font-medium">&gt;= 13:00 WIB (TERLAMBAT)</TableCell>
+                              </TableRow>
+                              <TableRow>
+                                <TableCell className="font-medium">Shift 4</TableCell>
+                                <TableCell className="font-mono text-xs">15:00 - 18:00</TableCell>
+                                <TableCell className="text-xs text-muted-foreground">14:45 WIB</TableCell>
+                                <TableCell className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">s/d 15:59 WIB (HADIR)</TableCell>
+                                <TableCell className="text-xs text-amber-600 dark:text-amber-400 font-medium">&gt;= 16:00 WIB (TERLAMBAT)</TableCell>
+                              </TableRow>
+                            </TableBody>
+                          </Table>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2 pt-2">
+                        <span className="text-xs font-semibold text-foreground/80 uppercase tracking-wider">
+                          2. Jadwal Jumat s/d Sabtu
+                        </span>
+                        <div className="rounded-md border overflow-hidden">
+                          <Table>
+                            <TableHeader>
+                              <TableRow className="bg-muted/50 hover:bg-muted/50">
+                                <TableHead className="w-[80px]">Shift</TableHead>
+                                <TableHead>Jam Kerja</TableHead>
+                                <TableHead>Mulai Tap (Earliest)</TableHead>
+                                <TableHead>Batas Tepat Waktu</TableHead>
+                                <TableHead>Status Terlambat</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              <TableRow>
+                                <TableCell className="font-medium">Shift 1</TableCell>
+                                <TableCell className="font-mono text-xs">06:30 - 09:30</TableCell>
+                                <TableCell className="text-xs text-muted-foreground">06:30 WIB</TableCell>
+                                <TableCell className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">s/d 06:59 WIB (HADIR)</TableCell>
+                                <TableCell className="text-xs text-amber-600 dark:text-amber-400 font-medium">&gt;= 07:00 WIB (TERLAMBAT)</TableCell>
+                              </TableRow>
+                              <TableRow>
+                                <TableCell className="font-medium">Shift 2</TableCell>
+                                <TableCell className="font-mono text-xs">09:30 - 12:30</TableCell>
+                                <TableCell className="text-xs text-muted-foreground">09:15 WIB</TableCell>
+                                <TableCell className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">s/d 09:59 WIB (HADIR)</TableCell>
+                                <TableCell className="text-xs text-amber-600 dark:text-amber-400 font-medium">&gt;= 10:00 WIB (TERLAMBAT)</TableCell>
+                              </TableRow>
+                              <TableRow>
+                                <TableCell className="font-medium">Shift 3</TableCell>
+                                <TableCell className="font-mono text-xs">12:30 - 15:30</TableCell>
+                                <TableCell className="text-xs text-muted-foreground">12:15 WIB</TableCell>
+                                <TableCell className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">s/d 12:59 WIB (HADIR)</TableCell>
+                                <TableCell className="text-xs text-amber-600 dark:text-amber-400 font-medium">&gt;= 13:00 WIB (TERLAMBAT)</TableCell>
+                              </TableRow>
+                              <TableRow>
+                                <TableCell className="font-medium">Shift 4</TableCell>
+                                <TableCell className="font-mono text-xs">15:30 - 18:30</TableCell>
+                                <TableCell className="text-xs text-muted-foreground">15:15 WIB</TableCell>
+                                <TableCell className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">s/d 15:59 WIB (HADIR)</TableCell>
+                                <TableCell className="text-xs text-amber-600 dark:text-amber-400 font-medium">&gt;= 16:00 WIB (TERLAMBAT)</TableCell>
+                              </TableRow>
+                            </TableBody>
+                          </Table>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-4">
+                      <h4 className="font-medium text-sm flex items-center gap-2">
+                        <ShieldCheck size={14} className="text-primary" />
+                        Aturan & Validasi Presensi Backend
+                      </h4>
+                      <ul className="list-disc list-inside text-sm text-muted-foreground space-y-2 ml-1">
+                        <li>
+                          <strong>Waktu Server Otoritatif:</strong> Penentuan shift dan status kehadiran sepenuhnya mengacu pada jam server backend (WIB / UTC+7). Timestamp lokal dari scanner fisik diabaikan untuk mencegah kecurangan/manipulasi waktu.
+                        </li>
+                        <li>
+                          <strong>Wajib Terdaftar di Jadwal Jaga:</strong> Tap kartu hanya diterima jika asisten bersangkutan <strong>sudah dijadwalkan</strong> di tabel <em>Jadwal Jaga</em> untuk modul, hari, dan shift yang sedang berlangsung. Jika tidak terjadwal, presensi otomatis ditolak oleh sistem.
+                        </li>
+                        <li>
+                          <strong>Anti Double-Tap (Idempoten):</strong> Tap kartu lebih dari satu kali dalam shift dan tanggal yang sama tidak akan membuat record ganda. Sistem mengembalikan status bahwa asisten sudah tercatat hadir.
+                        </li>
+                        <li>
+                          <strong>Sinkronisasi Modul Otomatis:</strong> Modul aktif dihitung dinamis dari tanggal mulai praktikum. Jika semester belum resmi dimulai (sebelum tanggal mulai Modul 1), presensi belum dapat dibuka.
+                        </li>
+                        <li>
+                          <strong>Pencatatan Manual:</strong> Administrator dapat mencatat atau mengoreksi presensi asisten secara manual melalui menu Jadwal Jaga jika terjadi kendala scanner fisik.
+                        </li>
+                      </ul>
+                    </div>
+
+                    <div className="space-y-4">
+                      <h4 className="font-medium text-sm flex items-center gap-2">
                         <Eye size={14} className="text-primary" />
-                        Visibilitas & Rekap
+                        Visibilitas & Rekap Jaga
                       </h4>
                       <ul className="list-disc list-inside text-sm text-muted-foreground space-y-2 ml-1">
                         <li>
