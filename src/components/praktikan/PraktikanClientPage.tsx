@@ -131,8 +131,47 @@ export default function PraktikanClientPage() {
     }
 
     if (result.queued) {
-      toast.info('Import data praktikan sedang diproses di background job!');
       setShowImportModal(false);
+      const toastId = toast.loading('Sedang memproses import data praktikan di background...', {
+        description: 'Tabel akan otomatis diperbarui begitu proses selesai.',
+      });
+
+      const initialCount = rows.length;
+      let attempts = 0;
+      const maxAttempts = 6;
+
+      const pollInterval = setInterval(async () => {
+        attempts++;
+        try {
+          const params = new URLSearchParams();
+          if (kelasFilter.trim()) params.set('kelas', kelasFilter.trim());
+          if (mataKuliahFilter.trim()) params.set('mata_kuliah', mataKuliahFilter.trim());
+
+          const res = await fetch(`/api/praktikan?${params.toString()}`);
+          const json = await res.json();
+          const newRows = json.data ?? [];
+
+          if (newRows.length > initialCount || attempts >= maxAttempts) {
+            clearInterval(pollInterval);
+            setRows(newRows);
+            fetchOptions();
+            if (newRows.length > initialCount) {
+              const diff = newRows.length - initialCount;
+              toast.success(`Import selesai! ${diff} data praktikan berhasil dimuat.`, { id: toastId });
+            } else {
+              toast.info('Background job selesai diproses. Data telah disinkronkan.', { id: toastId });
+            }
+          }
+        } catch {
+          if (attempts >= maxAttempts) {
+            clearInterval(pollInterval);
+            toast.dismiss(toastId);
+            fetchRows();
+            fetchOptions();
+          }
+        }
+      }, 2500);
+
       return;
     }
     

@@ -313,7 +313,23 @@ export default function PraktikanImportCSVModal({
     setMatkulLoading(true);
     fetch('/api/praktikan/mata-kuliah')
       .then((r) => r.json())
-      .then((r) => setMatkulOptions(r.data ?? []))
+      .then(async (r) => {
+        const opts = r.data ?? [];
+        if (opts.length > 0) {
+          setMatkulOptions(opts);
+        } else {
+          // Fallback ke master mata-kuliah jika tabel praktikan masih kosong
+          try {
+            const mkRes = await fetch('/api/mata-kuliah').then((res) => res.json());
+            const list = (mkRes.data ?? [])
+              .map((m: any) => m.mk_singkat || m.nama_lengkap || m.nama)
+              .filter(Boolean);
+            setMatkulOptions(Array.from(new Set(list)).sort() as string[]);
+          } catch {
+            setMatkulOptions([]);
+          }
+        }
+      })
       .catch(() => setMatkulOptions([]))
       .finally(() => setMatkulLoading(false));
   }, [open]);

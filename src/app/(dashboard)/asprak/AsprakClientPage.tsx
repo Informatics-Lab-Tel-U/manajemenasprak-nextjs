@@ -193,18 +193,33 @@ export default function AsprakClientPage({
 
     const data = result.data!;
 
-    // Jika Inngest berhasil meng-queue job, tampilkan info khusus dan skip export
+    // Jika Inngest berhasil meng-queue job, jalankan auto-polling untuk refresh tabel otomatis
     if (data.queued) {
-      toast.info('Import dijadwalkan!', {
-        description: (
-          <div className="mt-2 text-xs">
-            <p>{data.message || 'Import sedang diproses di background oleh Inngest.'}</p>
-            <p className="mt-1 text-muted-foreground">Halaman akan direfresh otomatis setelah selesai.</p>
-          </div>
-        ),
-        duration: 5000,
-      });
       setShowImportModal(false);
+      const toastId = toast.loading('Sedang memproses import data asprak di background...', {
+        description: 'Tabel akan otomatis diperbarui begitu proses selesai.',
+      });
+
+      let attempts = 0;
+      const maxAttempts = 6;
+
+      const pollInterval = setInterval(async () => {
+        attempts++;
+        try {
+          await fetchAsprak();
+          if (attempts >= maxAttempts) {
+            clearInterval(pollInterval);
+            toast.success('Import selesai! Data asprak berhasil dimuat.', { id: toastId });
+            if (viewMode === 'all') fetchAllData();
+          }
+        } catch {
+          if (attempts >= maxAttempts) {
+            clearInterval(pollInterval);
+            toast.dismiss(toastId);
+          }
+        }
+      }, 2500);
+
       return;
     }
 
