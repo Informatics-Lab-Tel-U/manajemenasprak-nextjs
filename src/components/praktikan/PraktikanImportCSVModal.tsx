@@ -6,6 +6,7 @@ import { FileSpreadsheet, FileText, Download, Save, Layers } from 'lucide-react'
 import { Spinner } from '@/components/ui/spinner';
 import { toast } from 'sonner';
 import { parseAllSheets, downloadTemplate } from '@/lib/spreadsheet';
+import { useTermStore } from '@/store/useTermStore';
 
 
 import { Badge } from '@/components/ui/badge';
@@ -305,34 +306,58 @@ export default function PraktikanImportCSVModal({
   const [saving, setSaving] = useState(false);
   const [isPresensiMode, setIsPresensiMode] = useState(false);
 
+  const { activeTerm } = useTermStore();
+
   const [matkulOptions, setMatkulOptions] = useState<string[]>([]);
   const [matkulLoading, setMatkulLoading] = useState(false);
 
   useEffect(() => {
     if (!open) return;
     setMatkulLoading(true);
-    fetch('/api/praktikan/mata-kuliah')
-      .then((r) => r.json())
-      .then(async (r) => {
-        const opts = r.data ?? [];
-        if (opts.length > 0) {
-          setMatkulOptions(opts);
-        } else {
-          // Fallback ke master mata-kuliah jika tabel praktikan masih kosong
+
+    const termQuery = activeTerm ? `?term=${encodeURIComponent(activeTerm)}` : '';
+
+    // Prioritaskan mengambil mata kuliah praktikum pada term aktif
+    Promise.allSettled([
+      fetch(`/api/praktikum${termQuery}`).then((r) => r.json()),
+      fetch(`/api/mata-kuliah${termQuery}`).then((r) => r.json()),
+    ])
+      .then(async ([praktikumRes, mataKuliahRes]) => {
+        const set = new Set<string>();
+
+        if (praktikumRes.status === 'fulfilled' && praktikumRes.value?.ok) {
+          const list = praktikumRes.value.data ?? [];
+          list.forEach((p: any) => {
+            if (p.nama) set.add(String(p.nama).trim().toUpperCase());
+          });
+        }
+
+        if (mataKuliahRes.status === 'fulfilled' && mataKuliahRes.value?.ok) {
+          const list = mataKuliahRes.value.data ?? [];
+          list.forEach((m: any) => {
+            const name = m.mk_singkat || m.nama_lengkap || m.nama;
+            if (name) set.add(String(name).trim().toUpperCase());
+          });
+        }
+
+        // Jika data pada term aktif masih kosong, fallback ke daftar mata kuliah yang sudah ada di database praktikan
+        if (set.size === 0) {
           try {
-            const mkRes = await fetch('/api/mata-kuliah').then((res) => res.json());
-            const list = (mkRes.data ?? [])
-              .map((m: any) => m.mk_singkat || m.nama_lengkap || m.nama)
-              .filter(Boolean);
-            setMatkulOptions(Array.from(new Set(list)).sort() as string[]);
+            const fallbackRes = await fetch('/api/praktikan/mata-kuliah').then((r) => r.json());
+            const opts = fallbackRes.data ?? [];
+            opts.forEach((mk: string) => {
+              if (mk) set.add(String(mk).trim().toUpperCase());
+            });
           } catch {
-            setMatkulOptions([]);
+            // ignore
           }
         }
+
+        setMatkulOptions(Array.from(set).sort());
       })
       .catch(() => setMatkulOptions([]))
       .finally(() => setMatkulLoading(false));
-  }, [open]);
+  }, [open, activeTerm]);
 
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 100;
@@ -492,8 +517,15 @@ export default function PraktikanImportCSVModal({
                 />
               </div>
               <div className="space-y-2">
-                <label htmlFor="default-mata-kuliah" className="text-sm font-medium">Mata Kuliah Default</label>
-                {matkulOptions.length > 0 ? (
+                <label htmlFor="default-mata-kuliah" className="text-sm font-medium">
+                  Mata Kuliah Default {activeTerm ? `(${activeTerm})` : ''}
+                </label>
+                {matkulLoading ? (
+                  <div className="h-10 border rounded-md px-3 flex items-center gap-2 bg-muted/40 text-sm text-muted-foreground">
+                    <Spinner className="h-4 w-4 animate-spin" />
+                    <span>Memuat mata kuliah term aktif...</span>
+                  </div>
+                ) : matkulOptions.length > 0 ? (
                   <Select value={defaultMataKuliah} onValueChange={setDefaultMataKuliah}>
                     <SelectTrigger id="default-mata-kuliah" className="h-10 bg-background">
                       <SelectValue placeholder="Pilih mata kuliah..." />
@@ -509,8 +541,7 @@ export default function PraktikanImportCSVModal({
                     id="default-mata-kuliah"
                     value={defaultMataKuliah}
                     onChange={(event) => setDefaultMataKuliah(event.target.value)}
-                    placeholder={matkulLoading ? 'Memuat...' : 'Dipakai jika kolom matkul tidak ada'}
-                    disabled={matkulLoading}
+                    placeholder="Ketik mata kuliah default (belum ada di term aktif)"
                     className="h-10 bg-background"
                   />
                 )}
