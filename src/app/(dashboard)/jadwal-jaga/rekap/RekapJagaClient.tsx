@@ -3,10 +3,12 @@
 import React, { useState } from 'react';
 import { useRekapJaga } from '@/hooks/useJaga';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Shield, RotateCw } from 'lucide-react';
+import { Shield, RotateCw, FileSpreadsheet, Loader2 } from 'lucide-react';
 import { useTermStore } from '@/store/useTermStore';
 import { Button } from '@/components/ui/button';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { exportPresensiJagaExcel } from '@/lib/spreadsheet';
+import { toast } from 'sonner';
 
 function RekapTableSkeleton() {
   const weeks = Array.from({ length: 16 }, (_, i) => i + 1);
@@ -55,6 +57,23 @@ export default function RekapJagaClient({ initialTerms: _initialTerms }: { initi
   const selectedTerm = activeTerm || '';
   const { rekapAslab, rekapAsprak, loading, refresh } = useRekapJaga(selectedTerm);
   const [roleFilter, setRoleFilter] = useState<'ALL' | 'ASLAB' | 'ASPRAK'>('ALL');
+  const [isExporting, setIsExporting] = useState(false);
+
+  const handleExportPresensi = async () => {
+    if (!selectedTerm) {
+      toast.error('Pilih tahun ajaran terlebih dahulu');
+      return;
+    }
+    setIsExporting(true);
+    try {
+      await exportPresensiJagaExcel({ term: selectedTerm });
+      toast.success('Presensi jaga berhasil diekspor');
+    } catch (err: any) {
+      toast.error(err.message || 'Gagal mengekspor presensi jaga');
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   const weeks = Array.from({ length: 16 }, (_, i) => i + 1);
 
@@ -97,6 +116,21 @@ export default function RekapJagaClient({ initialTerms: _initialTerms }: { initi
             <ToggleGroupItem value="ASLAB">ASLAB</ToggleGroupItem>
             <ToggleGroupItem value="ASPRAK">ASPRAK</ToggleGroupItem>
           </ToggleGroup>
+
+          <Button
+            variant="outline"
+            onClick={handleExportPresensi}
+            disabled={isExporting}
+            className="rounded-lg shadow-sm border-border/80 bg-background/80 hover:bg-accent"
+            title="Ekspor data presensi jaga ke Excel multi-sheet"
+          >
+            {isExporting ? (
+              <Loader2 size={16} className="animate-spin text-primary" />
+            ) : (
+              <FileSpreadsheet size={16} className="text-emerald-600 dark:text-emerald-500" />
+            )}
+            <span className="ml-2 font-medium">Ekspor Presensi</span>
+          </Button>
 
           <Button
             variant="outline"

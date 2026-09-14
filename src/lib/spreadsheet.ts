@@ -116,3 +116,42 @@ export async function generatePresensiExcel(options: any) {
   setTimeout(() => window.URL.revokeObjectURL(url), 100);
 }
 
+export async function exportPresensiJagaExcel(params: {
+  term: string;
+  modul?: number;
+}) {
+  const query = new URLSearchParams();
+  query.set('term', params.term);
+  if (typeof params.modul === 'number' && params.modul > 0) {
+    query.set('modul', params.modul.toString());
+  }
+
+  const response = await fetch(`/api/jaga/presensi/export?${query.toString()}`);
+
+  if (!response.ok) {
+    let errStr = 'Gagal mengekspor presensi jaga';
+    try {
+      const errJson = await response.json();
+      errStr = errJson.error || errStr;
+    } catch {
+    }
+    throw new Error(errStr);
+  }
+
+  const blob = await response.blob();
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+
+  const safeTerm = params.term.replace(/[^a-zA-Z0-9_-]/g, '_');
+  const safeModul = params.modul && params.modul > 0 ? `_Modul${params.modul}` : '';
+  const filename = `Presensi_Jaga_${safeTerm}${safeModul}.xlsx`;
+
+  link.setAttribute('download', filename);
+  document.body.appendChild(link);
+  link.click();
+
+  link.remove();
+  setTimeout(() => window.URL.revokeObjectURL(url), 100);
+}
+

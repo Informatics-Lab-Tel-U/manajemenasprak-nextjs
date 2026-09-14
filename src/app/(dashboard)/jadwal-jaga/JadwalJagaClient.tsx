@@ -12,10 +12,18 @@ import {
 } from '@/components/ui/select';
 import JagaPanel from '@/components/jadwal/JagaPanel';
 import { Button } from '@/components/ui/button';
-import { CreditCard, Plus, RotateCw } from 'lucide-react';
+import { CreditCard, FileSpreadsheet, Loader2, ChevronDown, Plus, RotateCw } from 'lucide-react';
 import JagaInputModal from '@/components/jadwal/JagaInputModal';
 import JagaRfidModal from '@/components/jadwal/JagaRfidModal';
 import { useTermStore } from '@/store/useTermStore';
+import { exportPresensiJagaExcel } from '@/lib/spreadsheet';
+import { toast } from 'sonner';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 export default function JadwalJagaClient({
   initialTerms,
@@ -33,6 +41,7 @@ export default function JadwalJagaClient({
   const [editingData, setEditingData] = useState<any>(null);
   const [konfigurasiModul, setKonfigurasiModul] = useState<any[]>([]);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [isExporting, setIsExporting] = useState(false);
 
   const moduls = Array.from({ length: 16 }, (_, i) => `Modul ${i + 1}`);
   const modulNum = selectedModul === 'Default' ? 0 : parseInt(selectedModul.replace('Modul ', ''));
@@ -71,6 +80,25 @@ export default function JadwalJagaClient({
     setIsModalOpen(true);
   };
 
+  const handleExport = async (modulFilter?: number) => {
+    if (!selectedTerm) {
+      toast.error('Pilih tahun ajaran terlebih dahulu');
+      return;
+    }
+    setIsExporting(true);
+    try {
+      await exportPresensiJagaExcel({
+        term: selectedTerm,
+        modul: modulFilter,
+      });
+      toast.success('Presensi jaga berhasil diekspor');
+    } catch (err: any) {
+      toast.error(err.message || 'Gagal mengekspor presensi jaga');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   return (
     <div className="container mx-auto max-w-[2000px] 2xl:px-8 space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -104,6 +132,33 @@ export default function JadwalJagaClient({
           >
             <RotateCw size={16} className="text-muted-foreground hover:text-foreground" />
           </Button>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                disabled={isExporting}
+                className="flex-1 sm:flex-none min-w-0 md:whitespace-nowrap rounded-lg shadow-sm border-border/80 bg-background/80 hover:bg-accent"
+                title="Ekspor hasil presensi jaga ke Excel"
+              >
+                {isExporting ? (
+                  <Loader2 size={16} className="animate-spin text-primary" />
+                ) : (
+                  <FileSpreadsheet size={16} className="text-emerald-600 dark:text-emerald-500" />
+                )}
+                <span className="hidden sm:inline ml-2 font-medium">Ekspor Excel</span>
+                <ChevronDown size={14} className="ml-1 opacity-60" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuItem onClick={() => handleExport(modulNum)}>
+                Ekspor {selectedModul}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleExport(undefined)}>
+                Ekspor Semua Modul
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
 
           {userRole === 'ADMIN' && (
             <Button
