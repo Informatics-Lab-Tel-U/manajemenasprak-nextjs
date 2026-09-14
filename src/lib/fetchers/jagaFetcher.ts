@@ -1,4 +1,4 @@
-import { JadwalJaga } from '@/types/database';
+import { JadwalJaga, PresensiJaga } from '@/types/database';
 import { apiFetch } from '@/lib/clientFetch';
 
 export async function fetchJadwalJaga(
@@ -133,5 +133,22 @@ export async function submitManualPresensi(payload: {
     body: JSON.stringify(payload),
   });
   return result.ok ? { success: true, message: result.data?.message } : { error: result.error };
+}
+
+export async function fetchPresensiJaga(
+  term: string,
+  modul?: number,
+  hari?: string,
+  tanggal?: string
+): Promise<{ data?: PresensiJaga[]; error?: string }> {
+  const result = await apiFetch<PresensiJaga[]>('/api/jaga/presensi', {
+    params: {
+      term,
+      modul: modul ? String(modul) : undefined,
+      hari: hari && hari.toUpperCase() !== 'ALL' ? hari : undefined,
+      tanggal: tanggal || undefined,
+    },
+  });
+  return result.ok ? { data: result.data } : { error: result.error };
 }
 

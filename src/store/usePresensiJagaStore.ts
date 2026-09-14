@@ -4,11 +4,15 @@ import { PresensiJaga } from '@/types/database';
 
 interface PresensiJagaState {
   todayPresensi: PresensiJaga[];
+  modulPresensi: PresensiJaga[];
+  currentTerm: string;
+  currentModul: number;
   isInitialized: boolean;
   init: (initialData?: PresensiJaga[]) => Promise<void>;
   setInitialPresensi: (data: PresensiJaga[]) => void;
+  loadPresensiForModul: (term: string, modul: number) => Promise<void>;
   cleanup: () => void;
-  getPresensiForAsprak: (idAsprak: string, shift?: number) => PresensiJaga | undefined;
+  getPresensiForAsprak: (idAsprak: string, shift?: number, hari?: string) => PresensiJaga | undefined;
 }
 
 const supabase = createClient();
@@ -17,11 +21,34 @@ let initPromise: Promise<void> | null = null;
 
 export const usePresensiJagaStore = create<PresensiJagaState>((set, get) => ({
   todayPresensi: [],
+  modulPresensi: [],
+  currentTerm: '',
+  currentModul: 0,
   isInitialized: false,
 
   setInitialPresensi: (data) => {
     if (get().todayPresensi.length === 0 && data && data.length > 0) {
       set({ todayPresensi: data });
+    }
+  },
+
+  loadPresensiForModul: async (term: string, modul: number) => {
+    set({ currentTerm: term, currentModul: modul });
+    if (!term) return;
+
+    try {
+      const params = new URLSearchParams({ term });
+      if (modul > 0) params.append('modul', String(modul));
+
+      const res = await fetch(`/api/jaga/presensi?${params.toString()}`);
+      if (res.ok) {
+        const json = await res.json();
+        if (Array.isArray(json.data)) {
+          set({ modulPresensi: json.data });
+        }
+      }
+    } catch (e) {
+      console.warn('[PresensiStore] Load modul presensi error:', e);
     }
   },
 
@@ -61,7 +88,7 @@ export const usePresensiJagaStore = create<PresensiJagaState>((set, get) => ({
               if (payload.eventType === 'INSERT') {
                 const newRow = payload.new as PresensiJaga;
                 
-                // Jika data asprak relasi belum ada di payload raw CDC, ambil atau lengkapi
+                // Update todayPresensi
                 set((state) => {
                   const existingIdx = state.todayPresensi.findIndex(p => p.id === newRow.id);
                   if (existingIdx !== -1) {
@@ -71,6 +98,12 @@ export const usePresensiJagaStore = create<PresensiJagaState>((set, get) => ({
                   }
                   return { todayPresensi: [newRow, ...state.todayPresensi] };
                 });
+
+                // Update modulPresensi if matches currentTerm and currentModul
+                const { currentTerm, currentModul, loadPresensiForModul } = get();
+                if (currentTerm && (!currentModul || newRow.modul === currentModul)) {
+                  loadPresensiForModul(currentTerm, currentModul);
+                }
                 
                 fetchToday();
               } else if (payload.eventType === 'UPDATE') {
@@ -78,12 +111,16 @@ export const usePresensiJagaStore = create<PresensiJagaState>((set, get) => ({
                 set((state) => ({
                   todayPresensi: state.todayPresensi.map(item =>
                     item.id === updatedRow.id ? { ...item, ...updatedRow } : item
-                  )
+                  ),
+                  modulPresensi: state.modulPresensi.map(item =>
+                    item.id === updatedRow.id ? { ...item, ...updatedRow } : item
+                  ),
                 }));
               } else if (payload.eventType === 'DELETE') {
                 const oldRow = payload.old as { id: string };
                 set((state) => ({
-                  todayPresensi: state.todayPresensi.filter(item => item.id !== oldRow.id)
+                  todayPresensi: state.todayPresensi.filter(item => item.id !== oldRow.id),
+                  modulPresensi: state.modulPresensi.filter(item => item.id !== oldRow.id),
                 }));
               }
             }
@@ -108,11 +145,13 @@ export const usePresensiJagaStore = create<PresensiJagaState>((set, get) => ({
     set({ isInitialized: false });
   },
 
-  getPresensiForAsprak: (idAsprak: string, shift?: number) => {
-    const list = get().todayPresensi;
-    if (typeof shift === 'number') {
-      return list.find(p => p.id_asprak === idAsprak && p.shift === shift);
-    }
-    return list.find(p => p.id_asprak === idAsprak);
+  getPresensiForAsprak: (idAsprak: string, shift?: number, hari?: string) => {
+    const list = get().modulPresensi.length > 0 ? get().modulPresensi : get().todayPresensi;
+    return list.find(p => {
+      if (p.id_asprak !== idAsprak) return false;
+      if (typeof shift === 'number' && p.shift !== shift) return false;
+      if (hari && p.hari.toUpperCase() !== hari.toUpperCase()) return false;
+      return true;
+    });
   }
 }));

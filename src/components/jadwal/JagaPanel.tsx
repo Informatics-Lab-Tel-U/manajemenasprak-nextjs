@@ -59,8 +59,14 @@ export default function JagaPanel({
   const isDefault = selectedModul === 'Default';
   const modulNum = isDefault ? 0 : parseInt(selectedModul.replace('Modul ', ''), 10);
 
-  // Default to SENIN — no "ALL" mode anymore
-  const [localDay, setLocalDay] = useState<string>('SENIN');
+  // Default to today if SENIN-SABTU, otherwise SENIN
+  const [localDay, setLocalDay] = useState<string>(() => {
+    const dayNames = ['MINGGU', 'SENIN', 'SELASA', 'RABU', 'KAMIS', 'JUMAT', 'SABTU'];
+    const nowDay = dayNames[new Date().getDay()];
+    return ['SENIN', 'SELASA', 'RABU', 'KAMIS', 'JUMAT', 'SABTU'].includes(nowDay)
+      ? nowDay
+      : 'SENIN';
+  });
   const activeDay = (filterDay || localDay).toUpperCase();
 
   const { jagaList, loading, refresh } = useJaga(
@@ -70,11 +76,19 @@ export default function JagaPanel({
   );
 
   const todayPresensi = usePresensiJagaStore((s) => s.todayPresensi);
+  const modulPresensi = usePresensiJagaStore((s) => s.modulPresensi);
   const initPresensi = usePresensiJagaStore((s) => s.init);
+  const loadPresensiForModul = usePresensiJagaStore((s) => s.loadPresensiForModul);
 
   useEffect(() => {
     initPresensi();
   }, [initPresensi]);
+
+  useEffect(() => {
+    if (term && modulNum > 0) {
+      loadPresensiForModul(term, modulNum);
+    }
+  }, [term, modulNum, onRefreshTrigger, loadPresensiForModul]);
 
   useEffect(() => {
     if (onRefreshTrigger !== undefined && onRefreshTrigger > 0) {
@@ -239,13 +253,22 @@ export default function JagaPanel({
                         {j ? (
                           <JagaCell
                             jaga={j}
-                            presensi={todayPresensi.find(
-                              (p) =>
-                                p.id_asprak === j.id_asprak &&
-                                p.shift === j.shift &&
-                                p.hari.toUpperCase() === activeDay &&
-                                (!modulNum || p.modul === modulNum)
-                            )}
+                            presensi={
+                              modulPresensi.find(
+                                (p) =>
+                                  p.id_asprak === j.id_asprak &&
+                                  p.shift === j.shift &&
+                                  p.hari.toUpperCase() === activeDay &&
+                                  (!modulNum || p.modul === modulNum)
+                              ) ||
+                              todayPresensi.find(
+                                (p) =>
+                                  p.id_asprak === j.id_asprak &&
+                                  p.shift === j.shift &&
+                                  p.hari.toUpperCase() === activeDay &&
+                                  (!modulNum || p.modul === modulNum)
+                              )
+                            }
                             userRole={userRole}
                             onEdit={() =>
                               onEdit?.({

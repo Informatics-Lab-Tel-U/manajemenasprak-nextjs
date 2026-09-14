@@ -132,3 +132,29 @@ export async function getTodayPresensi(term?: string, tanggal?: string) {
   return result.data;
 }
 
+export async function getPresensiJaga(
+  term: string,
+  modul?: number,
+  hari?: string,
+  tanggal?: string
+) {
+  const params = new URLSearchParams({ term });
+  if (typeof modul === 'number' && modul !== 0) {
+    params.append('modul', String(modul));
+  }
+  if (hari && hari.toUpperCase() !== 'ALL') {
+    params.append('hari', hari);
+  }
+  if (tanggal) {
+    params.append('tanggal', tanggal);
+  }
+
+  const result = await honoFetch<any[]>(`/api/jaga/presensi?${params.toString()}`);
+  if (!result.ok || !result.data) {
+    return [];
+  }
+
+  return result.data;
+}
+
+
