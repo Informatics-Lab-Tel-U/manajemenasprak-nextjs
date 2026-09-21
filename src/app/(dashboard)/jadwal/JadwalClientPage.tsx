@@ -140,6 +140,12 @@ export default function JadwalClientPage({
   // Drag & drop state
   const dragJadwalId = useRef<string | null>(null);
   const [dragOverCell, setDragOverCell] = useState<string | null>(null);
+  const [dragPenggantiTarget, setDragPenggantiTarget] = useState<{
+    hari: string;
+    sesi: number | null;
+    jam: string;
+    ruangan: string;
+  } | null>(null);
 
   const handleOpenAdd = (prefill?: { hari?: string; sesi?: number; ruangan?: string }) => {
     if (prefill) {
@@ -268,11 +274,41 @@ export default function JadwalClientPage({
     setDragOverCell(null);
 
     const id = dragJadwalId.current;
+    dragJadwalId.current = null;
     if (!id) return;
 
     const jadwal = rawJadwalList.find((j) => j.id === id);
     if (!jadwal) return;
 
+    // --- Modul mode: buat jadwal pengganti ---
+    if (selectedModul !== 'Default') {
+      // Conflict check against processedJadwalList (reflects pengganti overrides)
+      const conflict = processedJadwalList.find((j) => {
+        const isPJJ = j.kelas?.toUpperCase().includes('PJJ');
+        if (isPJJ) return false;
+        return (
+          j.id !== id &&
+          j.hari === targetHari &&
+          j.sesi === (targetSesi ?? 0) &&
+          j.ruangan === targetRoom
+        );
+      });
+
+      if (conflict) {
+        toast.error(
+          `Bentrok dengan "${conflict.mata_kuliah?.nama_lengkap}" (${conflict.kelas}) di ${targetRoom}`
+        );
+        return;
+      }
+
+      // Open pengganti modal pre-filled with the drop target
+      setDragPenggantiTarget({ hari: targetHari, sesi: targetSesi, jam: targetJam, ruangan: targetRoom });
+      setModalInitialData(jadwal);
+      setIsPenggantiModalOpen(true);
+      return;
+    }
+
+    // --- Default mode: ubah jadwal permanen ---
     if (
       jadwal.hari === targetHari &&
       jadwal.sesi === targetSesi &&
@@ -281,7 +317,6 @@ export default function JadwalClientPage({
       return;
     }
 
-    // Check conflict
     const conflict = rawJadwalList.find((j) => {
       const isPJJ = j.kelas?.toUpperCase().includes('PJJ');
       if (isPJJ) return false;
@@ -313,11 +348,9 @@ export default function JadwalClientPage({
     } else {
       toast.success(`Jadwal dipindahkan ke ${targetRoom}, ${targetHari} Sesi ${targetSesi ?? targetJam}`);
     }
-
-    dragJadwalId.current = null;
   };
 
-  const { visibleDays, uniqueRooms, scheduleMatrix, dynamicSessionsByDay } = useScheduleData({
+  const { processedJadwalList, visibleDays, uniqueRooms, scheduleMatrix, dynamicSessionsByDay } = useScheduleData({
     rawJadwalList,
     jadwalPengganti,
     selectedModul,
@@ -741,7 +774,10 @@ export default function JadwalClientPage({
 
       <JadwalPenggantiModal
         isOpen={isPenggantiModalOpen}
-        onClose={() => setIsPenggantiModalOpen(false)}
+        onClose={() => {
+          setIsPenggantiModalOpen(false);
+          setDragPenggantiTarget(null);
+        }}
         onSubmit={handlePenggantiSubmit}
         initialData={
           modalInitialData
@@ -750,10 +786,11 @@ export default function JadwalClientPage({
                 id_jadwal: modalInitialData.id,
                 modul: parseInt(selectedModul.replace('Modul ', '')) || 1,
                 tanggal: modalInitialData.tanggal || '',
-                hari: modalInitialData.hari || 'SENIN',
-                sesi: modalInitialData.sesi || 1,
-                jam: modalInitialData.jam || '06:30',
-                ruangan: modalInitialData.ruangan || '',
+                // Saat dari drag & drop: pakai target position; saat dari klik edit: pakai posisi jadwal saat ini
+                hari: dragPenggantiTarget?.hari ?? modalInitialData.hari ?? 'SENIN',
+                sesi: dragPenggantiTarget?.sesi ?? modalInitialData.sesi ?? 1,
+                jam: dragPenggantiTarget?.jam ?? modalInitialData.jam ?? '06:30',
+                ruangan: dragPenggantiTarget?.ruangan ?? modalInitialData.ruangan ?? '',
                 jadwal: modalInitialData,
               }
             : null
