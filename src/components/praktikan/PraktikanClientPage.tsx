@@ -228,8 +228,11 @@ export default function PraktikanClientPage() {
       let url = '/api/praktikan';
       if (payload.action === 'all') {
         url += '?action=deleteAll';
-      } else if (payload.action === 'kelas' && payload.kelas) {
-        url += `?kelas=${encodeURIComponent(payload.kelas)}`;
+      } else if (payload.action === 'group') {
+        const params = new URLSearchParams();
+        if (payload.mata_kuliah) params.set('mata_kuliah', payload.mata_kuliah);
+        if (payload.kelas) params.set('kelas', payload.kelas);
+        url += `?${params.toString()}`;
       } else {
         return;
       }
@@ -243,16 +246,21 @@ export default function PraktikanClientPage() {
         throw new Error(result.error || 'Gagal menghapus data praktikan.');
       }
 
-      const msg = payload.action === 'all' 
-        ? `${result.data?.deleted ?? 0} seluruh data dihapus.`
-        : `${result.data?.deleted ?? 0} data dari kelas ${payload.kelas} dihapus.`;
-      
+      let msg = '';
+      if (payload.action === 'all') {
+        msg = `${result.data?.deleted ?? 0} seluruh data praktikan berhasil dihapus.`;
+      } else if (payload.kelas) {
+        msg = `${result.data?.deleted ?? 0} praktikan kelas ${payload.kelas} (${payload.mata_kuliah}) berhasil dihapus.`;
+      } else {
+        msg = `${result.data?.deleted ?? 0} praktikan pada mata kuliah ${payload.mata_kuliah} berhasil dihapus.`;
+      }
+
       toast.success(msg);
       setShowBulkDelete(false);
       fetchRows();
       fetchOptions();
     } catch (error: any) {
-      toast.error(error.message || 'Gagal menghapus data kelas.');
+      toast.error(error.message || 'Gagal menghapus data praktikan.');
     } finally {
       setIsDeleting(false);
     }
@@ -264,22 +272,35 @@ export default function PraktikanClientPage() {
     setIsExporting(true);
     try {
       let dataToExport: PraktikanRecord[] = [];
+      let filename = 'data_praktikan.xlsx';
 
       if (payload.action === 'current') {
         dataToExport = filteredRows;
-      } else {
+        filename = 'data_praktikan_tampilan_saat_ini.xlsx';
+      } else if (payload.action === 'group') {
         const params = new URLSearchParams();
-        if (payload.action === 'kelas' && payload.kelas) {
-          params.set('kelas', payload.kelas);
-        }
-        
+        if (payload.mata_kuliah) params.set('mata_kuliah', payload.mata_kuliah);
+        if (payload.kelas) params.set('kelas', payload.kelas);
+
         const response = await fetch(`/api/praktikan?${params.toString()}`);
         const result = await response.json();
-        
+
         if (!response.ok || !result.ok) {
           throw new Error(result.error || 'Gagal mengambil data untuk diekspor.');
         }
         dataToExport = result.data ?? [];
+        filename = payload.kelas
+          ? `data_praktikan_${payload.mata_kuliah}_${payload.kelas}.xlsx`
+          : `data_praktikan_${payload.mata_kuliah}.xlsx`;
+      } else {
+        const response = await fetch('/api/praktikan');
+        const result = await response.json();
+
+        if (!response.ok || !result.ok) {
+          throw new Error(result.error || 'Gagal mengambil data untuk diekspor.');
+        }
+        dataToExport = result.data ?? [];
+        filename = 'data_praktikan_seluruh.xlsx';
       }
 
       if (dataToExport.length === 0) {
@@ -297,14 +318,14 @@ export default function PraktikanClientPage() {
 
       await exportSpreadsheet(
         exportDataFormatted, 
-        payload.action === 'kelas' ? `data_praktikan_${payload.kelas}.xlsx` : 'data_praktikan.xlsx',
+        filename,
         'Data Praktikan'
       );
       
-      toast.success('Data praktikan berhasil diekspor');
+      toast.success('Data praktikan berhasil diekspor.');
       setShowExportModal(false);
     } catch (error: any) {
-      toast.error(error.message || 'Gagal mengekspor data Excel');
+      toast.error(error.message || 'Gagal mengekspor data Excel.');
     } finally {
       setIsExporting(false);
     }
@@ -410,7 +431,7 @@ export default function PraktikanClientPage() {
         open={showBulkDelete}
         onOpenChange={(open) => !open && setShowBulkDelete(false)}
         onConfirm={handleBulkDelete}
-        options={options.kelas}
+        options={options}
         isDeleting={isDeleting}
       />
 
@@ -418,7 +439,7 @@ export default function PraktikanClientPage() {
         open={showExportModal}
         onOpenChange={(open) => !open && setShowExportModal(false)}
         onConfirm={handleExportExcel}
-        options={options.kelas}
+        options={options}
         isExporting={isExporting}
       />
     </div>

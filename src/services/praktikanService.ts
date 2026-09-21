@@ -121,6 +121,25 @@ export async function deletePraktikan(
   }
 }
 
+export async function deletePraktikanByGroup(params: {
+  mata_kuliah?: string;
+  kelas?: string;
+}): Promise<{ deleted: number }> {
+  const query = new URLSearchParams();
+  if (params.mata_kuliah) query.set('mata_kuliah', params.mata_kuliah);
+  if (params.kelas) query.set('kelas', params.kelas);
+
+  const result = await honoFetch<{ deleted: number }>(`/api/praktikan?${query.toString()}`, {
+    method: 'DELETE',
+  });
+
+  if (!result.ok || !result.data) {
+    throw new Error(result.error || 'Gagal menghapus data praktikan');
+  }
+
+  return result.data;
+}
+
 export async function deletePraktikanByKelas(
   kelas: string
 ): Promise<{ deleted: number }> {

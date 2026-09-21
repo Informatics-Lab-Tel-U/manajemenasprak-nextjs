@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Download } from 'lucide-react';
 import { Spinner } from '@/components/ui/spinner';
 import { Button } from '@/components/ui/button';
@@ -21,14 +21,20 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { PraktikanOptions } from './types';
 
-export type ExportPayload = { action: 'kelas' | 'all' | 'current'; kelas?: string };
+export const ALL_KELAS_EXPORT_OPTION = '__all_kelas__';
+
+export type ExportPayload =
+  | { action: 'current' }
+  | { action: 'group'; mata_kuliah: string; kelas?: string }
+  | { action: 'all' };
 
 interface PraktikanExportDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onConfirm: (payload: ExportPayload) => Promise<void>;
-  options: string[];
+  options: PraktikanOptions;
   isExporting?: boolean;
 }
 
@@ -39,8 +45,11 @@ export default function PraktikanExportDialog({
   options,
   isExporting,
 }: PraktikanExportDialogProps) {
-  const [mode, setMode] = useState<'kelas' | 'all' | 'current'>('current');
-  const [selectedKelas, setSelectedKelas] = useState(() => (options.length > 0 ? options[0] : ''));
+  const [mode, setMode] = useState<'current' | 'group' | 'all'>('current');
+  const [selectedMataKuliah, setSelectedMataKuliah] = useState('');
+  const [selectedKelas, setSelectedKelas] = useState(ALL_KELAS_EXPORT_OPTION);
+  const [availableKelas, setAvailableKelas] = useState<string[]>([]);
+  const [loadingKelas, setLoadingKelas] = useState(false);
 
   const [prevOpen, setPrevOpen] = useState(open);
 
@@ -48,86 +57,183 @@ export default function PraktikanExportDialog({
     setPrevOpen(open);
     if (open) {
       setMode('current');
-      setSelectedKelas(options.length > 0 ? options[0] : '');
+      const initialMk = options.mata_kuliah.length > 0 ? options.mata_kuliah[0] : '';
+      setSelectedMataKuliah(initialMk);
+      setSelectedKelas(ALL_KELAS_EXPORT_OPTION);
     }
   }
 
+  useEffect(() => {
+    if (!open || mode !== 'group' || !selectedMataKuliah) {
+      setAvailableKelas(options.kelas || []);
+      return;
+    }
+
+    let isSubscribed = true;
+    setLoadingKelas(true);
+
+    const fetchKelasForMk = async () => {
+      try {
+        const params = new URLSearchParams({ mata_kuliah: selectedMataKuliah });
+        const res = await fetch(`/api/praktikan/kelas?${params.toString()}`);
+        const result = await res.json();
+        if (isSubscribed && result.ok && Array.isArray(result.data)) {
+          setAvailableKelas(result.data);
+        } else if (isSubscribed) {
+          setAvailableKelas(options.kelas || []);
+        }
+      } catch {
+        if (isSubscribed) {
+          setAvailableKelas(options.kelas || []);
+        }
+      } finally {
+        if (isSubscribed) {
+          setLoadingKelas(false);
+        }
+      }
+    };
+
+    fetchKelasForMk();
+
+    return () => {
+      isSubscribed = false;
+    };
+  }, [open, mode, selectedMataKuliah, options.kelas]);
+
   const isFormValid = () => {
-    if (mode === 'kelas') {
-      return selectedKelas !== '';
+    if (mode === 'group') {
+      return selectedMataKuliah.trim() !== '';
     }
     return true;
   };
 
   const handleSubmit = () => {
     if (!isFormValid()) return;
-    onConfirm({ action: mode, kelas: mode === 'kelas' ? selectedKelas : undefined });
+
+    if (mode === 'group') {
+      onConfirm({
+        action: 'group',
+        mata_kuliah: selectedMataKuliah,
+        kelas: selectedKelas !== ALL_KELAS_EXPORT_OPTION ? selectedKelas : undefined,
+      });
+    } else {
+      onConfirm({ action: mode });
+    }
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[450px]">
+      <DialogContent className="sm:max-w-[480px]">
         <DialogHeader>
           <DialogTitle>Export Data Praktikan</DialogTitle>
           <DialogDescription>
-            Pilih metode ekspor data ke dalam format Excel (.xlsx).
+            Pilih metode ekspor data ke dalam format berkas Excel (.xlsx).
           </DialogDescription>
         </DialogHeader>
 
         <div className="py-4 space-y-6">
-          <RadioGroup value={mode} onValueChange={(val: 'kelas' | 'all' | 'current') => setMode(val)}>
+          <RadioGroup value={mode} onValueChange={(val: 'current' | 'group' | 'all') => setMode(val)}>
             <div className="flex flex-col gap-4">
               {/* Opsi Current Table */}
-              <div className="flex items-start space-x-3 rounded-md border p-4">
-                <RadioGroupItem value="current" id="mode-current" className="mt-1" />
+              <div className="flex items-start space-x-3 rounded-md border p-4 bg-card">
+                <RadioGroupItem value="current" id="mode-export-current" className="mt-1" />
                 <div className="space-y-1 flex-1">
-                  <Label htmlFor="mode-current" className="font-semibold cursor-pointer">
+                  <Label htmlFor="mode-export-current" className="font-semibold cursor-pointer">
                     Data Tabel Saat Ini
                   </Label>
                   <p className="text-sm text-muted-foreground">
-                    Mengekspor data praktikan yang saat ini sedang tampil di layar (sesuai dengan filter yang aktif).
+                    Mengekspor data praktikan yang saat ini sedang tampil di layar sesuai filter yang aktif.
                   </p>
                 </div>
               </div>
 
-              {/* Opsi Kelas */}
-              <div className="flex items-start space-x-3 rounded-md border p-4">
-                <RadioGroupItem value="kelas" id="mode-kelas" className="mt-1" />
-                <div className="space-y-2 flex-1">
-                  <Label htmlFor="mode-kelas" className="font-semibold cursor-pointer">
-                    Berdasarkan Kelas
+              {/* Opsi Berdasarkan Matkul & Kelas */}
+              <div className="flex items-start space-x-3 rounded-md border p-4 bg-card">
+                <RadioGroupItem value="group" id="mode-export-group" className="mt-1" />
+                <div className="space-y-3 flex-1">
+                  <Label htmlFor="mode-export-group" className="font-semibold cursor-pointer">
+                    Berdasarkan Matkul &amp; Kelas
                   </Label>
                   <p className="text-sm text-muted-foreground">
-                    Mengekspor seluruh praktikan dari satu kelas secara utuh langsung dari database.
+                    Mengekspor data praktikan dari database berdasarkan mata kuliah praktikum dan kelas.
                   </p>
-                  {mode === 'kelas' && (
-                    <div className="pt-2">
-                      <Select value={selectedKelas} onValueChange={setSelectedKelas}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Pilih kelas yang akan diekspor" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {options.map((opt) => (
-                            <SelectItem key={opt} value={opt}>
-                              {opt}
+
+                  {mode === 'group' && (
+                    <div className="pt-2 space-y-3">
+                      {/* Dropdown Mata Kuliah */}
+                      <div className="space-y-1.5">
+                        <Label className="text-xs font-medium text-muted-foreground">
+                          Mata Kuliah Praktikum
+                        </Label>
+                        <Select
+                          value={selectedMataKuliah}
+                          onValueChange={(val) => {
+                            setSelectedMataKuliah(val);
+                            setSelectedKelas(ALL_KELAS_EXPORT_OPTION);
+                          }}
+                        >
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder="Pilih mata kuliah" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {options.mata_kuliah.length > 0 ? (
+                              options.mata_kuliah.map((mk) => (
+                                <SelectItem key={mk} value={mk}>
+                                  {mk}
+                                </SelectItem>
+                              ))
+                            ) : (
+                              <SelectItem value="none" disabled>
+                                Tidak ada data mata kuliah
+                              </SelectItem>
+                            )}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {/* Dropdown Kelas */}
+                      <div className="space-y-1.5">
+                        <Label className="text-xs font-medium text-muted-foreground">
+                          Kelas Praktikum
+                        </Label>
+                        <Select
+                          value={selectedKelas}
+                          onValueChange={setSelectedKelas}
+                          disabled={loadingKelas || !selectedMataKuliah}
+                        >
+                          <SelectTrigger className="w-full">
+                            <SelectValue
+                              placeholder={
+                                loadingKelas ? 'Memuat daftar kelas...' : 'Pilih kelas'
+                              }
+                            />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value={ALL_KELAS_EXPORT_OPTION}>
+                              Semua Kelas
                             </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                            {availableKelas.map((opt) => (
+                              <SelectItem key={opt} value={opt}>
+                                {opt}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
                     </div>
                   )}
                 </div>
               </div>
 
               {/* Opsi Semua Data */}
-              <div className="flex items-start space-x-3 rounded-md border p-4">
-                <RadioGroupItem value="all" id="mode-all" className="mt-1" />
+              <div className="flex items-start space-x-3 rounded-md border p-4 bg-card">
+                <RadioGroupItem value="all" id="mode-export-all" className="mt-1" />
                 <div className="space-y-1 flex-1">
-                  <Label htmlFor="mode-all" className="font-semibold cursor-pointer">
+                  <Label htmlFor="mode-export-all" className="font-semibold cursor-pointer">
                     Seluruh Data
                   </Label>
                   <p className="text-sm text-muted-foreground">
-                    Mengunduh keseluruhan data praktikan yang ada di sistem tanpa terkecuali.
+                    Mengunduh seluruh data praktikan yang ada di sistem tanpa filter.
                   </p>
                 </div>
               </div>
@@ -139,8 +245,8 @@ export default function PraktikanExportDialog({
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isExporting}>
             Batal
           </Button>
-          <Button 
-            onClick={handleSubmit} 
+          <Button
+            onClick={handleSubmit}
             disabled={isExporting || !isFormValid()}
           >
             {isExporting ? (
@@ -158,3 +264,4 @@ export default function PraktikanExportDialog({
     </Dialog>
   );
 }
+
