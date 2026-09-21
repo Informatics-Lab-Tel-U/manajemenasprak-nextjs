@@ -67,13 +67,8 @@ export default function DashboardCharts({
   );
 
 
-  const [todayDate, setTodayDate] = React.useState(new Date());
-
-  React.useEffect(() => {
-    // Memperbarui waktu setiap 10 detik agar deteksi kedaluwarsa (TTL) dan pergeseran sesi tetap sinkron
-    const timer = setInterval(() => setTodayDate(new Date()), 10000);
-    return () => clearInterval(timer);
-  }, []);
+  const storeNow = useMonitoringStore((state) => state.now);
+  const todayDate = storeNow;
 
   const uniqueRooms = useMemo(() => {
     // We can use the global ROOMS constant or derive from today's schedule
@@ -110,6 +105,20 @@ export default function DashboardCharts({
 
   const scheduleMatrix = fullMatrix[currentDayName] || {};
   const visibleSessions = dynamicSessionsByDay[currentDayName] || [];
+
+  // Peta jadwal per ruangan untuk hari ini guna memvalidasi ketersediaan kelas dari Generator Kursi
+  const roomSchedulesTodayMap = useMemo(() => {
+    const map = new Map<string, Jadwal[]>();
+    for (const j of processedJadwalList) {
+      if (!j.ruangan) continue;
+      const cleanRoom = j.ruangan.replace(/\s+/g, '').toUpperCase();
+      if (!map.has(cleanRoom)) {
+        map.set(cleanRoom, []);
+      }
+      map.get(cleanRoom)!.push(j);
+    }
+    return map;
+  }, [processedJadwalList]);
 
   const { jagaList } = useJaga(term, activeModul, currentDayName);
   const shiftInfos = getJagaShiftsByDay(currentDayName);
@@ -333,12 +342,29 @@ export default function DashboardCharts({
                           </td>
                           {uniqueRooms.map((room) => {
                             const jadwals = scheduleMatrix[session.rowKey]?.[room] || [];
-                            
+                            const cleanRoomKey = room.replace(/\s+/g, '').toUpperCase();
+
                             // Cek status ruangan dari realtime monitoring
                             const roomStatus = labStatus.find(
-                              (l) => l.lab_id.replace(/\s+/g, '').toUpperCase() === room.replace(/\s+/g, '').toUpperCase()
+                              (l) => l.lab_id.replace(/\s+/g, '').toUpperCase() === cleanRoomKey
                             );
                             const isRoomOnline = roomStatus ? isLabOnline(roomStatus, todayDate) : false;
+
+                            // Kelas terpilih dari Generator Kursi
+                            const selectedKelas = roomStatus?.kelas?.trim();
+                            const hasSelectedKelas = Boolean(
+                              selectedKelas &&
+                              selectedKelas !== '-' &&
+                              selectedKelas.toLowerCase() !== 'tidak ada sesi'
+                            );
+
+                            // Cek apakah kelas yang dipilih Generator memang terdaftar di jadwal ruangan ini hari ini
+                            const roomJadwals = roomSchedulesTodayMap.get(cleanRoomKey) || [];
+                            const isSelectedKelasScheduledInRoom =
+                              hasSelectedKelas &&
+                              roomJadwals.some(
+                                (j) => j.kelas?.trim().toUpperCase() === selectedKelas!.toUpperCase()
+                              );
 
                             return (
                               <td
@@ -347,10 +373,19 @@ export default function DashboardCharts({
                               >
                                 <div className="flex flex-col w-full h-full min-h-[60px]">
                                   {jadwals.map((jadwal) => {
-                                    // Kelas dianggap sedang berjalan jika ruangan tersebut online 
-                                    // dan sesi jadwal ini adalah sesi yang sedang berjalan SEKARANG berdasarkan jam.
-                                    // (Atau jika nama kelas cocok persis dengan yang dimasukkan asprak)
-                                    const isClassActive = isRoomOnline && (session.sesi === activeSessionNumber || roomStatus?.kelas === jadwal.kelas);
+                                    // Penentuan Jadwal Aktif:
+                                    // 1. Ruangan harus online (isRoomOnline)
+                                    // 2. TOP UTAMA: Jika Generator Kursi memilih kelas dan kelas tersebut ada di jadwal ruangan ini hari ini
+                                    // 3. FALLBACK: Jika Generator belum memilih kelas / kelas tidak ada di ruangan ini, ikuti sesi jam berjalan
+                                    let isClassActive = false;
+                                    if (isRoomOnline) {
+                                      if (isSelectedKelasScheduledInRoom) {
+                                        isClassActive =
+                                          jadwal.kelas?.trim().toUpperCase() === selectedKelas!.toUpperCase();
+                                      } else {
+                                        isClassActive = session.sesi === activeSessionNumber;
+                                      }
+                                    }
 
                                     return (
                                       <ScheduleCell
