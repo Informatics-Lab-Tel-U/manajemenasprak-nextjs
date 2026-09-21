@@ -126,11 +126,21 @@ export async function submitManualPresensi(payload: {
   hari: string;
   shift: number;
   status?: string;
+  tanggal?: string;
   waktuMasuk?: string;
 }): Promise<{ success?: boolean; message?: string; error?: string }> {
   const result = await apiFetch<any>('/api/jaga/presensi/manual', {
     method: 'POST',
     body: JSON.stringify(payload),
+  });
+  return result.ok ? { success: true, message: result.data?.message } : { error: result.error };
+}
+
+export async function deletePresensiJaga(
+  id: string
+): Promise<{ success?: boolean; message?: string; error?: string }> {
+  const result = await apiFetch<any>(`/api/jaga/presensi/${id}`, {
+    method: 'DELETE',
   });
   return result.ok ? { success: true, message: result.data?.message } : { error: result.error };
 }

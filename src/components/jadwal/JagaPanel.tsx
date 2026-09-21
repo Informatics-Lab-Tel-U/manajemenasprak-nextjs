@@ -6,7 +6,12 @@ import { useJaga } from '@/hooks/useJaga';
 import { getShiftTimeString } from '@/utils/jagaUtils';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
-import { deleteJadwalJaga, bulkDeleteJadwalJaga } from '@/lib/fetchers/jagaFetcher';
+import {
+  deleteJadwalJaga,
+  bulkDeleteJadwalJaga,
+  submitManualPresensi,
+  deletePresensiJaga,
+} from '@/lib/fetchers/jagaFetcher';
 import { usePresensiJagaStore } from '@/store/usePresensiJagaStore';
 import { JagaCell } from '@/components/jadwal/JagaCell';
 import {
@@ -142,6 +147,57 @@ export default function JagaPanel({
       setDeletingItem(null);
     }
   };
+
+  const handleQuickPresensi = async (jaga: any, status: 'HADIR' | 'TERLAMBAT') => {
+    try {
+      const res = await submitManualPresensi({
+        idAsprak: jaga.id_asprak,
+        tahunAjaran: term,
+        modul: modulNum > 0 ? modulNum : 1,
+        hari: activeDay,
+        shift: jaga.shift,
+        status,
+        waktuMasuk: new Date().toISOString(),
+      });
+      if (res.success) {
+        toast.success(res.message || `Presensi ${jaga.asprak?.kode || 'asisten'} berhasil dicatat`);
+        if (term && modulNum > 0) {
+          loadPresensiForModul(term, modulNum);
+        }
+        initPresensi();
+      } else {
+        toast.error(res.error || 'Gagal mencatat presensi');
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Terjadi kesalahan');
+    }
+  };
+
+  const [deletingPresensiItem, setDeletingPresensiItem] = useState<{ id: string; name: string } | null>(null);
+  const [isDeletingPresensi, setIsDeletingPresensi] = useState(false);
+
+  const handleConfirmedDeletePresensi = async () => {
+    if (!deletingPresensiItem) return;
+    setIsDeletingPresensi(true);
+    try {
+      const res = await deletePresensiJaga(deletingPresensiItem.id);
+      if (res.success) {
+        toast.success(res.message || 'Presensi berhasil dibatalkan');
+        if (term && modulNum > 0) {
+          loadPresensiForModul(term, modulNum);
+        }
+        initPresensi();
+      } else {
+        toast.error(res.error || 'Gagal membatalkan presensi');
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Terjadi kesalahan');
+    } finally {
+      setIsDeletingPresensi(false);
+      setDeletingPresensiItem(null);
+    }
+  };
+
 
   // Compute max asprak columns across all shifts (min MIN_ASPRAK_COLS)
   const maxCols = Math.max(
@@ -287,8 +343,12 @@ export default function JagaPanel({
                               });
                               setDeleteScope('single');
                               setIsDeleteDialogOpen(true);
-                          }}
-                        />
+                            }}
+                            onQuickPresensi={handleQuickPresensi}
+                            onDeletePresensi={(presensiId, asprakName) =>
+                              setDeletingPresensiItem({ id: presensiId, name: asprakName })
+                            }
+                          />
                       ) : (
                         /* Empty cell — shows + on hover for ADMIN */
                         userRole === 'ADMIN' ? (
@@ -460,6 +520,53 @@ export default function JagaPanel({
                 </>
               ) : (
                 'Ya, Hapus Jadwal'
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Cancel Presensi confirmation dialog */}
+      <AlertDialog
+        open={Boolean(deletingPresensiItem)}
+        onOpenChange={(open) => !open && setDeletingPresensiItem(null)}
+      >
+        <AlertDialogContent className="flex flex-col gap-0 p-0 sm:max-w-md overflow-hidden">
+          <AlertDialogHeader className="border-b px-6 py-4 text-left block space-y-0">
+            <AlertDialogTitle className="text-lg font-semibold text-destructive">
+              Batalkan Presensi
+            </AlertDialogTitle>
+            <AlertDialogDescription className="sr-only">
+              Konfirmasi pembatalan presensi asisten
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <div className="p-6 text-foreground text-sm">
+            <p className="text-muted-foreground">
+              Apakah Anda yakin ingin membatalkan status kehadiran untuk{' '}
+              <strong className="text-foreground">{deletingPresensiItem?.name}</strong>?
+            </p>
+            <p className="text-xs text-muted-foreground mt-2">
+              Status kehadiran asisten ini akan dikembalikan menjadi belum hadir.
+            </p>
+          </div>
+
+          <AlertDialogFooter className="border-t px-6 py-4 sm:justify-end gap-2">
+            <AlertDialogCancel disabled={isDeletingPresensi}>Batal</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                handleConfirmedDeletePresensi();
+              }}
+              variant="destructive"
+              disabled={isDeletingPresensi}
+            >
+              {isDeletingPresensi ? (
+                <>
+                  <Spinner className="mr-2 h-4 w-4" /> Memproses...
+                </>
+              ) : (
+                'Ya, Batalkan Presensi'
               )}
             </AlertDialogAction>
           </AlertDialogFooter>

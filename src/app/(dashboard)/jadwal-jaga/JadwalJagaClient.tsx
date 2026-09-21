@@ -217,6 +217,7 @@ export default function JadwalJagaClient({
         onClose={() => setIsRfidModalOpen(false)}
         term={selectedTerm}
         selectedModul={modulNum}
+        selectedDay={selectedDay}
         onSuccess={() => {
           handleRefresh();
         }}
