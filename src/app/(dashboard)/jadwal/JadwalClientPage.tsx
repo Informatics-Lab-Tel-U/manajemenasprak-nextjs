@@ -169,11 +169,13 @@ export default function JadwalClientPage({
     const isEditingPJJ = inputKelas.toUpperCase().includes('PJJ');
 
     const conflict = rawJadwalList.find((j) => {
+      // Exclude the jadwal being edited — use string comparison to avoid NaN issues
+      if (id !== undefined && String(j.id) === String(id)) return false;
+
       const isExistingPJJ = j.kelas?.toUpperCase().includes('PJJ');
       if (isEditingPJJ || isExistingPJJ) return false;
 
       return (
-        Number(j.id) !== Number(id) &&
         j.hari === hari &&
         j.sesi === Number(sesi) &&
         j.ruangan === ruangan
