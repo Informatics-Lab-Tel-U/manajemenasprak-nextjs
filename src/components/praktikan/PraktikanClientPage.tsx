@@ -42,7 +42,7 @@ export default function PraktikanClientPage() {
       if (kelasFilter.trim()) params.set('kelas', kelasFilter.trim());
       if (mataKuliahFilter.trim()) params.set('mata_kuliah', mataKuliahFilter.trim());
 
-      const response = await fetch(`/api/praktikan?${params.toString()}`);
+      const response = await fetch(`/api/praktikan?${params.toString()}`, { cache: 'no-store' });
       const result = await response.json();
 
       if (!response.ok || !result.ok) {
@@ -59,7 +59,7 @@ export default function PraktikanClientPage() {
 
   const fetchOptions = useCallback(async () => {
     try {
-      const optionsResponse = await fetch('/api/praktikan?action=options');
+      const optionsResponse = await fetch('/api/praktikan?action=options', { cache: 'no-store' });
       const optionsResult = await optionsResponse.json();
       const baseOptions = optionsResult.data ?? { kelas: [], mata_kuliah: [] };
 
@@ -67,7 +67,7 @@ export default function PraktikanClientPage() {
 
       if (mataKuliahFilter.trim()) {
         const params = new URLSearchParams({ mata_kuliah: mataKuliahFilter.trim() });
-        const kelasResponse = await fetch(`/api/praktikan/kelas?${params.toString()}`);
+        const kelasResponse = await fetch(`/api/praktikan/kelas?${params.toString()}`, { cache: 'no-store' });
         const kelasResult = await kelasResponse.json();
         kelas = kelasResult.data ?? [];
       }

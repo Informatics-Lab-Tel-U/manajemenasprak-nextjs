@@ -78,7 +78,7 @@ export default function PraktikanBulkDeleteDialog({
     const fetchKelasForMk = async () => {
       try {
         const params = new URLSearchParams({ mata_kuliah: selectedMataKuliah });
-        const res = await fetch(`/api/praktikan/kelas?${params.toString()}`);
+        const res = await fetch(`/api/praktikan/kelas?${params.toString()}`, { cache: 'no-store' });
         const result = await res.json();
         if (isSubscribed && result.ok && Array.isArray(result.data)) {
           setAvailableKelas(result.data);
