@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo } from 'react';
 import { Card, CardHeader, CardTitle, CardDescription, CardAction, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useMonitoringStore, LabStatus } from '@/store/useMonitoringStore';
@@ -15,11 +15,10 @@ interface MonitoringSummaryCardsProps {
 export function MonitoringSummaryCards({ initialData = [] }: MonitoringSummaryCardsProps) {
   const monitoringData = useMonitoringStore((s) => s.labStatus);
   const heartbeatData = useMonitoringStore((s) => s.heartbeatData);
+  const now = useMonitoringStore((s) => s.now);
   const init = useMonitoringStore((s) => s.init);
   const setInitialLabStatus = useMonitoringStore((s) => s.setInitialLabStatus);
   
-  const [now, setNow] = useState(new Date());
-
   // Populate store dengan data SSR SEBELUM init() async selesai,
   // sehingga render pertama sudah memiliki data yang benar.
   useEffect(() => {
@@ -28,13 +27,6 @@ export function MonitoringSummaryCards({ initialData = [] }: MonitoringSummaryCa
     }
     init();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Timer untuk refresh offline-status calculation.
-  // 10 detik cukup — threshold offline adalah 60 detik.
-  useEffect(() => {
-    const timer = setInterval(() => setNow(new Date()), 10_000);
-    return () => clearInterval(timer);
-  }, []);
 
   // Memo 1: Bergantung pada monitoringData + now (aktif/offline).
   // Hanya re-compute saat ada update Realtime ATAU setiap 10 detik (timer).

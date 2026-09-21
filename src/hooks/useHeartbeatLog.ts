@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useMonitoringStore, HeartbeatPoint } from '@/store/useMonitoringStore';
 
 export type { HeartbeatPoint };
@@ -48,19 +48,23 @@ export function useHeartbeatLogAll(range: string = '1h') {
     return () => { abortRef.current?.abort(); };
   }, [range, fetchHistory]);
 
-  const merged: Record<string, HeartbeatPoint[]> = {};
-  const allLabIds = new Set([...Object.keys(historicalData), ...Object.keys(realtimeData)]);
+  // useMemo: merge hanya dihitung ulang saat historicalData atau realtimeData berubah,
+  // bukan setiap re-render komponen yang menggunakan hook ini
+  return useMemo(() => {
+    const merged: Record<string, HeartbeatPoint[]> = {};
+    const allLabIds = new Set([...Object.keys(historicalData), ...Object.keys(realtimeData)]);
 
-  allLabIds.forEach(labId => {
-    const historical = historicalData[labId] ?? [];
-    const realtime = realtimeData[labId] ?? [];
+    allLabIds.forEach(labId => {
+      const historical = historicalData[labId] ?? [];
+      const realtime = realtimeData[labId] ?? [];
 
-    const seen = new Map<string, HeartbeatPoint>();
-    [...historical, ...realtime].forEach(p => seen.set(p.created_at, p));
+      const seen = new Map<string, HeartbeatPoint>();
+      [...historical, ...realtime].forEach(p => seen.set(p.created_at, p));
 
-    merged[labId] = Array.from(seen.values())
-      .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
-  });
+      merged[labId] = Array.from(seen.values())
+        .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+    });
 
-  return merged;
+    return merged;
+  }, [historicalData, realtimeData]);
 }

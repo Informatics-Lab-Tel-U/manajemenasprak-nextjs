@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Activity, MonitorOff } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
@@ -20,21 +20,14 @@ const ResponseTimeChart = dynamic(
 export default function RealtimeMonitoringList({ initialData }: { initialData: LabStatus[] }) {
   const monitoringData = useMonitoringStore(s => s.labStatus);
   const heartbeatHistory = useMonitoringStore(s => s.heartbeatData);
+  const now = useMonitoringStore(s => s.now);
   const init = useMonitoringStore(s => s.init);
   const setInitialLabStatus = useMonitoringStore(s => s.setInitialLabStatus);
-
-
-  const [now, setNow] = useState(new Date());
 
   useEffect(() => {
     setInitialLabStatus(initialData);
     init();
   }, [initialData, setInitialLabStatus, init]);
-
-  useEffect(() => {
-    const timer = setInterval(() => setNow(new Date()), 1000);
-    return () => clearInterval(timer);
-  }, []);
 
   if (monitoringData.length === 0) {
     return (

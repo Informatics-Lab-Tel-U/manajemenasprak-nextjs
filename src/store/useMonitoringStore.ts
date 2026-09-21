@@ -13,31 +13,40 @@ export type HeartbeatPoint = {
   response_time_ms: number | null;
 };
 
-const MAX_POINTS = 60; // 60 points per lab ~ 20 menit jika interval 20s
+const MAX_POINTS = 60;          // 60 points per lab ~ 20 menit jika interval 20s
+const POLLING_INTERVAL_MS = 30_000; // polling fallback setiap 30 detik
+const NOW_TICK_MS = 10_000;     // tick `now` setiap 10 detik (threshold offline: 60s)
+const RECONNECT_DELAY_MS = 5_000;  // delay sebelum reconnect setelah channel error
 
 interface MonitoringState {
   labStatus: LabStatus[];
   heartbeatData: Record<string, HeartbeatPoint[]>;
   isInitialized: boolean;
+  /** Waktu saat ini — diperbarui global setiap 10 detik, menggantikan timer per-komponen */
+  now: Date;
   init: () => void;
   cleanup: () => void;
   setInitialLabStatus: (data: LabStatus[]) => void;
   updateLabStatus: (data: LabStatus[]) => void;
+  _tickNow: () => void;
 }
 
-// Client global untuk websocket, disimpan di luar React lifecycle
+// Client global untuk websocket — disimpan di luar React lifecycle
 const supabase = createClient();
 let channelLab: ReturnType<typeof supabase.channel> | null = null;
 let channelHeartbeat: ReturnType<typeof supabase.channel> | null = null;
-// Mutex: menjamin init() hanya berjalan satu kali meskipun dipanggil secara bersamaan
+// Mutex: menjamin init() hanya berjalan satu kali meskipun dipanggil bersamaan
 let initPromise: Promise<void> | null = null;
-
-
+// Timer referensi untuk cleanup
+let pollTimer: ReturnType<typeof setInterval> | null = null;
+let nowTimer: ReturnType<typeof setInterval> | null = null;
+let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 
 export const useMonitoringStore = create<MonitoringState>((set, get) => ({
   labStatus: [],
   heartbeatData: {},
   isInitialized: false,
+  now: new Date(),
 
   setInitialLabStatus: (data) => {
     // Hanya set jika labStatus masih kosong agar tidak me-reset data realtime yang sudah jalan
@@ -47,14 +56,14 @@ export const useMonitoringStore = create<MonitoringState>((set, get) => ({
   },
 
   updateLabStatus: (data) => {
-    // Paksa update (berguna untuk polling fallback)
     set({ labStatus: data });
   },
 
+  _tickNow: () => set({ now: new Date() }),
+
   init: async () => {
-    // Mutex: kembalikan promise yang sama jika init sedang berjalan atau sudah selesai
     if (initPromise) return initPromise;
-    
+
     initPromise = (async () => {
       set({ isInitialized: true });
 
@@ -67,91 +76,109 @@ export const useMonitoringStore = create<MonitoringState>((set, get) => ({
               set({ labStatus: json.data });
             }
           }
-        } catch (err) {}
+        } catch (_err) {}
       };
 
-      // Initial client fetch untuk menjamin data paling fresh tanpa bergantung jeda SSR/WebSocket
+      // Initial fetch untuk data paling fresh tanpa bergantung jeda SSR/WebSocket
       await fetchStatus();
+
+      // Polling fallback — re-fetch setiap 30 detik agar data tidak stale jika WS putus
+      if (!pollTimer) {
+        pollTimer = setInterval(fetchStatus, POLLING_INTERVAL_MS);
+      }
+
+      // Global `now` ticker — satu interval untuk seluruh aplikasi
+      if (!nowTimer) {
+        nowTimer = setInterval(() => get()._tickNow(), NOW_TICK_MS);
+      }
+
+      // Handler reuse untuk kedua channel
+      const handleChannelError = (channelName: string) => (status: string, err: any) => {
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          console.warn(`[Realtime:Store] ${channelName} channel error (${status}), reconnecting in ${RECONNECT_DELAY_MS}ms`, err);
+
+          // Bersihkan channel yang bermasalah
+          if (channelLab) { supabase.removeChannel(channelLab); channelLab = null; }
+          if (channelHeartbeat) { supabase.removeChannel(channelHeartbeat); channelHeartbeat = null; }
+          initPromise = null;
+
+          // Debounce: batalkan reconnect yang sudah dijadwalkan (hindari double-reconnect
+          // jika kedua channel error sekaligus)
+          if (reconnectTimer) clearTimeout(reconnectTimer);
+          reconnectTimer = setTimeout(() => {
+            reconnectTimer = null;
+            get().init();
+          }, RECONNECT_DELAY_MS);
+        }
+      };
 
       // Setup WebSocket Subscription untuk monitoring_lab
       if (!channelLab) {
-      channelLab = supabase
-        .channel('global_monitoring_lab')
-        .on(
-          'postgres_changes',
-          { event: '*', schema: 'public', table: 'monitoring_lab' },
-          (payload) => {
-            const updatedRow = payload.new as LabStatus;
-            set((state) => {
-              const existingIndex = state.labStatus.findIndex((item) => item.lab_id === updatedRow.lab_id);
-              if (existingIndex !== -1) {
-                const newData = [...state.labStatus];
-                newData[existingIndex] = updatedRow;
-                return { labStatus: newData.sort((a, b) => a.lab_id.localeCompare(b.lab_id)) };
-              }
-              return { labStatus: [...state.labStatus, updatedRow].sort((a, b) => a.lab_id.localeCompare(b.lab_id)) };
-            });
-          }
-        )
-        .subscribe((status, err) => {
-          if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-            console.warn('[Realtime:Store] Lab Channel issue:', status, err);
-          }
-        });
-    }
+        channelLab = supabase
+          .channel('global_monitoring_lab')
+          .on(
+            'postgres_changes',
+            { event: '*', schema: 'public', table: 'monitoring_lab' },
+            (payload) => {
+              const updatedRow = payload.new as LabStatus;
+              set((state) => {
+                const existingIndex = state.labStatus.findIndex((item) => item.lab_id === updatedRow.lab_id);
+                if (existingIndex !== -1) {
+                  const newData = [...state.labStatus];
+                  newData[existingIndex] = updatedRow;
+                  return { labStatus: newData.sort((a, b) => a.lab_id.localeCompare(b.lab_id)) };
+                }
+                return { labStatus: [...state.labStatus, updatedRow].sort((a, b) => a.lab_id.localeCompare(b.lab_id)) };
+              });
+            }
+          )
+          .subscribe(handleChannelError('Lab'));
+      }
 
       // Setup WebSocket Subscription untuk monitoring_heartbeat_log
       if (!channelHeartbeat) {
-      channelHeartbeat = supabase
-        .channel('global_monitoring_heartbeat')
-        .on(
-          'postgres_changes',
-          { event: 'INSERT', schema: 'public', table: 'monitoring_heartbeat_log' },
-          (payload) => {
-            const newLog = payload.new as any;
-            set((state) => {
-              const labId = newLog.lab_id;
-              const currentList = state.heartbeatData[labId] || [];
-              const updatedList = [
-                ...currentList, 
-                { created_at: newLog.created_at, response_time_ms: newLog.response_time_ms }
-              ];
-              
-              if (updatedList.length > MAX_POINTS) {
-                updatedList.shift();
-              }
-              
-              return {
-                heartbeatData: {
-                  ...state.heartbeatData,
-                  [labId]: updatedList
+        channelHeartbeat = supabase
+          .channel('global_monitoring_heartbeat')
+          .on(
+            'postgres_changes',
+            { event: 'INSERT', schema: 'public', table: 'monitoring_heartbeat_log' },
+            (payload) => {
+              const newLog = payload.new as any;
+              set((state) => {
+                const labId = newLog.lab_id;
+                const currentList = state.heartbeatData[labId] || [];
+                const updatedList = [
+                  ...currentList,
+                  { created_at: newLog.created_at, response_time_ms: newLog.response_time_ms },
+                ];
+
+                if (updatedList.length > MAX_POINTS) {
+                  updatedList.shift();
                 }
-              };
-            });
-          }
-        )
-        .subscribe((status, err) => {
-          if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-            console.warn('[Realtime:Store] Heartbeat Channel issue:', status, err);
-          }
-        });
-    }
+
+                return {
+                  heartbeatData: {
+                    ...state.heartbeatData,
+                    [labId]: updatedList,
+                  },
+                };
+              });
+            }
+          )
+          .subscribe(handleChannelError('Heartbeat'));
+      }
     })();
-    
+
     return initPromise;
   },
 
   cleanup: () => {
-
-    if (channelLab) {
-      supabase.removeChannel(channelLab);
-      channelLab = null;
-    }
-    if (channelHeartbeat) {
-      supabase.removeChannel(channelHeartbeat);
-      channelHeartbeat = null;
-    }
+    if (channelLab) { supabase.removeChannel(channelLab); channelLab = null; }
+    if (channelHeartbeat) { supabase.removeChannel(channelHeartbeat); channelHeartbeat = null; }
+    if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+    if (nowTimer) { clearInterval(nowTimer); nowTimer = null; }
+    if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
     initPromise = null;
     set({ isInitialized: false });
-  }
+  },
 }));

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { Card, CardContent, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ROOMS } from '@/constants';
@@ -10,29 +10,16 @@ import { ChevronRight } from 'lucide-react';
 
 import { isLabOnline } from '@/lib/labStatus';
 
-const RECONNECT_DELAY_MS = 5_000;
-
 export default function RealtimeMonitoringWidget({ initialData }: { initialData: LabStatus[] }) {
   const monitoringData = useMonitoringStore(s => s.labStatus);
+  const now = useMonitoringStore(s => s.now);
   const init = useMonitoringStore(s => s.init);
   const setInitialLabStatus = useMonitoringStore(s => s.setInitialLabStatus);
-  const updateLabStatus = useMonitoringStore(s => s.updateLabStatus);
-
-  const [now, setNow] = useState(new Date());
 
   useEffect(() => {
     setInitialLabStatus(initialData);
     init();
   }, [initialData, setInitialLabStatus, init]);
-
-  useEffect(() => {
-    const timer = setInterval(() => setNow(new Date()), 1000);
-    return () => clearInterval(timer);
-  }, []);
-
-
-
-  const activeLabsCount = monitoringData.filter((d) => isLabOnline(d, now)).length;
 
   return (
     <Card className="w-full transition-colors border bg-card hover:border-foreground/20 shadow-sm border-blue-200/50 dark:border-blue-500/20 py-0 mb-6">
