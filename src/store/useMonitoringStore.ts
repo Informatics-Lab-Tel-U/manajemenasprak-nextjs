@@ -41,6 +41,12 @@ let initPromise: Promise<void> | null = null;
 let pollTimer: ReturnType<typeof setInterval> | null = null;
 let nowTimer: ReturnType<typeof setInterval> | null = null;
 let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+// Jumlah channel yang sudah SUBSCRIBED sukses
+let realtimeConnectedCount = 0;
+
+const stopPolling = () => {
+  if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+};
 
 export const useMonitoringStore = create<MonitoringState>((set, get) => ({
   labStatus: [],
@@ -66,6 +72,7 @@ export const useMonitoringStore = create<MonitoringState>((set, get) => ({
 
     initPromise = (async () => {
       set({ isInitialized: true });
+      realtimeConnectedCount = 0;
 
       const fetchStatus = async () => {
         try {
@@ -83,13 +90,17 @@ export const useMonitoringStore = create<MonitoringState>((set, get) => ({
         } catch (_err) {}
       };
 
-      // Initial fetch untuk data paling fresh tanpa bergantung jeda SSR/WebSocket
+      const startPolling = () => {
+        if (!pollTimer) {
+          pollTimer = setInterval(fetchStatus, POLLING_INTERVAL_MS);
+        }
+      };
+
+      // Initial fetch sekali saat pertama kali init untuk data paling fresh
       await fetchStatus();
 
-      // Polling fallback — re-fetch setiap 30 detik agar data tidak stale jika WS putus
-      if (!pollTimer) {
-        pollTimer = setInterval(fetchStatus, POLLING_INTERVAL_MS);
-      }
+      // Polling dimulai dulu sebagai fallback, akan dimatikan saat Realtime tersambung
+      startPolling();
 
       // Global `now` ticker — satu interval untuk seluruh aplikasi
       if (!nowTimer) {
@@ -98,6 +109,15 @@ export const useMonitoringStore = create<MonitoringState>((set, get) => ({
 
       // Handler reuse untuk kedua channel
       const handleChannelError = (channelName: string) => (status: string, err: any) => {
+        if (status === 'SUBSCRIBED') {
+          realtimeConnectedCount += 1;
+          // Kedua channel tersambung → matikan polling (tidak perlu lagi)
+          if (realtimeConnectedCount >= 2) {
+            stopPolling();
+          }
+          return;
+        }
+
         if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
           console.warn(`[Realtime:Store] ${channelName} channel error (${status}), reconnecting in ${RECONNECT_DELAY_MS}ms`, err);
 
@@ -105,11 +125,12 @@ export const useMonitoringStore = create<MonitoringState>((set, get) => ({
           if (channelLab) { supabase.removeChannel(channelLab); channelLab = null; }
           if (channelHeartbeat) { supabase.removeChannel(channelHeartbeat); channelHeartbeat = null; }
 
-          // Hentikan polling timer lama SEBELUM reset initPromise,
+          // Hentikan polling timer lama dan now timer SEBELUM reset initPromise,
           // agar saat init() baru berjalan tidak menumpuk dua setInterval sekaligus
           if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
           if (nowTimer) { clearInterval(nowTimer); nowTimer = null; }
 
+          realtimeConnectedCount = 0;
           initPromise = null;
 
           // Debounce: batalkan reconnect yang sudah dijadwalkan (hindari double-reconnect
@@ -188,6 +209,7 @@ export const useMonitoringStore = create<MonitoringState>((set, get) => ({
     if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
     if (nowTimer) { clearInterval(nowTimer); nowTimer = null; }
     if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
+    realtimeConnectedCount = 0;
     initPromise = null;
     set({ isInitialized: false });
   },
