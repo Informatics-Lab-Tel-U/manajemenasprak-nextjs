@@ -8,6 +8,7 @@ import { getModulScheduleByTerm } from '@/services/modulScheduleService';
 import DashboardClient from '@/components/DashboardClient';
 import { requireAuth } from '@/lib/auth';
 import { getMonitoringLabs } from '@/services/monitoringService';
+import { determineActiveModul } from '@/utils/jagaUtils';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -27,10 +28,6 @@ export default async function Home() {
     initialTerms = (await fetchAvailableTerms()) || [];
     latestTerm = initialTerms[0] ?? '';
 
-    const nowUtc = new Date();
-    const nowWib = new Date(nowUtc.getTime() + 7 * 60 * 60 * 1000);
-    const todayStr = nowWib.toISOString().split('T')[0];
-
     const [modulsRes, statsRes, jadwalRes, monitoringRes] = await Promise.all([
       getModulScheduleByTerm(latestTerm),
       getStats(latestTerm),
@@ -39,10 +36,7 @@ export default async function Home() {
     ]);
 
     const initialModuls = modulsRes || [];
-    activeModul =
-      initialModuls
-        .filter((m) => m.tanggal_mulai && m.tanggal_mulai <= todayStr)
-        .sort((a, b) => b.modul - a.modul)[0]?.modul || 1;
+    activeModul = determineActiveModul(initialModuls);
 
     const penggantiRes = await getJadwalPengganti(activeModul);
 

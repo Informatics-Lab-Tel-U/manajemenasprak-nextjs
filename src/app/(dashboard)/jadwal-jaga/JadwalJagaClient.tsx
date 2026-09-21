@@ -1,8 +1,6 @@
-/* eslint-disable react-doctor/no-impure-state-updater */
-/* eslint-disable react-doctor/exhaustive-deps */
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Select,
   SelectContent,
@@ -18,6 +16,7 @@ import JagaRfidModal from '@/components/jadwal/JagaRfidModal';
 import { useTermStore } from '@/store/useTermStore';
 import { exportPresensiJagaExcel } from '@/lib/spreadsheet';
 import { toast } from 'sonner';
+import { determineActiveModul } from '@/utils/jagaUtils';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -25,42 +24,62 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 
+interface ModulScheduleItem {
+  modul: number;
+  tanggal_mulai: string | null;
+}
+
 export default function JadwalJagaClient({
   initialTerms,
   userRole,
+  initialActiveModul = 1,
+  initialModulSchedule = [],
 }: {
   initialTerms: string[];
   userRole?: string;
+  initialActiveModul?: number;
+  initialModulSchedule?: ModulScheduleItem[];
 }) {
   const { activeTerm } = useTermStore();
   const selectedTerm = activeTerm || initialTerms[0] || '';
-  const [selectedModul, setSelectedModul] = useState('Modul 1');
+  const [selectedModul, setSelectedModul] = useState(`Modul ${initialActiveModul}`);
   const [selectedDay, setSelectedDay] = useState('SENIN');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isRfidModalOpen, setIsRfidModalOpen] = useState(false);
   const [editingData, setEditingData] = useState<any>(null);
-  const [konfigurasiModul, setKonfigurasiModul] = useState<any[]>([]);
+  const [konfigurasiModul, setKonfigurasiModul] = useState<ModulScheduleItem[]>(initialModulSchedule);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [isExporting, setIsExporting] = useState(false);
+
+  const lastFetchedTermRef = useRef<string | null>(
+    initialModulSchedule && initialModulSchedule.length > 0 && initialTerms[0] ? initialTerms[0] : null
+  );
 
   const moduls = Array.from({ length: 16 }, (_, i) => `Modul ${i + 1}`);
   const modulNum = selectedModul === 'Default' ? 0 : parseInt(selectedModul.replace('Modul ', ''));
 
   useEffect(() => {
-    const controller = new AbortController();
-    if (selectedTerm) {
-      // eslint-disable-next-line react-doctor/no-fetch-in-effect
-      fetch(`/api/modul-schedule?term=${selectedTerm}`, { signal: controller.signal })
-        .then((res) => res.json())
-        .then((data) => {
-          if (!controller.signal.aborted && data.ok && data.data) {
-            setKonfigurasiModul(data.data);
-          }
-        })
-        .catch((e) => {
-          if (!controller.signal.aborted) console.error(e);
-        });
+    if (!selectedTerm) return;
+
+    if (lastFetchedTermRef.current === selectedTerm) {
+      return;
     }
+
+    const controller = new AbortController();
+    fetch(`/api/modul-schedule?term=${encodeURIComponent(selectedTerm)}`, { signal: controller.signal })
+      .then((res) => res.json())
+      .then((data) => {
+        if (!controller.signal.aborted && data.ok && data.data) {
+          lastFetchedTermRef.current = selectedTerm;
+          setKonfigurasiModul(data.data);
+          const active = determineActiveModul(data.data);
+          setSelectedModul(`Modul ${active}`);
+        }
+      })
+      .catch((e) => {
+        if (!controller.signal.aborted) console.error(e);
+      });
+
     return () => controller.abort();
   }, [selectedTerm]);
 
