@@ -70,6 +70,10 @@ export const useMonitoringStore = create<MonitoringState>((set, get) => ({
       const fetchStatus = async () => {
         try {
           const res = await fetch('/api/monitoring/status');
+          if (res.status === 401) {
+            // Token belum siap / sesi expired — jangan polling terus
+            return;
+          }
           if (res.ok) {
             const json = await res.json();
             if (Array.isArray(json.data) && json.data.length > 0) {
@@ -100,6 +104,12 @@ export const useMonitoringStore = create<MonitoringState>((set, get) => ({
           // Bersihkan channel yang bermasalah
           if (channelLab) { supabase.removeChannel(channelLab); channelLab = null; }
           if (channelHeartbeat) { supabase.removeChannel(channelHeartbeat); channelHeartbeat = null; }
+
+          // Hentikan polling timer lama SEBELUM reset initPromise,
+          // agar saat init() baru berjalan tidak menumpuk dua setInterval sekaligus
+          if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+          if (nowTimer) { clearInterval(nowTimer); nowTimer = null; }
+
           initPromise = null;
 
           // Debounce: batalkan reconnect yang sudah dijadwalkan (hindari double-reconnect
