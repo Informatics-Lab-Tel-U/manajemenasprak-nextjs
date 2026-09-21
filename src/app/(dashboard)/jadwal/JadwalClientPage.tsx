@@ -1,7 +1,7 @@
 "use client";
 
 /* eslint-disable react-doctor/no-impure-state-updater */
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useJadwal } from '@/hooks/useJadwal';
 import {
   Select,
@@ -12,6 +12,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
@@ -25,6 +27,7 @@ import {
   Plus,
   Upload,
   PaintBucket,
+  Pencil,
 } from 'lucide-react';
 import { Jadwal, MataKuliah } from '@/types/database';
 import { JadwalModal } from '@/components/jadwal/JadwalModal';
@@ -38,6 +41,7 @@ import * as jadwalFetcher from '@/lib/fetchers/jadwalFetcher';
 import { toast } from 'sonner';
 import { Skeleton } from '@/components/ui/skeleton';
 import JagaPanel from '@/components/jadwal/JagaPanel';
+import { ROOMS } from '@/constants';
 
 interface JadwalClientPageProps {
   initialJadwal: Jadwal[];
@@ -104,6 +108,7 @@ export default function JadwalClientPage({
   initialMataKuliahList,
 }: JadwalClientPageProps) {
   const [programType, setProgramType] = useState<'REGULER' | 'PJJ'>('REGULER');
+  const [isEditMode, setIsEditMode] = useState(false);
 
   const {
     data: rawJadwalList,
@@ -132,8 +137,16 @@ export default function JadwalClientPage({
   const [isColorModalOpen, setIsColorModalOpen] = useState(false);
   const [modalInitialData, setModalInitialData] = useState<any | null>(null);
 
-  const handleOpenAdd = () => {
-    setModalInitialData(null);
+  // Drag & drop state
+  const dragJadwalId = useRef<string | null>(null);
+  const [dragOverCell, setDragOverCell] = useState<string | null>(null);
+
+  const handleOpenAdd = (prefill?: { hari?: string; sesi?: number; ruangan?: string }) => {
+    if (prefill) {
+      setModalInitialData({ _prefill: true, ...prefill });
+    } else {
+      setModalInitialData(null);
+    }
     setIsModalOpen(true);
   };
 
@@ -144,7 +157,7 @@ export default function JadwalClientPage({
     } else {
       setIsModalOpen(true);
     }
-    setSelectedJadwal(null); // Close detail modal
+    setSelectedJadwal(null);
   };
 
   const handleModalSubmit = async (input: CreateJadwalInput | UpdateJadwalInput) => {
@@ -155,7 +168,6 @@ export default function JadwalClientPage({
     const inputKelas = 'kelas' in input ? (input.kelas as string) : '';
     const isEditingPJJ = inputKelas.toUpperCase().includes('PJJ');
 
-    // Check for scheduling conflicts in Default mode
     const conflict = rawJadwalList.find((j) => {
       const isExistingPJJ = j.kelas?.toUpperCase().includes('PJJ');
       if (isEditingPJJ || isExistingPJJ) return false;
@@ -201,8 +213,6 @@ export default function JadwalClientPage({
     }
   };
 
-
-
   const handleDeleteJadwal = async (id: string) => {
     try {
       const result = await removeJadwal(id);
@@ -217,7 +227,94 @@ export default function JadwalClientPage({
     }
   };
 
-  // Use the unified useScheduleData hook
+  const handleDuplicate = async (jadwal: Jadwal, scheduleMatrix: any) => {
+    const hari = jadwal.hari?.toUpperCase() || 'SENIN';
+    const sesiKey = jadwal.sesi?.toString() || jadwal.jam || 'Unknown';
+
+    const usedRooms = new Set<string>(
+      Object.keys(scheduleMatrix[hari]?.[sesiKey] || {})
+    );
+
+    const freeRoom = ROOMS.find((r) => !usedRooms.has(r)) || ROOMS[0];
+
+    const result = await addJadwal({
+      id_mk: jadwal.id_mk.toString(),
+      kelas: jadwal.kelas,
+      hari: jadwal.hari,
+      sesi: jadwal.sesi ?? 0,
+      jam: jadwal.jam,
+      ruangan: freeRoom,
+      total_asprak: jadwal.total_asprak ?? 1,
+      dosen: jadwal.dosen || '',
+    });
+
+    if (!result.ok) {
+      toast.error(`Gagal duplikat: ${result.error}`);
+    } else {
+      toast.success(`Jadwal diduplikat ke ${freeRoom}`);
+    }
+  };
+
+  const handleDrop = async (
+    e: React.DragEvent,
+    targetHari: string,
+    targetSesi: number | null,
+    targetJam: string,
+    targetRoom: string
+  ) => {
+    e.preventDefault();
+    setDragOverCell(null);
+
+    const id = dragJadwalId.current;
+    if (!id) return;
+
+    const jadwal = rawJadwalList.find((j) => j.id === id);
+    if (!jadwal) return;
+
+    if (
+      jadwal.hari === targetHari &&
+      jadwal.sesi === targetSesi &&
+      jadwal.ruangan === targetRoom
+    ) {
+      return;
+    }
+
+    // Check conflict
+    const conflict = rawJadwalList.find((j) => {
+      const isPJJ = j.kelas?.toUpperCase().includes('PJJ');
+      if (isPJJ) return false;
+      return (
+        j.id !== id &&
+        j.hari === targetHari &&
+        j.sesi === (targetSesi ?? 0) &&
+        j.ruangan === targetRoom
+      );
+    });
+
+    if (conflict) {
+      toast.error(
+        `Bentrok dengan "${conflict.mata_kuliah?.nama_lengkap}" (${conflict.kelas}) di ${targetRoom}`
+      );
+      return;
+    }
+
+    const result = await editJadwal({
+      id,
+      hari: targetHari,
+      sesi: targetSesi ?? 0,
+      jam: targetJam,
+      ruangan: targetRoom,
+    });
+
+    if (!result.ok) {
+      toast.error(`Gagal memindahkan jadwal: ${result.error}`);
+    } else {
+      toast.success(`Jadwal dipindahkan ke ${targetRoom}, ${targetHari} Sesi ${targetSesi ?? targetJam}`);
+    }
+
+    dragJadwalId.current = null;
+  };
+
   const { visibleDays, uniqueRooms, scheduleMatrix, dynamicSessionsByDay } = useScheduleData({
     rawJadwalList,
     jadwalPengganti,
@@ -249,9 +346,37 @@ export default function JadwalClientPage({
         </div>
 
         <div className="flex flex-wrap md:flex-nowrap gap-2 md:gap-3 items-center w-full md:w-auto">
+          {/* Edit Mode toggle */}
+          <div
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border transition-colors ${
+              isEditMode
+                ? 'border-primary/40 bg-primary/5'
+                : 'border-border bg-muted/20'
+            }`}
+          >
+            <Pencil
+              size={14}
+              className={`shrink-0 transition-colors ${isEditMode ? 'text-primary' : 'text-muted-foreground'}`}
+            />
+            <Label
+              htmlFor="edit-mode-switch"
+              className={`text-xs font-medium cursor-pointer whitespace-nowrap select-none ${
+                isEditMode ? 'text-primary' : 'text-muted-foreground'
+              }`}
+            >
+              Mode Edit
+            </Label>
+            <Switch
+              id="edit-mode-switch"
+              checked={isEditMode}
+              onCheckedChange={setIsEditMode}
+              className="scale-90"
+            />
+          </div>
+
           <Button
             variant="outline"
-            onClick={handleOpenAdd}
+            onClick={() => handleOpenAdd()}
             className="flex-1 sm:flex-none min-w-0 md:whitespace-nowrap"
           >
             <Plus size={18} className="shrink-0" />
@@ -375,21 +500,61 @@ export default function JadwalClientPage({
 
                         {uniqueRooms.map((room) => {
                           const jadwals = scheduleMatrix[day]?.[session.rowKey]?.[room] || [];
+                          const cellKey = `${day}-${session.rowKey}-${room}`;
+                          const isDragTarget = dragOverCell === cellKey;
 
                           return (
                             <td
-                              key={`${day}-${session.rowKey}-${room}`}
-                              className="p-0 border-r border-border align-top relative min-w-[120px]"
+                              key={cellKey}
+                              className={`p-0 border-r border-border align-top relative min-w-[120px] transition-colors ${
+                                isEditMode && isDragTarget
+                                  ? 'bg-primary/10 ring-2 ring-inset ring-primary/40'
+                                  : ''
+                              }`}
+                              onDragOver={isEditMode ? (e) => {
+                                e.preventDefault();
+                                setDragOverCell(cellKey);
+                              } : undefined}
+                              onDragLeave={isEditMode ? () => {
+                                setDragOverCell((prev) => prev === cellKey ? null : prev);
+                              } : undefined}
+                              onDrop={isEditMode ? (e) => {
+                                handleDrop(e, day, session.sesi, session.jam, room);
+                              } : undefined}
                             >
                               <div className="flex flex-col w-full h-full min-h-[60px]">
-                                {jadwals.map((jadwal, idx) => (
+                                {jadwals.map((jadwal) => (
                                   <ScheduleCell
                                     key={jadwal.id}
                                     jadwal={jadwal}
-                                    onClick={() => setSelectedJadwal(jadwal)}
+                                    onClick={isEditMode ? undefined : () => setSelectedJadwal(jadwal)}
                                     showAsprakCount={true}
+                                    isEditMode={isEditMode}
+                                    onDragStart={(e) => {
+                                      dragJadwalId.current = jadwal.id;
+                                      e.dataTransfer.effectAllowed = 'move';
+                                    }}
+                                    onDuplicate={() => handleDuplicate(jadwal, scheduleMatrix)}
                                   />
                                 ))}
+
+                                {/* Add button — shown in edit mode */}
+                                {isEditMode && (
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      handleOpenAdd({
+                                        hari: day,
+                                        sesi: session.sesi ?? undefined,
+                                        ruangan: room === 'Tanpa Ruangan' ? '' : room,
+                                      })
+                                    }
+                                    className="flex items-center justify-center w-full min-h-[28px] py-1 text-muted-foreground/40 hover:text-primary hover:bg-primary/5 transition-colors border-t border-dashed border-muted-foreground/20 first:border-t-0"
+                                    title={`Tambah jadwal di ${room}, ${day} Sesi ${session.sesi ?? session.jam}`}
+                                  >
+                                    <Plus size={12} />
+                                  </button>
+                                )}
                               </div>
                             </td>
                           );
@@ -418,6 +583,12 @@ export default function JadwalClientPage({
               <div className="w-3.5 h-3.5 rounded-sm bg-muted border border-border"></div>
               <span>Jadwal Reguler</span>
             </div>
+            {isEditMode && (
+              <div className="flex items-center gap-1.5 ml-auto text-primary/70">
+                <Pencil size={11} />
+                <span>Drag untuk pindah • icon duplikat di pojok kanan atas • tombol + untuk tambah</span>
+              </div>
+            )}
           </div>
 
           {!loading && uniqueRooms.length === 0 && (
@@ -434,7 +605,7 @@ export default function JadwalClientPage({
         </div>
       </div>
 
-      {/* Detail Modal */}
+      {/* Detail Modal — only available outside edit mode */}
       <Dialog open={!!selectedJadwal} onOpenChange={(v) => !v && setSelectedJadwal(null)}>
         <DialogContent showCloseButton={false} className="p-0 gap-0 overflow-hidden sm:max-w-lg">
           <DialogHeader className="sr-only">
@@ -446,108 +617,108 @@ export default function JadwalClientPage({
               <div className="relative p-6 pb-4 border-b border-border/50">
                 <Button
                   variant="ghost"
-                size="icon"
-                onClick={() => setSelectedJadwal(null)}
-                className="absolute top-4 right-4 rounded-full hover:bg-muted text-muted-foreground"
-              >
-                <X size={20} />
-              </Button>
-
-              <div className="flex flex-wrap gap-2 mb-3">
-                <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-primary/10 text-primary border border-primary/20">
-                  {selectedJadwal.mata_kuliah?.program_studi || 'N/A'}
-                </span>
-                <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-secondary text-secondary-foreground">
-                  {selectedJadwal.sesi ? `Sesi ${selectedJadwal.sesi}` : 'Non-Sesi'}
-                </span>
-              </div>
-
-              <h2 className="text-xl md:text-2xl font-bold leading-tight mb-1">
-                {selectedJadwal?.mata_kuliah?.nama_lengkap}
-              </h2>
-              <p className="text-lg font-medium text-foreground/80">
-                Kelas {selectedJadwal?.kelas}
-              </p>
-            </div>
-
-            <div className="p-6 space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/20 border border-border/50">
-                  <Clock className="text-muted-foreground mt-0.5 shrink-0" size={18} />
-                  <div>
-                    <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">
-                      Waktu
-                    </p>
-                    <p className="text-sm font-semibold">
-                      {selectedJadwal?.hari}, {selectedJadwal?.jam}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/20 border border-border/50">
-                  <MapPin className="text-muted-foreground mt-0.5 shrink-0" size={18} />
-                  <div>
-                    <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">
-                      Ruangan
-                    </p>
-                    <p className="text-sm font-semibold">
-                      {!selectedJadwal?.ruangan || selectedJadwal?.ruangan === 'Tanpa Ruangan'
-                        ? '-'
-                        : selectedJadwal?.ruangan}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/20 border border-border/50">
-                  <User className="text-muted-foreground mt-0.5 shrink-0" size={18} />
-                  <div>
-                    <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">
-                      Dosen
-                    </p>
-                    <p className="text-sm font-semibold">{selectedJadwal?.dosen || '-'}</p>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/20 border border-border/50">
-                  <Users className="text-muted-foreground mt-0.5 shrink-0" size={18} />
-                  <div>
-                    <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">
-                      Kebutuhan
-                    </p>
-                    <p className="text-sm font-semibold">{selectedJadwal?.total_asprak} Asprak</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="p-4 bg-muted/20 border-t border-border/50 text-right">
-              <div className="flex gap-2 justify-end items-center">
-                <Button
-                  variant="destructive"
-                  onClick={() => {
-                    if (
-                      selectedJadwal &&
-                      confirm('Apakah Anda yakin ingin menghapus jadwal ini?')
-                    ) {
-                      handleDeleteJadwal(selectedJadwal.id);
-                    }
-                  }}
-                  className="mr-auto"
+                  size="icon"
+                  onClick={() => setSelectedJadwal(null)}
+                  className="absolute top-4 right-4 rounded-full hover:bg-muted text-muted-foreground"
                 >
-                  Hapus Jadwal
+                  <X size={20} />
                 </Button>
 
-                <Button variant="outline" onClick={() => setSelectedJadwal(null)}>
-                  Tutup
-                </Button>
+                <div className="flex flex-wrap gap-2 mb-3">
+                  <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-primary/10 text-primary border border-primary/20">
+                    {selectedJadwal.mata_kuliah?.program_studi || 'N/A'}
+                  </span>
+                  <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-secondary text-secondary-foreground">
+                    {selectedJadwal.sesi ? `Sesi ${selectedJadwal.sesi}` : 'Non-Sesi'}
+                  </span>
+                </div>
 
-                <Button
-                  onClick={() => selectedJadwal && handleOpenEdit(selectedJadwal)}
-                >
-                  Edit Jadwal
-                </Button>
+                <h2 className="text-xl md:text-2xl font-bold leading-tight mb-1">
+                  {selectedJadwal?.mata_kuliah?.nama_lengkap}
+                </h2>
+                <p className="text-lg font-medium text-foreground/80">
+                  Kelas {selectedJadwal?.kelas}
+                </p>
               </div>
-            </div>
+
+              <div className="p-6 space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/20 border border-border/50">
+                    <Clock className="text-muted-foreground mt-0.5 shrink-0" size={18} />
+                    <div>
+                      <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">
+                        Waktu
+                      </p>
+                      <p className="text-sm font-semibold">
+                        {selectedJadwal?.hari}, {selectedJadwal?.jam}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/20 border border-border/50">
+                    <MapPin className="text-muted-foreground mt-0.5 shrink-0" size={18} />
+                    <div>
+                      <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">
+                        Ruangan
+                      </p>
+                      <p className="text-sm font-semibold">
+                        {!selectedJadwal?.ruangan || selectedJadwal?.ruangan === 'Tanpa Ruangan'
+                          ? '-'
+                          : selectedJadwal?.ruangan}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/20 border border-border/50">
+                    <User className="text-muted-foreground mt-0.5 shrink-0" size={18} />
+                    <div>
+                      <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">
+                        Dosen
+                      </p>
+                      <p className="text-sm font-semibold">{selectedJadwal?.dosen || '-'}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/20 border border-border/50">
+                    <Users className="text-muted-foreground mt-0.5 shrink-0" size={18} />
+                    <div>
+                      <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">
+                        Kebutuhan
+                      </p>
+                      <p className="text-sm font-semibold">{selectedJadwal?.total_asprak} Asprak</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-4 bg-muted/20 border-t border-border/50 text-right">
+                <div className="flex gap-2 justify-end items-center">
+                  <Button
+                    variant="destructive"
+                    onClick={() => {
+                      if (
+                        selectedJadwal &&
+                        confirm('Apakah Anda yakin ingin menghapus jadwal ini?')
+                      ) {
+                        handleDeleteJadwal(selectedJadwal.id);
+                      }
+                    }}
+                    className="mr-auto"
+                  >
+                    Hapus Jadwal
+                  </Button>
+
+                  <Button variant="outline" onClick={() => setSelectedJadwal(null)}>
+                    Tutup
+                  </Button>
+
+                  <Button
+                    onClick={() => selectedJadwal && handleOpenEdit(selectedJadwal)}
+                  >
+                    Edit Jadwal
+                  </Button>
+                </div>
+              </div>
             </>
           )}
         </DialogContent>
@@ -555,9 +726,13 @@ export default function JadwalClientPage({
 
       <JadwalModal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        onClose={() => {
+          setIsModalOpen(false);
+          setModalInitialData(null);
+        }}
         onSubmit={handleModalSubmit}
-        initialData={modalInitialData}
+        initialData={modalInitialData?._prefill ? null : modalInitialData}
+        prefillData={modalInitialData?._prefill ? modalInitialData : undefined}
         mataKuliahList={mataKuliahList}
         isLoading={loading}
       />

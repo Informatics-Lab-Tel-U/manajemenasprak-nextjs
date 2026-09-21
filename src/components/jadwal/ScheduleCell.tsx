@@ -3,6 +3,7 @@
 import React from 'react';
 import { getCourseColor } from '@/utils/colorUtils';
 import { Jadwal } from '@/types/database';
+import { Copy } from 'lucide-react';
 
 interface ScheduleCellProps {
   jadwal: Jadwal;
@@ -10,6 +11,9 @@ interface ScheduleCellProps {
   showLecturer?: boolean;
   showAsprakCount?: boolean;
   isOnlineActive?: boolean;
+  isEditMode?: boolean;
+  onDuplicate?: () => void;
+  onDragStart?: (e: React.DragEvent) => void;
 }
 
 export const ScheduleCell: React.FC<ScheduleCellProps> = ({
@@ -18,6 +22,9 @@ export const ScheduleCell: React.FC<ScheduleCellProps> = ({
   showLecturer = false,
   showAsprakCount = false,
   isOnlineActive = false,
+  isEditMode = false,
+  onDuplicate,
+  onDragStart,
 }) => {
   const isPengganti = jadwal.is_pengganti;
   const bgColor =
@@ -32,30 +39,37 @@ export const ScheduleCell: React.FC<ScheduleCellProps> = ({
       backgroundColor: bgColor,
     };
 
+  const handleClick = isEditMode ? undefined : onClick;
+
   return (
     <div
-      onClick={onClick}
-      role={onClick ? 'button' : undefined}
-      tabIndex={onClick ? 0 : undefined}
-      onKeyDown={onClick ? (e) => {
+      onClick={handleClick}
+      role={handleClick ? 'button' : undefined}
+      tabIndex={handleClick ? 0 : undefined}
+      onKeyDown={handleClick ? (e) => {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
-          onClick();
+          handleClick();
         }
       } : undefined}
+      draggable={isEditMode}
+      onDragStart={isEditMode ? onDragStart : undefined}
       className={`relative w-full flex-1 flex flex-col items-center justify-center p-1 transition-all overflow-hidden origin-center min-h-[60px] 2xl:min-h-[80px] ${
-        onClick
+        handleClick
           ? 'cursor-pointer hover:brightness-110 hover:scale-105 hover:z-20 hover:shadow-lg'
           : ''
-      } ${isPengganti ? 'z-10' : ''} ${isOnlineActive ? 'z-20 bg-slate-200 dark:bg-slate-800' : ''}`}
+      } ${isEditMode ? 'cursor-grab active:cursor-grabbing active:opacity-50 active:scale-95 active:ring-2 active:ring-white/60 active:ring-offset-1' : ''} ${isPengganti ? 'z-10' : ''} ${isOnlineActive ? 'z-20 bg-slate-200 dark:bg-slate-800' : ''}`}
       style={isOnlineActive ? {} : contentStyle}
       title={
-        onClick ? 'Click for details' : `${jadwal.mata_kuliah?.nama_lengkap} - ${jadwal.kelas}`
+        isEditMode
+          ? `Drag untuk memindahkan • ${jadwal.mata_kuliah?.nama_lengkap} - ${jadwal.kelas}`
+          : handleClick
+            ? 'Click for details'
+            : `${jadwal.mata_kuliah?.nama_lengkap} - ${jadwal.kelas}`
       }
     >
       {isOnlineActive && (
         <>
-          {/* Inner content mask (diletakkan di belakang ular) */}
           <div className="absolute inset-[3px] z-0" style={contentStyle} />
 
           <style>{`
@@ -65,9 +79,7 @@ export const ScheduleCell: React.FC<ScheduleCellProps> = ({
             }
           `}</style>
           
-          {/* Efek grid dan ular bergaya retro game Snake */}
           <svg className="absolute inset-0 w-full h-full pointer-events-none overflow-visible z-10">
-            {/* Rel Grid Latar Belakang (Kotak-kotak kosong) */}
             <rect
               className="stroke-green-700/25 dark:stroke-green-400/20"
               x="0" y="0" width="100%" height="100%"
@@ -76,8 +88,6 @@ export const ScheduleCell: React.FC<ScheduleCellProps> = ({
               pathLength="100"
               strokeDasharray="3 1"
             />
-            
-            {/* Ular (Kotak-kotak menyala yang melompat sel per sel) */}
             <rect
               className="stroke-green-700 dark:stroke-green-400 drop-shadow-[0_1px_2px_rgba(0,0,0,0.4)] dark:drop-shadow-[0_0_4px_rgba(74,222,128,0.8)]"
               x="0" y="0" width="100%" height="100%"
@@ -107,6 +117,27 @@ export const ScheduleCell: React.FC<ScheduleCellProps> = ({
           </div>
         )}
       </div>
+
+      {/* Edit mode: duplicate button */}
+      {isEditMode && onDuplicate && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onDuplicate();
+          }}
+          onDragStart={(e) => e.stopPropagation()}
+          className="absolute top-1 right-1 z-20 p-0.5 rounded bg-black/25 hover:bg-black/50 text-white/80 hover:text-white transition-colors"
+          title="Duplikat jadwal ini"
+        >
+          <Copy size={10} />
+        </button>
+      )}
+
+      {/* Edit mode: dashed border overlay to signal editable state */}
+      {isEditMode && (
+        <div className="absolute inset-0 z-10 border-2 border-dashed border-white/30 rounded-sm pointer-events-none" />
+      )}
     </div>
   );
 };

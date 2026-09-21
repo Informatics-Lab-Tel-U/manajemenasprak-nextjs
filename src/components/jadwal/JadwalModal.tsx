@@ -33,6 +33,7 @@ interface JadwalModalProps {
   onClose: () => void;
   onSubmit: (input: CreateJadwalInput | UpdateJadwalInput) => Promise<any>;
   initialData?: Jadwal | null;
+  prefillData?: { hari?: string; sesi?: number; ruangan?: string };
   mataKuliahList: MataKuliah[];
   isLoading?: boolean;
 }
@@ -42,6 +43,7 @@ export function JadwalModal({
   onClose,
   onSubmit,
   initialData,
+  prefillData,
   mataKuliahList,
   isLoading = false,
 }: JadwalModalProps) {
@@ -111,15 +113,19 @@ export function JadwalModal({
           isCustomJam: !initialData.sesi || initialData.sesi === 0,
         });
       } else {
-        const defaultDay = 'SENIN';
-        const defaultSession = STATIC_SESSIONS[defaultDay][0];
+        const defaultDay = prefillData?.hari || 'SENIN';
+        const defaultSesi = prefillData?.sesi;
+        const daySessions = STATIC_SESSIONS[defaultDay] || STATIC_SESSIONS['SENIN'];
+        const defaultSession = defaultSesi
+          ? (daySessions.find((s) => s.sesi === defaultSesi) ?? daySessions[0])
+          : daySessions[0];
         setFormData({
           id_mk: '',
           kelas: '',
           hari: defaultDay,
           sesi: defaultSession.sesi,
           jam: defaultSession.jam,
-          ruangan: '',
+          ruangan: prefillData?.ruangan || '',
           total_asprak: 1,
           dosen: '',
         });
