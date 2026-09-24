@@ -351,7 +351,11 @@ export default function DashboardCharts({
                             const isRoomOnline = roomStatus ? isLabOnline(roomStatus, todayDate) : false;
 
                             // Kelas terpilih dari Generator Kursi
-                            const selectedKelas = roomStatus?.kelas?.trim();
+                            // Format bisa "matkul | kelas" (baru) atau hanya "kelas" (lama)
+                            const rawSelectedKelas = roomStatus?.kelas?.trim();
+                            const selectedKelas = rawSelectedKelas?.includes(' | ')
+                              ? rawSelectedKelas.split(' | ').slice(1).join(' | ').trim()
+                              : rawSelectedKelas;
                             const hasSelectedKelas = Boolean(
                               selectedKelas &&
                               selectedKelas !== '-' &&
