@@ -384,8 +384,22 @@ export default function DashboardCharts({
                                     let isClassActive = false;
                                     if (isRoomOnline) {
                                       if (isSelectedKelasScheduledInRoom) {
-                                        isClassActive =
+                                        const kelasMatch =
                                           jadwal.kelas?.trim().toUpperCase() === selectedKelas!.toUpperCase();
+
+                                        // Jika matkul tersedia dari heartbeat (format baru), gunakan untuk disambiguasi
+                                        // agar kelas yang sama di dua sesi berbeda tidak keduanya aktif sekaligus
+                                        const selectedMatkul = rawSelectedKelas?.includes(' | ')
+                                          ? rawSelectedKelas.split(' | ')[0].trim().toUpperCase()
+                                          : null;
+                                        const matkulMatch = selectedMatkul
+                                          ? (
+                                              jadwal.mata_kuliah?.praktikum?.nama?.trim().toUpperCase() === selectedMatkul ||
+                                              jadwal.mata_kuliah?.nama_lengkap?.trim().toUpperCase() === selectedMatkul
+                                            )
+                                          : true; // format lama: tidak ada matkul, skip pengecekan
+
+                                        isClassActive = kelasMatch && matkulMatch;
                                       } else {
                                         isClassActive = session.sesi === activeSessionNumber;
                                       }
