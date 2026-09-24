@@ -16,6 +16,50 @@ interface JagaCellProps {
   onDeletePresensi?: (presensiId: string, asprakName: string) => void;
 }
 
+const SynchronizedJagaSnakeBorder: React.FC<{ isTerlambat?: boolean }> = ({ isTerlambat }) => {
+  // Synchronize animation phase with global epoch clock so all cells move in unison
+  const [syncDelay] = React.useState(() => `${-((Date.now() % 2000) / 1000)}s`);
+
+  return (
+    <svg className="absolute inset-0 w-full h-full pointer-events-none overflow-visible z-10">
+      {/* Rel Grid Latar Belakang (Kotak-kotak kosong) */}
+      <rect
+        className={
+          isTerlambat
+            ? 'stroke-amber-700/30 dark:stroke-amber-400/25'
+            : 'stroke-green-700/30 dark:stroke-green-400/25'
+        }
+        x="0"
+        y="0"
+        width="100%"
+        height="100%"
+        fill="none"
+        strokeWidth="6"
+        pathLength="100"
+        strokeDasharray="3 1"
+      />
+
+      {/* Ular (Kotak-kotak animasi) */}
+      <rect
+        className={
+          isTerlambat
+            ? 'stroke-amber-500 dark:stroke-amber-400 drop-shadow-[0_1px_2px_rgba(0,0,0,0.4)] dark:drop-shadow-[0_0_4px_rgba(251,191,36,0.8)]'
+            : 'stroke-green-600 dark:stroke-green-400 drop-shadow-[0_1px_2px_rgba(0,0,0,0.4)] dark:drop-shadow-[0_0_4px_rgba(74,222,128,0.8)]'
+        }
+        x="0"
+        y="0"
+        width="100%"
+        height="100%"
+        fill="none"
+        strokeWidth="6"
+        pathLength="100"
+        strokeDasharray="3 1 3 1 3 1 3 85"
+        style={{ animation: `snake-crawl 2s steps(25) ${syncDelay} infinite` }}
+      />
+    </svg>
+  );
+};
+
 export const JagaCell: React.FC<JagaCellProps> = ({
   jaga,
   presensi,
@@ -74,51 +118,7 @@ export const JagaCell: React.FC<JagaCellProps> = ({
         <>
           {/* Inner content mask di belakang border animasi */}
           <div className="absolute inset-[3px] z-0" style={{ backgroundColor: bgColor }} />
-
-          <style>{`
-            @keyframes snake-crawl {
-              0% { stroke-dashoffset: 0; }
-              100% { stroke-dashoffset: -100; }
-            }
-          `}</style>
-
-          {/* Efek grid dan ular retro animasi persis ScheduleCell overview */}
-          <svg className="absolute inset-0 w-full h-full pointer-events-none overflow-visible z-10">
-            {/* Rel Grid Latar Belakang (Kotak-kotak kosong) */}
-            <rect
-              className={
-                isTerlambat
-                  ? 'stroke-amber-700/30 dark:stroke-amber-400/25'
-                  : 'stroke-green-700/30 dark:stroke-green-400/25'
-              }
-              x="0"
-              y="0"
-              width="100%"
-              height="100%"
-              fill="none"
-              strokeWidth="6"
-              pathLength="100"
-              strokeDasharray="3 1"
-            />
-
-            {/* Ular (Kotak-kotak animasi) */}
-            <rect
-              className={
-                isTerlambat
-                  ? 'stroke-amber-500 dark:stroke-amber-400 drop-shadow-[0_1px_2px_rgba(0,0,0,0.4)] dark:drop-shadow-[0_0_4px_rgba(251,191,36,0.8)]'
-                  : 'stroke-green-600 dark:stroke-green-400 drop-shadow-[0_1px_2px_rgba(0,0,0,0.4)] dark:drop-shadow-[0_0_4px_rgba(74,222,128,0.8)]'
-              }
-              x="0"
-              y="0"
-              width="100%"
-              height="100%"
-              fill="none"
-              strokeWidth="6"
-              pathLength="100"
-              strokeDasharray="3 1 3 1 3 1 3 85"
-              style={{ animation: 'snake-crawl 2s steps(25) infinite' }}
-            />
-          </svg>
+          <SynchronizedJagaSnakeBorder isTerlambat={isTerlambat} />
         </>
       )}
 

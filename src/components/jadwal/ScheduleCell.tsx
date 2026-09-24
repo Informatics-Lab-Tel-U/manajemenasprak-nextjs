@@ -16,6 +16,39 @@ interface ScheduleCellProps {
   onDragStart?: (e: React.DragEvent) => void;
 }
 
+const SynchronizedSnakeBorder: React.FC = () => {
+  // Synchronize animation phase with global epoch clock so all active rooms move in unison
+  const [syncDelay] = React.useState(() => `${-((Date.now() % 2000) / 1000)}s`);
+
+  return (
+    <svg className="absolute inset-0 w-full h-full pointer-events-none overflow-visible z-10">
+      <rect
+        className="stroke-green-700/25 dark:stroke-green-400/20"
+        x="0"
+        y="0"
+        width="100%"
+        height="100%"
+        fill="none"
+        strokeWidth="6"
+        pathLength="100"
+        strokeDasharray="3 1"
+      />
+      <rect
+        className="stroke-green-700 dark:stroke-green-400 drop-shadow-[0_1px_2px_rgba(0,0,0,0.4)] dark:drop-shadow-[0_0_4px_rgba(74,222,128,0.8)]"
+        x="0"
+        y="0"
+        width="100%"
+        height="100%"
+        fill="none"
+        strokeWidth="6"
+        pathLength="100"
+        strokeDasharray="3 1 3 1 3 1 3 85"
+        style={{ animation: `snake-crawl 2s steps(25) ${syncDelay} infinite` }}
+      />
+    </svg>
+  );
+};
+
 export const ScheduleCell: React.FC<ScheduleCellProps> = ({
   jadwal,
   onClick,
@@ -71,33 +104,7 @@ export const ScheduleCell: React.FC<ScheduleCellProps> = ({
       {isOnlineActive && (
         <>
           <div className="absolute inset-[3px] z-0" style={contentStyle} />
-
-          <style>{`
-            @keyframes snake-crawl {
-              0% { stroke-dashoffset: 0; }
-              100% { stroke-dashoffset: -100; }
-            }
-          `}</style>
-          
-          <svg className="absolute inset-0 w-full h-full pointer-events-none overflow-visible z-10">
-            <rect
-              className="stroke-green-700/25 dark:stroke-green-400/20"
-              x="0" y="0" width="100%" height="100%"
-              fill="none"
-              strokeWidth="6"
-              pathLength="100"
-              strokeDasharray="3 1"
-            />
-            <rect
-              className="stroke-green-700 dark:stroke-green-400 drop-shadow-[0_1px_2px_rgba(0,0,0,0.4)] dark:drop-shadow-[0_0_4px_rgba(74,222,128,0.8)]"
-              x="0" y="0" width="100%" height="100%"
-              fill="none"
-              strokeWidth="6"
-              pathLength="100"
-              strokeDasharray="3 1 3 1 3 1 3 85"
-              style={{ animation: 'snake-crawl 2s steps(25) infinite' }}
-            />
-          </svg>
+          <SynchronizedSnakeBorder />
         </>
       )}
 
