@@ -79,14 +79,37 @@ export default function RealtimeMonitoringList({ initialData }: { initialData: L
                   )}
                 </div>
 
-                <div className="flex justify-between items-center gap-2">
+                <div className="flex justify-between items-start gap-2">
                   <span className="text-sm font-medium text-muted-foreground shrink-0">Kelas Aktif</span>
-                  <span
-                    className="text-sm font-bold bg-muted px-2 py-1 rounded truncate max-w-[150px] sm:max-w-[200px] text-right"
-                    title={isOnline ? data.kelas : '-'}
-                  >
-                    {isOnline ? data.kelas : '-'}
-                  </span>
+                  {isOnline && data.kelas ? (() => {
+                    const parts = data.kelas.split(' | ');
+                    const hasBoth = parts.length >= 2;
+                    return (
+                      <div className="text-right">
+                        {hasBoth && (
+                          <div
+                            className="text-xs font-semibold text-foreground/80 truncate max-w-[150px] sm:max-w-[200px]"
+                            title={parts[0]}
+                          >
+                            {parts[0]}
+                          </div>
+                        )}
+                        <div
+                          className="text-sm font-bold bg-muted px-2 py-1 rounded truncate max-w-[150px] sm:max-w-[200px]"
+                          title={hasBoth ? parts.slice(1).join(' | ') : data.kelas}
+                        >
+                          {hasBoth ? parts.slice(1).join(' | ') : data.kelas}
+                        </div>
+                      </div>
+                    );
+                  })() : (
+                    <span
+                      className="text-sm font-bold bg-muted px-2 py-1 rounded truncate max-w-[150px] sm:max-w-[200px] text-right"
+                      title="-"
+                    >
+                      -
+                    </span>
+                  )}
                 </div>
 
                 <div className="text-xs text-right text-muted-foreground mt-2">

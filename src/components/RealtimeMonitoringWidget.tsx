@@ -49,15 +49,32 @@ export default function RealtimeMonitoringWidget({ initialData }: { initialData:
                       ? 'bg-card border-green-200 dark:border-green-900'
                       : 'bg-muted/30 border-border opacity-70'
                   }`}
-                  title={isOnline ? `Online (Kelas: ${data?.kelas || 'N/A'})` : 'Offline'}
+                  title={isOnline ? `Online (${data?.kelas || 'N/A'})` : 'Offline'}
                 >
                   <div className="flex items-center gap-2">
                     <span className={`h-2 w-2 rounded-full shrink-0 ${isOnline ? 'bg-green-500' : 'bg-muted-foreground'}`} />
                     <span className="whitespace-nowrap">{room}</span>
                   </div>
-                  <span className="text-xs leading-none font-normal text-muted-foreground truncate w-full">
-                    {isOnline ? (data?.kelas || 'Tidak ada sesi') : 'Offline'}
-                  </span>
+                  {isOnline && data?.kelas ? (() => {
+                    const parts = data.kelas.split(' | ');
+                    const hasBoth = parts.length >= 2;
+                    return (
+                      <>
+                        {hasBoth && (
+                          <span className="text-xs leading-none font-medium text-foreground/70 truncate w-full">
+                            {parts[0]}
+                          </span>
+                        )}
+                        <span className="text-xs leading-none font-normal text-muted-foreground truncate w-full">
+                          {hasBoth ? parts.slice(1).join(' | ') : data.kelas}
+                        </span>
+                      </>
+                    );
+                  })() : (
+                    <span className="text-xs leading-none font-normal text-muted-foreground truncate w-full">
+                      Offline
+                    </span>
+                  )}
                 </div>
               );
             })}
