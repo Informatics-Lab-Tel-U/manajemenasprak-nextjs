@@ -12,24 +12,26 @@ import {
   ArrowUp,
   ArrowDown
 } from 'lucide-react';
-import { updateHeroTitlesData } from '@/services/webConfigService';
+import { updateHeroTitlesData, type HeroTitlePair } from '@/services/webConfigService';
 
-const DEFAULT_TITLE = 'Informatics Laboratory';
+const DEFAULT_PAIR: HeroTitlePair = { line1: 'Informatics', line2: 'Laboratory' };
 
 interface HeroTitleManagerProps {
-  initialData: string[];
+  initialData: HeroTitlePair[];
 }
 
 export default function HeroTitleManager({ initialData }: HeroTitleManagerProps) {
-  // Hanya simpan teks EKSTRA (buang "Informatics Laboratory" karena itu selalu default)
-  const [extras, setExtras] = useState<string[]>(() => {
-    return (initialData ?? []).filter((t) => t.trim() !== DEFAULT_TITLE);
-  });
+  // Only manage EXTRA pairs — default is always fixed
+  const [extras, setExtras] = useState<HeroTitlePair[]>(() =>
+    (initialData ?? []).filter(
+      (p) => !(p.line1.trim() === DEFAULT_PAIR.line1 && p.line2.trim() === DEFAULT_PAIR.line2)
+    )
+  );
 
   const [isPending, startTransition] = useTransition();
 
-  const handleAddTitle = () => {
-    setExtras((prev) => [...prev, '']);
+  const handleAdd = () => {
+    setExtras((prev) => [...prev, { line1: '', line2: '' }]);
   };
 
   const handleRemove = (index: number) => {
@@ -41,34 +43,33 @@ export default function HeroTitleManager({ initialData }: HeroTitleManagerProps)
   };
 
   const handleMove = (index: number, direction: 'up' | 'down') => {
-    const targetIndex = direction === 'up' ? index - 1 : index + 1;
-    if (targetIndex < 0 || targetIndex >= extras.length) return;
-
+    const target = direction === 'up' ? index - 1 : index + 1;
+    if (target < 0 || target >= extras.length) return;
     setExtras((prev) => {
       const updated = [...prev];
-      [updated[index], updated[targetIndex]] = [updated[targetIndex], updated[index]];
+      [updated[index], updated[target]] = [updated[target], updated[index]];
       return updated;
     });
   };
 
-  const handleChange = (index: number, value: string) => {
+  const handleChange = (index: number, field: 'line1' | 'line2', value: string) => {
     setExtras((prev) => {
       const updated = [...prev];
-      updated[index] = value;
+      updated[index] = { ...updated[index], [field]: value };
       return updated;
     });
   };
 
   const handleSave = () => {
-    const cleanedExtras = extras.map((t) => t.trim()).filter((t) => t.length > 0 && t !== DEFAULT_TITLE);
-    // Simpan: default selalu jadi elemen pertama di backend
-    const payload = [DEFAULT_TITLE, ...cleanedExtras];
+    const validExtras = extras.filter((p) => p.line1.trim() && p.line2.trim());
+    // Default pair always first
+    const payload: HeroTitlePair[] = [DEFAULT_PAIR, ...validExtras];
 
     startTransition(async () => {
       const result = await updateHeroTitlesData(payload);
       if (result.success) {
-        setExtras(cleanedExtras);
-        toast.success('Daftar judul hero berhasil disimpan.');
+        setExtras(validExtras);
+        toast.success('Konfigurasi judul hero berhasil disimpan.');
       } else {
         toast.error(`Gagal menyimpan: ${result.error || 'Terjadi kesalahan sistem'}`);
       }
@@ -79,79 +80,93 @@ export default function HeroTitleManager({ initialData }: HeroTitleManagerProps)
     <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
       <div className="p-6 border-b border-border bg-muted/20 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-lg font-semibold">Teks Judul Tambahan (Flip Text)</h2>
+          <h2 className="text-lg font-semibold">Judul Hero (Flip Text)</h2>
           <p className="text-sm text-muted-foreground mt-1">
-            Teks <span className="font-medium text-foreground">Informatics Laboratory</span> selalu tampil sebagai judul utama. Tambahkan teks lain untuk animasi flip bergantian.
+            Judul default selalu tampil. Tambah judul lain untuk animasi flip bergantian — tiap judul terdiri dari 2 baris.
           </p>
         </div>
-        <Button variant="outline" size="sm" onClick={handleAddTitle}>
-          <Plus className="w-4 h-4 mr-2" /> Tambah Teks
+        <Button variant="outline" size="sm" onClick={handleAdd}>
+          <Plus className="w-4 h-4 mr-2" /> Tambah Judul
         </Button>
       </div>
 
       <div className="p-6 space-y-4">
-        {/* Default title — selalu tampil, tidak bisa dihapus */}
-        <div className="flex items-center gap-3 p-3 rounded-lg border border-border/50 bg-muted/30">
-          <span className="text-xs font-mono text-muted-foreground w-6 text-center shrink-0">#1</span>
-          <span className="flex-1 text-sm font-medium text-muted-foreground px-3 py-2">
-            {DEFAULT_TITLE}
-          </span>
-          <span className="text-xs text-muted-foreground shrink-0 pr-1">Default</span>
+        {/* Default pair — always read-only */}
+        <div className="rounded-lg border border-border/50 bg-muted/30 overflow-hidden">
+          <div className="px-4 py-2 border-b border-border/40 bg-muted/20 flex items-center justify-between">
+            <span className="text-xs font-mono text-muted-foreground">#1</span>
+            <span className="text-xs text-muted-foreground">Default (tidak bisa diubah)</span>
+          </div>
+          <div className="grid grid-cols-2 divide-x divide-border/40">
+            <div className="px-4 py-3">
+              <p className="text-[11px] font-medium text-muted-foreground mb-1">Baris 1</p>
+              <p className="text-sm font-semibold">{DEFAULT_PAIR.line1}</p>
+            </div>
+            <div className="px-4 py-3">
+              <p className="text-[11px] font-medium text-muted-foreground mb-1">Baris 2</p>
+              <p className="text-sm font-semibold">{DEFAULT_PAIR.line2}</p>
+            </div>
+          </div>
         </div>
 
         {extras.length === 0 ? (
-          <p className="text-sm text-muted-foreground py-2">
-            Belum ada teks tambahan. Hanya <span className="font-medium">{DEFAULT_TITLE}</span> yang tampil, tanpa animasi flip.
+          <p className="text-sm text-muted-foreground py-2 pl-1">
+            Belum ada judul tambahan. Hanya judul default yang tampil, tanpa animasi flip.
           </p>
         ) : (
-          extras.map((title, index) => (
+          extras.map((pair, index) => (
             <div
               key={index}
-              className="flex items-center gap-3 p-3 rounded-lg border border-border bg-background"
+              className="rounded-lg border border-border bg-background overflow-hidden"
             >
-              <span className="text-xs font-mono text-muted-foreground w-6 text-center shrink-0">
-                #{index + 2}
-              </span>
-
-              <div className="flex-1">
-                <Input
-                  value={title}
-                  placeholder="Contoh: IFLab Telkom University"
-                  onChange={(e) => handleChange(index, e.target.value)}
-                  className="h-9"
-                />
+              <div className="px-4 py-2 border-b border-border/40 bg-muted/10 flex items-center justify-between gap-2">
+                <span className="text-xs font-mono text-muted-foreground">#{index + 2}</span>
+                <div className="flex items-center gap-1 ml-auto">
+                  <Button
+                    variant="ghost" size="icon"
+                    disabled={index === 0}
+                    onClick={() => handleMove(index, 'up')}
+                    className="h-7 w-7"
+                  >
+                    <ArrowUp className="w-3.5 h-3.5" />
+                  </Button>
+                  <Button
+                    variant="ghost" size="icon"
+                    disabled={index === extras.length - 1}
+                    onClick={() => handleMove(index, 'down')}
+                    className="h-7 w-7"
+                  >
+                    <ArrowDown className="w-3.5 h-3.5" />
+                  </Button>
+                  <Button
+                    variant="ghost" size="icon"
+                    onClick={() => handleRemove(index)}
+                    className="h-7 w-7 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </Button>
+                </div>
               </div>
 
-              <div className="flex items-center gap-1 shrink-0">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  disabled={index === 0}
-                  onClick={() => handleMove(index, 'up')}
-                  title="Geser ke atas"
-                  className="h-8 w-8"
-                >
-                  <ArrowUp className="w-4 h-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  disabled={index === extras.length - 1}
-                  onClick={() => handleMove(index, 'down')}
-                  title="Geser ke bawah"
-                  className="h-8 w-8"
-                >
-                  <ArrowDown className="w-4 h-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => handleRemove(index)}
-                  title="Hapus teks ini"
-                  className="h-8 w-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </Button>
+              <div className="grid grid-cols-2 divide-x divide-border/40">
+                <div className="p-4 space-y-1.5">
+                  <label className="text-[11px] font-medium text-muted-foreground">Baris 1</label>
+                  <Input
+                    value={pair.line1}
+                    placeholder="Contoh: Informatics"
+                    onChange={(e) => handleChange(index, 'line1', e.target.value)}
+                    className="h-9 text-sm"
+                  />
+                </div>
+                <div className="p-4 space-y-1.5">
+                  <label className="text-[11px] font-medium text-muted-foreground">Baris 2</label>
+                  <Input
+                    value={pair.line2}
+                    placeholder="Contoh: Laboratory"
+                    onChange={(e) => handleChange(index, 'line2', e.target.value)}
+                    className="h-9 text-sm"
+                  />
+                </div>
               </div>
             </div>
           ))

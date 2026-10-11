@@ -1,7 +1,7 @@
 import { Suspense } from 'react';
 import { requireAuth } from '@/lib/auth';
 import { getCachedAvailableTerms } from '@/services/jadwalService';
-import { getActiveScheduleTerm, getAslabTeamData, getHeroImagesData, getHeroTitlesData } from '@/services/webConfigService';
+import { getActiveScheduleTerm, getAslabTeamData, getHeroImagesData, getHeroTitlesData, type HeroTitlePair } from '@/services/webConfigService';
 import WebConfigClientPage from './WebConfigClientPage';
 import AslabTeamManager from './AslabTeamManager';
 import HeroImageManager from './HeroImageManager';
@@ -17,7 +17,7 @@ export default async function WebConfigPage() {
   let activeTerm: string | null = null;
   let aslabTeamData = { koordinator: [], wakil_koordinator: [], asisten: [] };
   let heroImagesData: any[] = [];
-  let heroTitlesData: string[] = [];
+  let heroTitlesData: HeroTitlePair[] = [];
 
   try {
     const res = await Promise.all([
@@ -31,7 +31,7 @@ export default async function WebConfigPage() {
     activeTerm = res[1];
     aslabTeamData = res[2] || { koordinator: [], wakil_koordinator: [], asisten: [] };
     heroImagesData = res[3] || [];
-    heroTitlesData = res[4] || ['Informatics Laboratory'];
+    heroTitlesData = res[4] || [{ line1: 'Informatics', line2: 'Laboratory' }];
   } catch (error) {
     console.error('[WebConfigPage] SSR fetch failed:', error);
   }

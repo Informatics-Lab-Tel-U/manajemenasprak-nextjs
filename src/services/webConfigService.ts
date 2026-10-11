@@ -121,30 +121,37 @@ export async function updateHeroImagesData(heroImages: HeroImageItem[]): Promise
   }
 }
 
-export async function getHeroTitlesData(): Promise<string[]> {
+export interface HeroTitlePair {
+  line1: string;
+  line2: string;
+}
+
+const DEFAULT_PAIR: HeroTitlePair = { line1: 'Informatics', line2: 'Laboratory' };
+
+export async function getHeroTitlesData(): Promise<HeroTitlePair[]> {
   try {
-    const result = await honoFetch<string[]>('/api/web-config/hero_titles');
+    const result = await honoFetch<HeroTitlePair[]>('/api/web-config/hero_titles');
     if (!result.ok) {
       console.error('[webConfigService] Error fetching hero titles:', result.error);
-      return ['Informatics Laboratory'];
+      return [DEFAULT_PAIR];
     }
-    return (Array.isArray(result.data) && result.data.length > 0) ? result.data : ['Informatics Laboratory'];
+    return (Array.isArray(result.data) && result.data.length > 0) ? result.data : [DEFAULT_PAIR];
   } catch (error) {
     console.error('[webConfigService] Exception fetching hero titles:', error);
-    return ['Informatics Laboratory'];
+    return [DEFAULT_PAIR];
   }
 }
 
-export async function updateHeroTitlesData(titles: string[]): Promise<{ success: boolean; error?: string }> {
+export async function updateHeroTitlesData(pairs: HeroTitlePair[]): Promise<{ success: boolean; error?: string }> {
   try {
-    const filteredTitles = titles.map(t => t.trim()).filter(Boolean);
-    if (filteredTitles.length === 0) {
-      return { success: false, error: 'Minimal harus ada 1 judul.' };
+    const valid = pairs.filter((p) => p.line1?.trim() && p.line2?.trim());
+    if (valid.length === 0) {
+      return { success: false, error: 'Minimal harus ada 1 pasangan judul.' };
     }
 
     const result = await honoFetch('/api/web-config/hero_titles', {
       method: 'PUT',
-      body: JSON.stringify(filteredTitles)
+      body: JSON.stringify(valid)
     });
 
     if (!result.ok) {
