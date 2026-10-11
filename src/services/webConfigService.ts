@@ -74,3 +74,49 @@ export async function updateAslabTeamData(teamData: any): Promise<{ success: boo
     return { success: false, error: error.message || 'Network error' };
   }
 }
+
+export interface HeroImageItem {
+  id: string;
+  image: string;
+  title?: string;
+  alt?: string;
+  order?: number;
+}
+
+export async function getHeroImagesData(): Promise<HeroImageItem[]> {
+  try {
+    const result = await honoFetch<HeroImageItem[]>('/api/web-config/hero_images');
+    if (!result.ok) {
+      console.error('[webConfigService] Error fetching hero images:', result.error);
+      return [
+        { id: 'default-1', image: '/backgrounds/bg-1.jpeg', alt: 'Hero Showcase', title: 'Informatics Laboratory' }
+      ];
+    }
+    return result.data || [];
+  } catch (error) {
+    console.error('[webConfigService] Exception fetching hero images:', error);
+    return [
+      { id: 'default-1', image: '/backgrounds/bg-1.jpeg', alt: 'Hero Showcase', title: 'Informatics Laboratory' }
+    ];
+  }
+}
+
+export async function updateHeroImagesData(heroImages: HeroImageItem[]): Promise<{ success: boolean; error?: string }> {
+  try {
+    const result = await honoFetch('/api/web-config/hero_images', {
+      method: 'PUT',
+      body: JSON.stringify(heroImages)
+    });
+
+    if (!result.ok) {
+      console.error('[webConfigService] Error updating hero images:', result.error);
+      return { success: false, error: result.error };
+    }
+
+    revalidatePath('/manage-post/config');
+    return { success: true };
+  } catch (error: any) {
+    console.error('[webConfigService] Exception updating hero images:', error);
+    return { success: false, error: error.message || 'Network error' };
+  }
+}

@@ -1,9 +1,10 @@
 import { Suspense } from 'react';
 import { requireAuth } from '@/lib/auth';
 import { getCachedAvailableTerms } from '@/services/jadwalService';
-import { getActiveScheduleTerm, getAslabTeamData } from '@/services/webConfigService';
+import { getActiveScheduleTerm, getAslabTeamData, getHeroImagesData } from '@/services/webConfigService';
 import WebConfigClientPage from './WebConfigClientPage';
 import AslabTeamManager from './AslabTeamManager';
+import HeroImageManager from './HeroImageManager';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export const dynamic = 'force-dynamic';
@@ -14,16 +15,19 @@ export default async function WebConfigPage() {
   let terms: string[] = [];
   let activeTerm: string | null = null;
   let aslabTeamData = { koordinator: [], wakil_koordinator: [], asisten: [] };
+  let heroImagesData: any[] = [];
 
   try {
     const res = await Promise.all([
       getCachedAvailableTerms(),
       getActiveScheduleTerm(),
-      getAslabTeamData()
+      getAslabTeamData(),
+      getHeroImagesData()
     ]);
     terms = res[0] || [];
     activeTerm = res[1];
     aslabTeamData = res[2] || { koordinator: [], wakil_koordinator: [], asisten: [] };
+    heroImagesData = res[3] || [];
   } catch (error) {
     console.error('[WebConfigPage] SSR fetch failed:', error);
   }
@@ -44,6 +48,8 @@ export default async function WebConfigPage() {
           initialActiveTerm={activeTerm} 
         />
         
+        <HeroImageManager initialData={heroImagesData} />
+
         <AslabTeamManager initialData={aslabTeamData} />
       </div>
     </Suspense>

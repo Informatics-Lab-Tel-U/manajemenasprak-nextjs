@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { updateAslabTeamData } from '@/services/webConfigService';
 import { Save, Plus, Trash2, Upload, Loader2 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
+import imageCompression from 'browser-image-compression';
 
 export interface AslabMember {
   id: string;
@@ -190,7 +191,13 @@ export default function AslabTeamManager({ initialData }: AslabTeamManagerProps)
     setUploadingId(memberId);
 
     try {
-      const fileExt = file.name.split('.').pop();
+      const options = {
+        maxSizeMB: 1,
+        maxWidthOrHeight: 1200,
+        useWebWorker: true,
+      };
+      const compressedFile = await imageCompression(file, options);
+      const fileExt = compressedFile.name.split('.').pop() || 'jpg';
       const fileName = `${memberId}-${Date.now()}.${fileExt}`;
       const filePath = `aslab/${fileName}`;
 
@@ -204,7 +211,7 @@ export default function AslabTeamManager({ initialData }: AslabTeamManagerProps)
 
       const { error: uploadError } = await supabase.storage
         .from(BUCKET_NAME)
-        .upload(filePath, file, { upsert: false });
+        .upload(filePath, compressedFile, { upsert: false });
 
       if (uploadError) throw uploadError;
 
