@@ -74,7 +74,7 @@ export default function HeroTitleManager({ initialData }: HeroTitleManagerProps)
       const result = await updateHeroTitlesData(payload);
       if (result.success) {
         setExtras(validExtras);
-        toast.success('Konfigurasi judul hero berhasil disimpan.');
+        toast.success('Perubahan judul berhasil disimpan.');
       } else {
         toast.error(`Gagal menyimpan: ${result.error || 'Terjadi kesalahan sistem'}`);
       }
@@ -85,9 +85,9 @@ export default function HeroTitleManager({ initialData }: HeroTitleManagerProps)
     <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
       <div className="p-6 border-b border-border bg-muted/20 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-lg font-semibold">Judul Hero (Flip Text)</h2>
+          <h2 className="text-lg font-semibold">Teks Judul Beranda</h2>
           <p className="text-sm text-muted-foreground mt-1">
-            Judul default selalu tampil. Tambah judul lain untuk animasi flip bergantian — tiap judul terdiri dari 2 baris.
+            Kelola teks judul utama yang tampil di beranda blog.
           </p>
         </div>
         <Button variant="outline" size="sm" onClick={handleAdd}>
@@ -100,7 +100,7 @@ export default function HeroTitleManager({ initialData }: HeroTitleManagerProps)
         <div className="rounded-lg border border-border/50 bg-muted/30 overflow-hidden">
           <div className="px-4 py-2 border-b border-border/40 bg-muted/20 flex items-center justify-between">
             <span className="text-xs font-mono text-muted-foreground">#1</span>
-            <span className="text-xs text-muted-foreground">Default (tidak bisa diubah)</span>
+            <span className="text-xs text-muted-foreground">Bawaan</span>
           </div>
           <div className="grid grid-cols-2 divide-x divide-border/40">
             <div className="px-4 py-3">
@@ -116,7 +116,7 @@ export default function HeroTitleManager({ initialData }: HeroTitleManagerProps)
 
         {extras.length === 0 ? (
           <p className="text-sm text-muted-foreground py-2 pl-1">
-            Belum ada judul tambahan. Hanya judul default yang tampil, tanpa animasi flip.
+            Belum ada judul tambahan.
           </p>
         ) : (
           extras.map((pair, index) => (
