@@ -1,10 +1,11 @@
 import { Suspense } from 'react';
 import { requireAuth } from '@/lib/auth';
 import { getCachedAvailableTerms } from '@/services/jadwalService';
-import { getActiveScheduleTerm, getAslabTeamData, getHeroImagesData } from '@/services/webConfigService';
+import { getActiveScheduleTerm, getAslabTeamData, getHeroImagesData, getHeroTitlesData } from '@/services/webConfigService';
 import WebConfigClientPage from './WebConfigClientPage';
 import AslabTeamManager from './AslabTeamManager';
 import HeroImageManager from './HeroImageManager';
+import HeroTitleManager from './HeroTitleManager';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export const dynamic = 'force-dynamic';
@@ -16,18 +17,21 @@ export default async function WebConfigPage() {
   let activeTerm: string | null = null;
   let aslabTeamData = { koordinator: [], wakil_koordinator: [], asisten: [] };
   let heroImagesData: any[] = [];
+  let heroTitlesData: string[] = [];
 
   try {
     const res = await Promise.all([
       getCachedAvailableTerms(),
       getActiveScheduleTerm(),
       getAslabTeamData(),
-      getHeroImagesData()
+      getHeroImagesData(),
+      getHeroTitlesData()
     ]);
     terms = res[0] || [];
     activeTerm = res[1];
     aslabTeamData = res[2] || { koordinator: [], wakil_koordinator: [], asisten: [] };
     heroImagesData = res[3] || [];
+    heroTitlesData = res[4] || ['Informatics Laboratory'];
   } catch (error) {
     console.error('[WebConfigPage] SSR fetch failed:', error);
   }
@@ -48,6 +52,8 @@ export default async function WebConfigPage() {
           initialActiveTerm={activeTerm} 
         />
         
+        <HeroTitleManager initialData={heroTitlesData} />
+
         <HeroImageManager initialData={heroImagesData} />
 
         <AslabTeamManager initialData={aslabTeamData} />

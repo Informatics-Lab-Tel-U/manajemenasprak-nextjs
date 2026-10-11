@@ -120,3 +120,42 @@ export async function updateHeroImagesData(heroImages: HeroImageItem[]): Promise
     return { success: false, error: error.message || 'Network error' };
   }
 }
+
+export async function getHeroTitlesData(): Promise<string[]> {
+  try {
+    const result = await honoFetch<string[]>('/api/web-config/hero_titles');
+    if (!result.ok) {
+      console.error('[webConfigService] Error fetching hero titles:', result.error);
+      return ['Informatics Laboratory'];
+    }
+    return (Array.isArray(result.data) && result.data.length > 0) ? result.data : ['Informatics Laboratory'];
+  } catch (error) {
+    console.error('[webConfigService] Exception fetching hero titles:', error);
+    return ['Informatics Laboratory'];
+  }
+}
+
+export async function updateHeroTitlesData(titles: string[]): Promise<{ success: boolean; error?: string }> {
+  try {
+    const filteredTitles = titles.map(t => t.trim()).filter(Boolean);
+    if (filteredTitles.length === 0) {
+      return { success: false, error: 'Minimal harus ada 1 judul.' };
+    }
+
+    const result = await honoFetch('/api/web-config/hero_titles', {
+      method: 'PUT',
+      body: JSON.stringify(filteredTitles)
+    });
+
+    if (!result.ok) {
+      console.error('[webConfigService] Error updating hero titles:', result.error);
+      return { success: false, error: result.error };
+    }
+
+    revalidatePath('/manage-post/config');
+    return { success: true };
+  } catch (error: any) {
+    console.error('[webConfigService] Exception updating hero titles:', error);
+    return { success: false, error: error.message || 'Network error' };
+  }
+}
