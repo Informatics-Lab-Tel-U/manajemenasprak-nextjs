@@ -24,7 +24,12 @@ export default function HeroTitleManager({ initialData }: HeroTitleManagerProps)
   // Only manage EXTRA pairs — default is always fixed
   const [extras, setExtras] = useState<HeroTitlePair[]>(() =>
     (initialData ?? []).filter(
-      (p) => !(p.line1.trim() === DEFAULT_PAIR.line1 && p.line2.trim() === DEFAULT_PAIR.line2)
+      (p): p is HeroTitlePair =>
+        p !== null &&
+        typeof p === 'object' &&
+        typeof p.line1 === 'string' &&
+        typeof p.line2 === 'string' &&
+        !(p.line1.trim() === DEFAULT_PAIR.line1 && p.line2.trim() === DEFAULT_PAIR.line2)
     )
   );
 
