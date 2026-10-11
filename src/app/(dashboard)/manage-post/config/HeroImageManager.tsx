@@ -100,8 +100,8 @@ export default function HeroImageManager({ initialData }: HeroImageManagerProps)
 
   const compressImageForWeb = async (
     file: File,
-    maxWidth = 1920,
-    quality = 0.85
+    maxWidth = 3200,
+    quality = 0.92
   ): Promise<{ blob: Blob; ext: string }> => {
     return new Promise((resolve) => {
       if (file.type === 'image/svg+xml' || file.type === 'image/gif') {
