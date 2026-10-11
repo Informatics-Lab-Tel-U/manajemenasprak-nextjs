@@ -98,6 +98,77 @@ export default function HeroImageManager({ initialData }: HeroImageManagerProps)
     fileInputRef.current?.click();
   };
 
+  const compressImageForWeb = async (
+    file: File,
+    maxWidth = 1920,
+    quality = 0.85
+  ): Promise<{ blob: Blob; ext: string }> => {
+    return new Promise((resolve) => {
+      if (file.type === 'image/svg+xml' || file.type === 'image/gif') {
+        const ext = file.name.split('.').pop() || 'png';
+        return resolve({ blob: file, ext });
+      }
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          let width = img.naturalWidth || img.width;
+          let height = img.naturalHeight || img.height;
+
+          if (width > maxWidth) {
+            height = Math.round((height * maxWidth) / width);
+            width = maxWidth;
+          }
+
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          if (!ctx) {
+            const ext = file.name.split('.').pop() || 'jpg';
+            return resolve({ blob: file, ext });
+          }
+
+          ctx.drawImage(img, 0, 0, width, height);
+
+          canvas.toBlob(
+            (blob) => {
+              if (blob) {
+                resolve({ blob, ext: 'webp' });
+              } else {
+                canvas.toBlob(
+                  (fallbackBlob) => {
+                    if (fallbackBlob) {
+                      resolve({ blob: fallbackBlob, ext: 'jpg' });
+                    } else {
+                      const ext = file.name.split('.').pop() || 'jpg';
+                      resolve({ blob: file, ext });
+                    }
+                  },
+                  'image/jpeg',
+                  quality
+                );
+              }
+            },
+            'image/webp',
+            quality
+          );
+        };
+        img.onerror = () => {
+          const ext = file.name.split('.').pop() || 'jpg';
+          resolve({ blob: file, ext });
+        };
+        img.src = e.target?.result as string;
+      };
+      reader.onerror = () => {
+        const ext = file.name.split('.').pop() || 'jpg';
+        resolve({ blob: file, ext });
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
   const uploadFile = async (index: number, rawFile: File) => {
     const item = images[index];
     if (!item) return;
@@ -105,7 +176,8 @@ export default function HeroImageManager({ initialData }: HeroImageManagerProps)
     setUploadingId(item.id);
 
     try {
-      const fileExt = rawFile.name.split('.').pop() || 'jpg';
+      // Optimasi gambar di browser: resize max 1920px & convert ke WebP
+      const { blob: optimizedBlob, ext: fileExt } = await compressImageForWeb(rawFile, 1920, 0.85);
       const fileName = `hero-${item.id}-${Date.now()}.${fileExt}`;
       const filePath = `hero/${fileName}`;
 
@@ -120,7 +192,10 @@ export default function HeroImageManager({ initialData }: HeroImageManagerProps)
 
       const { error: uploadError } = await supabase.storage
         .from(BUCKET_NAME)
-        .upload(filePath, rawFile, { upsert: false });
+        .upload(filePath, optimizedBlob, {
+          contentType: fileExt === 'webp' ? 'image/webp' : rawFile.type || 'image/jpeg',
+          upsert: false,
+        });
 
       if (uploadError) throw uploadError;
 
@@ -129,7 +204,7 @@ export default function HeroImageManager({ initialData }: HeroImageManagerProps)
         .getPublicUrl(filePath);
 
       handleFieldChange(index, 'image', publicUrlData.publicUrl);
-      toast.success('Foto hero berhasil diunggah dengan kualitas asli.');
+      toast.success('Foto hero berhasil dioptimasi dan disimpan.');
     } catch (error: any) {
       console.error('Error uploading hero image:', error);
       const message = error instanceof Error ? error.message : String(error);
