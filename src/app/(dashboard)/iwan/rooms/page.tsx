@@ -69,6 +69,7 @@ export default function IwanRoomsPage() {
   const [devices, setDevices] = React.useState<RoomDevice[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [isSessionLoading, setIsSessionLoading] = React.useState(false);
+  const [autoRefresh, setAutoRefresh] = React.useState(false);
 
   const [isCreateRoomOpen, setIsCreateRoomOpen] = React.useState(false);
   const [newRoomName, setNewRoomName] = React.useState('');
@@ -117,6 +118,8 @@ export default function IwanRoomsPage() {
       }
     } catch (error) {
       if (!requestSignal.aborted) throw error;
+    } finally {
+      if (detailsRequest.current === controller) detailsRequest.current = null;
     }
   }, []);
 
@@ -126,7 +129,12 @@ export default function IwanRoomsPage() {
     (signal: AbortSignal) => fetchRoomDetails(selectedRoomId, signal),
     [selectedRoomId, fetchRoomDetails],
   );
-  useIwanPolling(pollRoom, 5000, 'Gagal memperbarui status ruangan', Boolean(selectedRoomId));
+  const pollRoomIfIdle = React.useCallback(
+    (signal: AbortSignal) => detailsRequest.current ? Promise.resolve() : pollRoom(signal),
+    [pollRoom],
+  );
+  useIwanPolling(pollRoom, 0, 'Gagal memperbarui status ruangan', Boolean(selectedRoomId));
+  useIwanPolling(pollRoomIfIdle, 5000, 'Gagal memperbarui status ruangan', Boolean(selectedRoomId) && autoRefresh, false);
   React.useEffect(() => () => detailsRequest.current?.abort(), []);
 
   const selectedRoom = rooms.find((r) => r.id === selectedRoomId);
@@ -288,16 +296,31 @@ export default function IwanRoomsPage() {
           <p className="text-sm 2xl:text-base text-muted-foreground mt-1">
             Kelola ruangan lab dan buka sesi pairing untuk registrasi PC praktikan.
           </p>
+          <p className="text-sm text-muted-foreground mt-1">
+            {autoRefresh
+              ? 'Status diperbarui setiap 5 detik selama tab aktif.'
+              : 'Pembaruan otomatis mati. Gunakan Segarkan untuk data terbaru.'}
+          </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            type="button"
+            variant={autoRefresh ? 'secondary' : 'outline'}
+            size="sm"
+            aria-label="Pembaruan otomatis status ruangan"
+            aria-pressed={autoRefresh}
+            onClick={() => setAutoRefresh((current) => !current)}
+          >
+            Otomatis: {autoRefresh ? 'ON (5 dtk)' : 'OFF'}
+          </Button>
           <Button
             variant="outline"
             size="sm"
             onClick={() => {
-                          void fetchRooms();
-                          if (selectedRoomId) void fetchRoomDetails(selectedRoomId).catch(() => toast.error('Gagal memperbarui status ruangan'));
-                        }}
+              void fetchRooms();
+              if (selectedRoomId) void fetchRoomDetails(selectedRoomId).catch(() => toast.error('Gagal memperbarui status ruangan'));
+            }}
           >
             <RefreshCw className="h-4 w-4 mr-1.5" />
             Segarkan

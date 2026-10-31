@@ -210,6 +210,140 @@ test('zero-interval resources load without starting a recurring timer', async (t
   stop();
 });
 
+test('manual-mode resources do not refetch when returning to the tab', async (t) => {
+  const document = setupPolling(t);
+  let calls = 0;
+  const stop = startIwanPolling(async () => { calls++; }, 0, assert.fail);
+  await flush();
+  for (let i = 0; i < 3; i++) {
+    document.hidden = true;
+    document.dispatchEvent(new Event('visibilitychange'));
+    t.mock.timers.tick(60000);
+    document.hidden = false;
+    document.dispatchEvent(new Event('visibilitychange'));
+    await flush();
+  }
+  assert.equal(calls, 1);
+  stop();
+});
+
+test('failed manual-mode resources also wait for an explicit refresh', async (t) => {
+  const document = setupPolling(t);
+  let calls = 0;
+  let errors = 0;
+  const stop = startIwanPolling(async () => { calls++; throw new Error('Unavailable'); }, 0, () => { errors++; });
+  await flush();
+  document.hidden = true;
+  document.dispatchEvent(new Event('visibilitychange'));
+  document.hidden = false;
+  document.dispatchEvent(new Event('visibilitychange'));
+  await flush();
+  t.mock.timers.tick(60000);
+  assert.equal(calls, 1);
+  assert.equal(errors, 1);
+  stop();
+});
+
+test('initially hidden resources load once on their first visible state', async (t) => {
+  const document = setupPolling(t);
+  document.hidden = true;
+  let calls = 0;
+  const stop = startIwanPolling(async () => { calls++; }, 0, assert.fail);
+  assert.equal(calls, 0);
+  document.hidden = false;
+  document.dispatchEvent(new Event('visibilitychange'));
+  await flush();
+  assert.equal(calls, 1);
+  document.hidden = true;
+  document.dispatchEvent(new Event('visibilitychange'));
+  document.hidden = false;
+  document.dispatchEvent(new Event('visibilitychange'));
+  await flush();
+  assert.equal(calls, 1);
+  stop();
+});
+
+test('opting in schedules polling without repeating the initial load; opting out cancels it', async (t) => {
+  const document = setupPolling(t);
+  let calls = 0;
+  const stopInitial = startIwanPolling(async () => { calls++; }, 0, assert.fail);
+  await flush();
+  const stopAuto = startIwanPolling(async () => { calls++; }, 5000, assert.fail, false);
+  assert.equal(calls, 1);
+  t.mock.timers.tick(4999);
+  assert.equal(calls, 1);
+  stopAuto();
+  t.mock.timers.tick(60000);
+  document.hidden = true;
+  document.dispatchEvent(new Event('visibilitychange'));
+  document.hidden = false;
+  document.dispatchEvent(new Event('visibilitychange'));
+  await flush();
+  assert.equal(calls, 1);
+  stopInitial();
+});
+
+test('automatic ticks skip a pending initial load, so OFF leaves that load intact', async (t) => {
+  const document = setupPolling(t);
+  let active = false;
+  let calls = 0;
+  let initialSignal;
+  let release;
+  let loaded = false;
+  const load = async (signal) => {
+    active = true;
+    calls++;
+    initialSignal = signal;
+    try {
+      await new Promise((resolve) => { release = resolve; });
+      if (!signal.aborted) loaded = true;
+    } finally {
+      active = false;
+    }
+  };
+  const stopInitial = startIwanPolling(load, 0, assert.fail);
+  const stopAuto = startIwanPolling(
+    (signal) => active ? Promise.resolve() : load(signal), 5000, assert.fail, false,
+  );
+  t.mock.timers.tick(5000);
+  await flush();
+  assert.equal(calls, 1);
+  stopAuto();
+  assert.equal(initialSignal.aborted, false);
+  release();
+  await flush();
+  assert.equal(loaded, true);
+  document.hidden = true;
+  document.dispatchEvent(new Event('visibilitychange'));
+  document.hidden = false;
+  document.dispatchEvent(new Event('visibilitychange'));
+  t.mock.timers.tick(60000);
+  assert.equal(calls, 1);
+  stopInitial();
+});
+
+test('enabled polling starts after its interval and OFF aborts the active request', async (t) => {
+  const document = setupPolling(t);
+  let calls = 0;
+  let signal;
+  let release;
+  const stop = startIwanPolling(async (current) => {
+    calls++;
+    signal = current;
+    await new Promise((resolve) => { release = resolve; });
+  }, 8000, assert.fail, false);
+  assert.equal(calls, 0);
+  t.mock.timers.tick(8000);
+  assert.equal(calls, 1);
+  stop();
+  assert.equal(signal.aborted, true);
+  release();
+  await flush();
+  document.dispatchEvent(new Event('visibilitychange'));
+  t.mock.timers.tick(60000);
+  assert.equal(calls, 1);
+});
+
 test('initial resources resume after a hide/show while the aborted task is still settling', async (t) => {
   const document = setupPolling(t);
   let calls = 0;

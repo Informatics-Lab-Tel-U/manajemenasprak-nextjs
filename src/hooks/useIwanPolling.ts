@@ -9,9 +9,10 @@ export function useIwanPolling(
   intervalMs: number,
   errorMessage: string,
   enabled = true,
+  immediate = true,
 ) {
   useEffect(() => {
     if (!enabled) return;
-    return startIwanPolling(task, intervalMs, () => toast.error(errorMessage));
-  }, [task, intervalMs, errorMessage, enabled]);
+    return startIwanPolling(task, intervalMs, () => toast.error(errorMessage), immediate);
+  }, [task, intervalMs, errorMessage, enabled, immediate]);
 }

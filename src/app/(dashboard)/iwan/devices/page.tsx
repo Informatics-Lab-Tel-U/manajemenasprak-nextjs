@@ -70,6 +70,7 @@ export default function IwanDevicesPage() {
   const [selectedRoomFilter, setSelectedRoomFilter] = React.useState<string>('ALL');
   const [searchQuery, setSearchQuery] = React.useState<string>('');
   const [isLoading, setIsLoading] = React.useState(true);
+  const [autoRefresh, setAutoRefresh] = React.useState(false);
   const [lastUpdated, setLastUpdated] = React.useState(0);
   const [copiedMac, setCopiedMac] = React.useState<string | null>(null);
 
@@ -97,6 +98,7 @@ export default function IwanDevicesPage() {
     } catch (error) {
       if (!requestSignal.aborted) throw error;
     } finally {
+      if (deviceRequest.current === controller) deviceRequest.current = null;
       if (!requestSignal.aborted) setIsLoading(false);
     }
   }, [selectedRoomFilter]);
@@ -115,7 +117,12 @@ export default function IwanDevicesPage() {
   }, [loadDevices, loadRoomOptions]);
 
   const pollDevices = React.useCallback((signal: AbortSignal) => loadDevices(signal), [loadDevices]);
-  useIwanPolling(pollDevices, 8000, 'Gagal memuat data perangkat');
+  const pollDevicesIfIdle = React.useCallback(
+    (signal: AbortSignal) => deviceRequest.current ? Promise.resolve() : loadDevices(signal),
+    [loadDevices],
+  );
+  useIwanPolling(pollDevices, 0, 'Gagal memuat data perangkat');
+  useIwanPolling(pollDevicesIfIdle, 8000, 'Gagal memuat data perangkat', autoRefresh, false);
   useIwanPolling(loadRoomOptions, 0, 'Gagal memuat daftar ruangan');
   React.useEffect(() => () => deviceRequest.current?.abort(), []);
 
@@ -209,11 +216,28 @@ export default function IwanDevicesPage() {
           <p className="text-sm 2xl:text-base text-muted-foreground mt-1">
             Pemetaan permanen antara nomor meja fisik dan MAC Address PC praktikan.
           </p>
+          <p className="text-sm text-muted-foreground mt-1">
+            {autoRefresh
+              ? 'Status diperbarui setiap 8 detik selama tab aktif.'
+              : 'Pembaruan otomatis mati. Gunakan Segarkan untuk data terbaru.'}
+          </p>
         </div>
-        <Button variant="outline" size="sm" onClick={fetchData}>
-          <RefreshCw className="h-4 w-4 mr-1.5" />
-          Segarkan
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            type="button"
+            variant={autoRefresh ? 'secondary' : 'outline'}
+            size="sm"
+            aria-label="Pembaruan otomatis daftar perangkat"
+            aria-pressed={autoRefresh}
+            onClick={() => setAutoRefresh((current) => !current)}
+          >
+            Otomatis: {autoRefresh ? 'ON (8 dtk)' : 'OFF'}
+          </Button>
+          <Button variant="outline" size="sm" onClick={fetchData}>
+            <RefreshCw data-icon="inline-start" />
+            Segarkan
+          </Button>
+        </div>
       </div>
 
       {/* Stat Summary */}

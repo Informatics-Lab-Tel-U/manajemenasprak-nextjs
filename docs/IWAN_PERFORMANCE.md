@@ -48,11 +48,28 @@ pada request yang sama, bukan query role identik kedua.
 | Agregasi statistik | Filter perangkat berulang untuk setiap ruangan | Map satu lintasan: O(perangkat + ruangan) |
 | Kolom perangkat | `select('*')`, termasuk kolom rahasia yang tidak dipakai mapper | Select eksplisit kolom yang diperlukan |
 
+Pembaruan otomatis halaman ruangan dan perangkat sekarang **default OFF** dan
+tidak dipersist. Data dimuat sekali ketika halaman/resource dibuka; memilih
+ruangan/filter, tombol Segarkan, dan aksi mutasi pengguna tetap boleh memuat data.
+Kembali ke tab tidak memicu request baru pada mode OFF. Resource yang pemuatan
+awalnya tertunda/dibatalkan karena tab tersembunyi tetap menyelesaikan initial load
+saat tab terlihat.
+
+Tombol Otomatis mengaktifkan polling detail ruangan setiap 5 detik atau perangkat
+setiap 8 detik. Aktivasi menjadwalkan siklus berikutnya tanpa mengulang initial
+load; deaktivasi membatalkan timer/request polling dan tidak memicu refresh.
 Scheduler menunggu request selesai sebelum menjadwalkan siklus berikutnya,
 berhenti saat tab tersembunyi, membatalkan request lama saat resource berubah,
 dan melakukan exponential backoff untuk kegagalan polling hingga 60 detik.
-Resource interval nol dimuat awal dan ketika tab kembali terlihat, tanpa timer
-berulang. Tombol refresh dan refresh sesudah mutasi tetap tersedia.
+Halaman akses admin tidak memiliki polling periodik maupun refetch saat kembali
+ke tab setelah initial load selesai.
+
+Konsol admin desktop di `squidproxy-tauri` juga memiliki tombol Otomatis default
+OFF. Initial load dan refresh manual tetap tersedia; interval 10 detik hanya
+berjalan setelah diaktifkan. Polling pause ketika tersembunyi dan dibersihkan
+ketika OFF, keluar dari halaman, atau unpair. Heartbeat agent IWAN User 15 detik
+tidak diubah oleh pengaturan tampilan ini, sehingga request heartbeat tetap ada.
+Monitoring lab global di luar fitur IWAN juga tidak diubah.
 
 Halaman admin-access sebelumnya tidak melakukan polling periodik. Pengurangan
 polling tidak menjelaskan atau menjamin penyelesaian CPU-limit pada SSR halaman

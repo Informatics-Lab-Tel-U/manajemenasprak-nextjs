@@ -2,9 +2,11 @@ export function startIwanPolling(
   task: (signal: AbortSignal) => Promise<void>,
   intervalMs: number,
   onError: (error: unknown) => void,
+  immediate = true,
 ): () => void {
   let stopped = false;
   let running = false;
+  let completed = false;
   let failures = 0;
   let timer: ReturnType<typeof setTimeout> | undefined;
   let active: AbortController | undefined;
@@ -24,6 +26,8 @@ export function startIwanPolling(
       }
     } finally {
       running = false;
+      active = undefined;
+      if (!controller.signal.aborted) completed = true;
       if (!stopped && !document.hidden && (intervalMs > 0 || controller.signal.aborted)) {
         const delay = controller.signal.aborted
           ? 0
@@ -36,11 +40,12 @@ export function startIwanPolling(
   const handleVisibility = () => {
     clearTimeout(timer);
     if (document.hidden) active?.abort();
-    else void run();
+    else if (intervalMs > 0 || !completed) void run();
   };
 
   document.addEventListener('visibilitychange', handleVisibility);
-  void run();
+  if (immediate) void run();
+  else if (intervalMs > 0) timer = setTimeout(() => void run(), intervalMs);
   return () => {
     stopped = true;
     clearTimeout(timer);
