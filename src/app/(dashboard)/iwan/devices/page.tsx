@@ -1,6 +1,8 @@
 'use client';
 
 import * as React from 'react';
+import { useIwanPolling } from '@/hooks/useIwanPolling';
+import { fetchIwanData } from '@/lib/iwanPolling';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -39,7 +41,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { RefreshCw, Search, Copy, Edit2, Trash2, Check, HardDrive } from 'lucide-react';
+import { RefreshCw, Search, Copy, Edit2, Trash2, Check } from 'lucide-react';
 
 interface DeviceItem {
   id: string;
@@ -68,6 +70,7 @@ export default function IwanDevicesPage() {
   const [selectedRoomFilter, setSelectedRoomFilter] = React.useState<string>('ALL');
   const [searchQuery, setSearchQuery] = React.useState<string>('');
   const [isLoading, setIsLoading] = React.useState(true);
+  const [lastUpdated, setLastUpdated] = React.useState(0);
   const [copiedMac, setCopiedMac] = React.useState<string | null>(null);
 
   const [editingDevice, setEditingDevice] = React.useState<DeviceItem | null>(null);
@@ -78,28 +81,43 @@ export default function IwanDevicesPage() {
 
   const [deletingDevice, setDeletingDevice] = React.useState<DeviceItem | null>(null);
 
-  const fetchData = React.useCallback(async () => {
+  const deviceRequest = React.useRef<AbortController | null>(null);
+  const loadDevices = React.useCallback(async (signal?: AbortSignal) => {
+    deviceRequest.current?.abort();
+    const controller = new AbortController();
+    deviceRequest.current = controller;
+    const requestSignal = signal ? AbortSignal.any([signal, controller.signal]) : controller.signal;
+    const query = selectedRoomFilter === 'ALL' ? '' : `?roomId=${encodeURIComponent(selectedRoomFilter)}`;
     try {
-      const [devRes, roomsRes] = await Promise.all([
-        fetch('/api/iwan/devices'),
-        fetch('/api/iwan/rooms'),
-      ]);
-      const devJson = await devRes.json();
-      const roomsJson = await roomsRes.json();
-      if (devJson.ok && Array.isArray(devJson.data)) setDevices(devJson.data);
-      if (roomsJson.ok && Array.isArray(roomsJson.data)) setRooms(roomsJson.data);
-    } catch {
-      toast.error('Gagal memuat data perangkat');
+      const data = await fetchIwanData<DeviceItem[]>(`/api/iwan/devices${query}`, requestSignal);
+      if (!requestSignal.aborted) {
+        setDevices(data);
+        setLastUpdated(Date.now());
+      }
+    } catch (error) {
+      if (!requestSignal.aborted) throw error;
     } finally {
-      setIsLoading(false);
+      if (!requestSignal.aborted) setIsLoading(false);
     }
+  }, [selectedRoomFilter]);
+
+  const loadRoomOptions = React.useCallback(async (signal?: AbortSignal) => {
+    const data = await fetchIwanData<RoomOption[]>('/api/iwan/rooms?view=options', signal);
+    if (!signal?.aborted) setRooms(data);
   }, []);
 
-  React.useEffect(() => {
-    fetchData();
-    const interval = setInterval(fetchData, 8000);
-    return () => clearInterval(interval);
-  }, [fetchData]);
+  const fetchData = React.useCallback(async () => {
+    try {
+      await Promise.all([loadDevices(), loadRoomOptions()]);
+    } catch {
+      toast.error('Gagal memuat data perangkat');
+    }
+  }, [loadDevices, loadRoomOptions]);
+
+  const pollDevices = React.useCallback((signal: AbortSignal) => loadDevices(signal), [loadDevices]);
+  useIwanPolling(pollDevices, 8000, 'Gagal memuat data perangkat');
+  useIwanPolling(loadRoomOptions, 0, 'Gagal memuat daftar ruangan');
+  React.useEffect(() => () => deviceRequest.current?.abort(), []);
 
   async function handleEditSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -154,7 +172,7 @@ export default function IwanDevicesPage() {
   }
 
   function formatRelativeTime(dateStr: string) {
-    const diffSeconds = Math.round((Date.now() - new Date(dateStr).getTime()) / 1000);
+    const diffSeconds = Math.round((lastUpdated - new Date(dateStr).getTime()) / 1000);
     if (diffSeconds < 15) return 'Baru saja';
     if (diffSeconds < 60) return `${diffSeconds} detik lalu`;
     const diffMinutes = Math.floor(diffSeconds / 60);

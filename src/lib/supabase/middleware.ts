@@ -1,7 +1,8 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 import { hasAccess, isPublicPath, ROLE_DEFAULT_REDIRECT, type Role } from '@/config/rbac';
-import { AUTH_CONFIG, isMfaRequiredForRole, isMfaRequiredForUser } from '@/config/auth';
+import { AUTH_CONFIG, isMfaRequiredForUser } from '@/config/auth';
+import { proxyIwanRequest } from '@/lib/iwanProxy';
 
 let cachedMaintenance: { active: boolean; timestamp: number } | null = null;
 const MAINTENANCE_TTL_MS = 15000; // 15 seconds
@@ -40,6 +41,7 @@ export async function updateSession(request: NextRequest) {
   });
 
   const { pathname } = request.nextUrl;
+  const isIwanApi = pathname.startsWith('/api/iwan/');
 
   if (
     request.method === 'OPTIONS' ||
@@ -74,7 +76,8 @@ export async function updateSession(request: NextRequest) {
     { data: { session } },
     isMaintenanceMode,
   ] = await Promise.all([
-    supabase.auth.getUser(),
+    // /auth/me validates the session token for IWAN APIs; do not validate it twice here.
+    isIwanApi ? Promise.resolve({ data: { user: null } }) : supabase.auth.getUser(),
     supabase.auth.getSession(),
     getMaintenanceStatus(process.env.HONO_BACKEND_URL),
   ]);
@@ -124,6 +127,25 @@ export async function updateSession(request: NextRequest) {
       url.pathname = '/maintenance';
       return NextResponse.redirect(url);
     }
+  }
+
+  if (isIwanApi) {
+    if (!token || !pengguna) {
+      return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
+    }
+    const upstream = await proxyIwanRequest(
+      request,
+      token,
+      process.env.HONO_BACKEND_URL || 'https://manajemenasprak-backend.iflabdev.workers.dev',
+    );
+    const response = new NextResponse(upstream.body, {
+      status: upstream.status,
+      headers: upstream.headers,
+    });
+    supabaseResponse.cookies.getAll().forEach((cookie) => {
+      response.cookies.set(cookie);
+    });
+    return response;
   }
 
   if (pathname.startsWith('/api/')) {

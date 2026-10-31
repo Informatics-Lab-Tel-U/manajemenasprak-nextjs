@@ -1,6 +1,8 @@
 'use client';
 
 import * as React from 'react';
+import { useIwanPolling } from '@/hooks/useIwanPolling';
+import { fetchIwanData } from '@/lib/iwanPolling';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -32,7 +34,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { Plus, RefreshCw, KeyRound, Lock, Radio, Tv, Clock, Copy, Trash2, Pencil } from 'lucide-react';
+import { Plus, RefreshCw, KeyRound, Lock, Radio, Clock, Copy, Trash2, Pencil } from 'lucide-react';
 
 interface Room {
   id: string;
@@ -85,50 +87,47 @@ export default function IwanRoomsPage() {
   const [editRoomDescription, setEditRoomDescription] = React.useState('');
   const [isSavingRoom, setIsSavingRoom] = React.useState(false);
 
-  const fetchRooms = React.useCallback(async () => {
+  const fetchRooms = React.useCallback(async (signal?: AbortSignal) => {
     try {
-      const res = await fetch('/api/iwan/rooms');
-      const json = await res.json();
-      if (json.ok && Array.isArray(json.data)) {
-        setRooms(json.data);
-        if (!selectedRoomId && json.data.length > 0) {
-          setSelectedRoomId(json.data[0].id);
-        }
-      }
+      const data = await fetchIwanData<Room[]>('/api/iwan/rooms', signal);
+      if (signal?.aborted) return;
+      setRooms(data);
+      setSelectedRoomId((current) => data.some((room) => room.id === current) ? current : data[0]?.id || '');
     } catch {
-      toast.error('Gagal memuat daftar ruangan');
+      if (!signal?.aborted) toast.error('Gagal memuat daftar ruangan');
     } finally {
-      setIsLoading(false);
-    }
-  }, [selectedRoomId]);
-
-  const fetchRoomDetails = React.useCallback(async (roomId: string) => {
-    if (!roomId) return;
-    try {
-      const [sessRes, devRes] = await Promise.all([
-        fetch(`/api/iwan/rooms/${roomId}/session`),
-        fetch(`/api/iwan/devices?roomId=${roomId}`),
-      ]);
-      const sessJson = await sessRes.json();
-      const devJson = await devRes.json();
-      setActiveSession(sessJson.ok && sessJson.data ? sessJson.data : null);
-      setDevices(devJson.ok && Array.isArray(devJson.data) ? devJson.data : []);
-    } catch {
-      toast.error('Gagal memperbarui status ruangan');
+      if (!signal?.aborted) setIsLoading(false);
     }
   }, []);
 
-  React.useEffect(() => {
-    fetchRooms();
-  }, [fetchRooms]);
-
-  React.useEffect(() => {
-    if (selectedRoomId) {
-      fetchRoomDetails(selectedRoomId);
-      const timer = setInterval(() => fetchRoomDetails(selectedRoomId), 5000);
-      return () => clearInterval(timer);
+  const detailsRequest = React.useRef<AbortController | null>(null);
+  const fetchRoomDetails = React.useCallback(async (roomId: string, signal?: AbortSignal) => {
+    if (!roomId) return;
+    detailsRequest.current?.abort();
+    const controller = new AbortController();
+    detailsRequest.current = controller;
+    const requestSignal = signal ? AbortSignal.any([signal, controller.signal]) : controller.signal;
+    try {
+      const data = await fetchIwanData<{ session: PairSession | null; devices: RoomDevice[] }>(
+        `/api/iwan/rooms/${roomId}/snapshot`, requestSignal,
+      );
+      if (!requestSignal.aborted) {
+        setActiveSession(data.session);
+        setDevices(data.devices);
+      }
+    } catch (error) {
+      if (!requestSignal.aborted) throw error;
     }
-  }, [selectedRoomId, fetchRoomDetails]);
+  }, []);
+
+  useIwanPolling(fetchRooms, 0, 'Gagal memuat daftar ruangan');
+
+  const pollRoom = React.useCallback(
+    (signal: AbortSignal) => fetchRoomDetails(selectedRoomId, signal),
+    [selectedRoomId, fetchRoomDetails],
+  );
+  useIwanPolling(pollRoom, 5000, 'Gagal memperbarui status ruangan', Boolean(selectedRoomId));
+  React.useEffect(() => () => detailsRequest.current?.abort(), []);
 
   const selectedRoom = rooms.find((r) => r.id === selectedRoomId);
 
@@ -295,7 +294,10 @@ export default function IwanRoomsPage() {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => { fetchRooms(); if (selectedRoomId) fetchRoomDetails(selectedRoomId); }}
+            onClick={() => {
+                          void fetchRooms();
+                          if (selectedRoomId) void fetchRoomDetails(selectedRoomId).catch(() => toast.error('Gagal memperbarui status ruangan'));
+                        }}
           >
             <RefreshCw className="h-4 w-4 mr-1.5" />
             Segarkan

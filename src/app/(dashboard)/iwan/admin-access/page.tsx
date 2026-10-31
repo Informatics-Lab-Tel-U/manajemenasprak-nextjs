@@ -1,6 +1,8 @@
 'use client';
 
 import * as React from 'react';
+import { useIwanPolling } from '@/hooks/useIwanPolling';
+import { fetchIwanData } from '@/lib/iwanPolling';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -69,24 +71,29 @@ export default function IwanAdminAccessPage() {
   const [generatedCodeResult, setGeneratedCodeResult] = React.useState<{ code: string; label: string } | null>(null);
   const [deletingToken, setDeletingToken] = React.useState<AdminToken | null>(null);
 
-  const fetchData = React.useCallback(async () => {
+  const loadData = React.useCallback(async (signal?: AbortSignal) => {
     try {
-      const [tokRes, roomsRes] = await Promise.all([
-        fetch('/api/iwan/admin-tokens'),
-        fetch('/api/iwan/rooms'),
+      const [tokenData, roomData] = await Promise.all([
+        fetchIwanData<AdminToken[]>('/api/iwan/admin-tokens', signal),
+        fetchIwanData<RoomOption[]>('/api/iwan/rooms?view=options', signal),
       ]);
-      const tokJson = await tokRes.json();
-      const roomsJson = await roomsRes.json();
-      if (tokJson.ok && Array.isArray(tokJson.data)) setTokens(tokJson.data);
-      if (roomsJson.ok && Array.isArray(roomsJson.data)) setRooms(roomsJson.data);
-    } catch {
-      toast.error('Gagal memuat token admin');
+      if (!signal?.aborted) {
+        setTokens(tokenData);
+        setRooms(roomData);
+      }
     } finally {
-      setIsLoading(false);
+      if (!signal?.aborted) setIsLoading(false);
     }
   }, []);
+  const fetchData = React.useCallback(async () => {
+    try {
+      await loadData();
+    } catch {
+      toast.error('Gagal memuat token admin');
+    }
+  }, [loadData]);
 
-  React.useEffect(() => { fetchData(); }, [fetchData]);
+  useIwanPolling(loadData, 0, 'Gagal memuat token admin');
 
   async function handleCreateToken(e: React.FormEvent) {
     e.preventDefault();
