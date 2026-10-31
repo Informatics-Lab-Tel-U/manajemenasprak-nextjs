@@ -21,6 +21,7 @@ import {
   Monitor,
   FileText,
   Fingerprint,
+  Tv,
 } from 'lucide-react';
 import {
   Sidebar,
@@ -151,6 +152,16 @@ const ALL_NAV_GROUPS: NavGroup[] = [
   {
     label: 'Sistem',
     items: [
+      {
+        label: 'IWAN Monitoring',
+        href: '#',
+        icon: Tv,
+        items: [
+          { label: 'Kelola Ruangan & Sesi', href: '/iwan/rooms' },
+          { label: 'Pemetaan MAC & PC', href: '/iwan/devices' },
+          { label: 'Akses Admin Console', href: '/iwan/admin-access' },
+        ],
+      },
       { label: 'Monitoring Lab', href: '/monitoring', icon: Monitor },
       { label: 'Manajemen Akun', href: '/manajemen-akun', icon: Notebook },
       { label: 'Audit Logs', href: '/audit-logs', icon: Logs },
