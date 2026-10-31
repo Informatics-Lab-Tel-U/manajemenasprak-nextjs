@@ -1,13 +1,6 @@
 'use client';
 
 import * as React from 'react';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -30,18 +23,18 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { toast } from 'sonner';
 import {
-  ShieldCheck,
-  Plus,
-  RefreshCw,
-  Copy,
-  Trash2,
-  Check,
-  Laptop,
-  KeyRound,
-  Radio,
-} from 'lucide-react';
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { toast } from 'sonner';
+import { Plus, RefreshCw, Copy, Trash2, Check, Laptop } from 'lucide-react';
 
 interface AdminToken {
   id: string;
@@ -67,20 +60,13 @@ export default function IwanAdminAccessPage() {
   const [isLoading, setIsLoading] = React.useState(true);
   const [copiedCode, setCopiedCode] = React.useState<string | null>(null);
 
-  // Create Modal State
   const [isCreateOpen, setIsCreateOpen] = React.useState(false);
   const [newLabel, setNewLabel] = React.useState('');
   const [scopeAll, setScopeAll] = React.useState(false);
   const [selectedRoomIds, setSelectedRoomIds] = React.useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
-  // Result Modal State (shows newly generated 6-digit code)
-  const [generatedCodeResult, setGeneratedCodeResult] = React.useState<{
-    code: string;
-    label: string;
-  } | null>(null);
-
-  // Delete State
+  const [generatedCodeResult, setGeneratedCodeResult] = React.useState<{ code: string; label: string } | null>(null);
   const [deletingToken, setDeletingToken] = React.useState<AdminToken | null>(null);
 
   const fetchData = React.useCallback(async () => {
@@ -91,13 +77,8 @@ export default function IwanAdminAccessPage() {
       ]);
       const tokJson = await tokRes.json();
       const roomsJson = await roomsRes.json();
-
-      if (tokJson.ok && Array.isArray(tokJson.data)) {
-        setTokens(tokJson.data);
-      }
-      if (roomsJson.ok && Array.isArray(roomsJson.data)) {
-        setRooms(roomsJson.data);
-      }
+      if (tokJson.ok && Array.isArray(tokJson.data)) setTokens(tokJson.data);
+      if (roomsJson.ok && Array.isArray(roomsJson.data)) setRooms(roomsJson.data);
     } catch {
       toast.error('Gagal memuat token admin');
     } finally {
@@ -105,40 +86,25 @@ export default function IwanAdminAccessPage() {
     }
   }, []);
 
-  React.useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+  React.useEffect(() => { fetchData(); }, [fetchData]);
 
-  // Handle Form Submit
   async function handleCreateToken(e: React.FormEvent) {
     e.preventDefault();
-    if (!newLabel.trim()) {
-      toast.error('Label konsol admin wajib diisi');
-      return;
-    }
+    if (!newLabel.trim()) return toast.error('Label konsol admin wajib diisi');
     if (!scopeAll && selectedRoomIds.length === 0) {
-      toast.error('Pilih minimal satu ruangan atau centang Semua Ruangan');
-      return;
+      return toast.error('Pilih minimal satu ruangan atau centang Semua Ruangan');
     }
-
     setIsSubmitting(true);
     try {
       const res = await fetch('/api/iwan/admin-tokens', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          label: newLabel.trim(),
-          scopeAll,
-          allowedRoomIds: scopeAll ? [] : selectedRoomIds,
-        }),
+        body: JSON.stringify({ label: newLabel.trim(), scopeAll, allowedRoomIds: scopeAll ? [] : selectedRoomIds }),
       });
       const json = await res.json();
       if (json.ok && json.data) {
         setIsCreateOpen(false);
-        setGeneratedCodeResult({
-          code: json.data.pair_code,
-          label: json.data.label,
-        });
+        setGeneratedCodeResult({ code: json.data.pair_code, label: json.data.label });
         setNewLabel('');
         setScopeAll(false);
         setSelectedRoomIds([]);
@@ -153,24 +119,21 @@ export default function IwanAdminAccessPage() {
     }
   }
 
-  // Handle Delete Submit
   async function handleDeleteSubmit() {
     if (!deletingToken) return;
     setIsSubmitting(true);
     try {
-      const res = await fetch(`/api/iwan/admin-tokens/${deletingToken.id}`, {
-        method: 'DELETE',
-      });
+      const res = await fetch(`/api/iwan/admin-tokens/${deletingToken.id}`, { method: 'DELETE' });
       const json = await res.json();
       if (json.ok) {
         toast.success(`Akses admin ${deletingToken.label} berhasil dicabut`);
         setDeletingToken(null);
         await fetchData();
       } else {
-        toast.error(json.error || 'Gagal mencabut akses admin');
+        toast.error(json.error || 'Gagal mencabut akses');
       }
     } catch {
-      toast.error('Terjadi kesalahan saat menghapus');
+      toast.error('Terjadi kesalahan');
     } finally {
       setIsSubmitting(false);
     }
@@ -187,40 +150,34 @@ export default function IwanAdminAccessPage() {
   rooms.forEach((r) => roomMap.set(r.id, r.name));
 
   return (
-    <div className="container mx-auto max-w-7xl py-6 space-y-6">
+    <div className="container mx-auto max-w-[2000px] 2xl:px-8">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-2">
-            <ShieldCheck className="h-6 w-6 text-primary" />
-            Akses Konsol IWAN Admin
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Buat kode pairing 6-digit untuk laptop aslab jaga dengan pembatasan (*scope*) ruangan lab tertentu.
+          <h1 className="text-2xl 2xl:text-3xl font-bold tracking-tight">Akses Admin Console</h1>
+          <p className="text-sm 2xl:text-base text-muted-foreground mt-1">
+            Buat kode pairing 6-digit untuk konsol IWAN Admin di laptop aslab jaga.
           </p>
         </div>
-
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={fetchData}>
             <RefreshCw className="h-4 w-4 mr-1.5" />
             Segarkan
           </Button>
-
           <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
             <DialogTrigger asChild>
               <Button size="sm">
                 <Plus className="h-4 w-4 mr-1.5" />
-                Generate Kode Admin Baru
+                Generate Kode Admin
               </Button>
             </DialogTrigger>
             <DialogContent className="max-w-md">
               <DialogHeader>
                 <DialogTitle>Buat Kode Pairing IWAN Admin</DialogTitle>
                 <DialogDescription>
-                  Kode 6-digit acak akan dibuat untuk dimasukkan pada konsol IWAN Admin di laptop aslab.
+                  Kode 6-digit acak untuk dimasukkan pada konsol IWAN Admin di laptop aslab.
                 </DialogDescription>
               </DialogHeader>
-
               <form onSubmit={handleCreateToken} className="space-y-4 py-2">
                 <div className="space-y-1.5">
                   <Label htmlFor="admin-label">Label Laptop / Aslab</Label>
@@ -232,63 +189,42 @@ export default function IwanAdminAccessPage() {
                     required
                   />
                 </div>
-
-                <div className="space-y-2 pt-1">
-                  <Label>Scope Ruangan Lab</Label>
-                  <div className="flex items-center space-x-2 py-1">
+                <div className="space-y-2">
+                  <Label>Scope Ruangan</Label>
+                  <div className="flex items-center gap-2">
                     <Checkbox
                       id="scope-all"
                       checked={scopeAll}
                       onCheckedChange={(checked) => setScopeAll(Boolean(checked))}
                     />
-                    <label
-                      htmlFor="scope-all"
-                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
-                    >
-                      Akses Semua Ruangan Lab
-                    </label>
+                    <label htmlFor="scope-all" className="text-sm cursor-pointer">Akses Semua Ruangan</label>
                   </div>
-
                   {!scopeAll && (
-                    <div className="border rounded-lg p-3 space-y-2 bg-muted/30 max-h-48 overflow-y-auto">
-                      <p className="text-xs text-muted-foreground mb-1">
-                        Pilih satu atau lebih ruangan yang diizinkan untuk dipantau:
-                      </p>
+                    <div className="border rounded-md p-3 space-y-2 bg-muted/30 max-h-40 overflow-y-auto">
+                      <p className="text-xs text-muted-foreground">Pilih ruangan yang diizinkan:</p>
                       {rooms.map((r) => {
-                        const isChecked = selectedRoomIds.includes(r.id);
+                        const checked = selectedRoomIds.includes(r.id);
                         return (
-                          <div key={r.id} className="flex items-center space-x-2">
+                          <div key={r.id} className="flex items-center gap-2">
                             <Checkbox
                               id={`room-${r.id}`}
-                              checked={isChecked}
-                              onCheckedChange={(checked) => {
-                                if (checked) {
-                                  setSelectedRoomIds([...selectedRoomIds, r.id]);
-                                } else {
-                                  setSelectedRoomIds(selectedRoomIds.filter((id) => id !== r.id));
-                                }
-                              }}
+                              checked={checked}
+                              onCheckedChange={(c) =>
+                                setSelectedRoomIds(c
+                                  ? [...selectedRoomIds, r.id]
+                                  : selectedRoomIds.filter((id) => id !== r.id))
+                              }
                             />
-                            <label
-                              htmlFor={`room-${r.id}`}
-                              className="text-sm cursor-pointer"
-                            >
-                              {r.name}
-                            </label>
+                            <label htmlFor={`room-${r.id}`} className="text-sm cursor-pointer">{r.name}</label>
                           </div>
                         );
                       })}
                     </div>
                   )}
                 </div>
-
                 <DialogFooter className="pt-2">
-                  <Button type="button" variant="outline" onClick={() => setIsCreateOpen(false)}>
-                    Batal
-                  </Button>
-                  <Button type="submit" disabled={isSubmitting}>
-                    Generate Kode 6 Digit
-                  </Button>
+                  <Button type="button" variant="outline" onClick={() => setIsCreateOpen(false)}>Batal</Button>
+                  <Button type="submit" disabled={isSubmitting}>Generate Kode</Button>
                 </DialogFooter>
               </form>
             </DialogContent>
@@ -296,173 +232,152 @@ export default function IwanAdminAccessPage() {
         </div>
       </div>
 
-      {/* Generated Code Result Modal */}
-      <Dialog
-        open={Boolean(generatedCodeResult)}
-        onOpenChange={(open) => !open && setGeneratedCodeResult(null)}
-      >
+      {/* Generated Code Result Dialog */}
+      <Dialog open={Boolean(generatedCodeResult)} onOpenChange={(open) => !open && setGeneratedCodeResult(null)}>
         <DialogContent className="max-w-md text-center">
           <DialogHeader>
             <DialogTitle>Kode Pairing Admin Berhasil Dibuat</DialogTitle>
             <DialogDescription>
-              Berikan kode 6 digit ini kepada aslab untuk dimasukkan pada aplikasi IWAN Admin.
+              Berikan kode ini kepada aslab untuk dimasukkan pada aplikasi IWAN Admin.
             </DialogDescription>
           </DialogHeader>
-
           {generatedCodeResult && (
             <div className="py-4 space-y-4">
-              <div className="bg-primary/5 border-2 border-dashed border-primary/40 rounded-xl p-6 relative">
+              <div className="bg-muted/40 border border-dashed rounded-lg p-6">
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
                   {generatedCodeResult.label}
                 </p>
                 <div className="font-mono text-5xl font-black tracking-[0.25em] text-primary select-all">
                   {generatedCodeResult.code}
                 </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="mt-4"
-                  onClick={() => handleCopy(generatedCodeResult.code)}
-                >
-                  <Copy className="h-4 w-4 mr-1.5" />
-                  Salin Kode Pairing
+                <Button variant="outline" size="sm" className="mt-4" onClick={() => handleCopy(generatedCodeResult.code)}>
+                  <Copy className="h-4 w-4 mr-1.5" />Salin Kode
                 </Button>
               </div>
-
-              <div className="text-xs text-muted-foreground bg-muted/40 p-3 rounded-lg border text-left space-y-1">
-                <p className="font-semibold text-foreground">Cara Menggunakan di Laptop Aslab:</p>
-                <ol className="list-decimal pl-4 space-y-1">
-                  <li>Buka aplikasi <strong>IWAN Admin</strong> di laptop.</li>
-                  <li>Masukkan 6 digit kode pairing di atas.</li>
-                  <li>Daftar PC praktikan sesuai scope ruangan akan otomatis termuat secara dinamis.</li>
+              <div className="text-xs text-muted-foreground bg-muted/40 p-3 rounded-md border text-left space-y-1">
+                <p className="font-semibold text-foreground">Cara pakai di laptop aslab:</p>
+                <ol className="list-decimal pl-4 space-y-0.5">
+                  <li>Buka aplikasi IWAN Admin di laptop.</li>
+                  <li>Masukkan 6 digit kode di atas.</li>
+                  <li>Daftar PC sesuai scope ruangan akan termuat otomatis.</li>
                 </ol>
               </div>
             </div>
           )}
-
           <DialogFooter>
-            <Button onClick={() => setGeneratedCodeResult(null)} className="w-full">
-              Selesai
-            </Button>
+            <Button onClick={() => setGeneratedCodeResult(null)} className="w-full">Selesai</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Table Card */}
-      <Card className="border shadow-sm overflow-hidden">
-        <Table>
-          <TableHeader>
-            <TableRow className="bg-muted/50">
-              <TableHead>Label Konsol</TableHead>
-              <TableHead>Kode Aktivasi</TableHead>
-              <TableHead>Scope Ruangan</TableHead>
-              <TableHead>Status Pairing</TableHead>
-              <TableHead>Terakhir Digunakan</TableHead>
-              <TableHead className="text-right">Aksi</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {tokens.length === 0 ? (
+      {/* Table */}
+      <div className="card glass border border-border/50 overflow-hidden">
+        <div className="rounded-md border overflow-hidden">
+          <Table className="2xl:text-base">
+            <TableHeader className="bg-muted/40">
               <TableRow>
-                <TableCell colSpan={6} className="h-32 text-center text-muted-foreground">
-                  {isLoading ? 'Memuat token admin...' : 'Belum ada kode aktivasi admin yang dibuat.'}
-                </TableCell>
+                <TableHead>Label Konsol</TableHead>
+                <TableHead>Kode Aktivasi</TableHead>
+                <TableHead>Scope Ruangan</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Terakhir Digunakan</TableHead>
+                <TableHead className="text-center">Aksi</TableHead>
               </TableRow>
-            ) : (
-              tokens.map((tok) => {
-                const scopeDisplay = tok.scope_all
-                  ? 'Semua Ruangan'
-                  : tok.allowed_room_ids
-                      .map((id) => roomMap.get(id) ?? 'Ruangan')
-                      .join(', ') || 'Belum dipilih';
+            </TableHeader>
+            <TableBody>
+              {tokens.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="h-32 text-center text-muted-foreground py-12">
+                    {isLoading ? 'Memuat token admin...' : 'Belum ada kode aktivasi admin.'}
+                  </TableCell>
+                </TableRow>
+              ) : (
+                tokens.map((tok) => {
+                  const scopeDisplay = tok.scope_all
+                    ? 'Semua Ruangan'
+                    : tok.allowed_room_ids.map((id) => roomMap.get(id) ?? 'Ruangan').join(', ') || '-';
 
-                return (
-                  <TableRow key={tok.id} className="hover:bg-muted/40 transition-colors">
-                    <TableCell className="font-semibold text-sm flex items-center gap-2">
-                      <Laptop className="h-4 w-4 text-muted-foreground" />
-                      {tok.label}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-1.5 font-mono text-sm font-bold text-foreground bg-muted/60 px-2 py-0.5 rounded border max-w-fit">
-                        <span>{tok.pair_code}</span>
-                        <button
-                          onClick={() => handleCopy(tok.pair_code)}
-                          className="text-muted-foreground hover:text-foreground transition-colors"
-                          title="Salin Kode"
-                        >
-                          {copiedCode === tok.pair_code ? (
-                            <Check className="h-3.5 w-3.5 text-emerald-500" />
-                          ) : (
-                            <Copy className="h-3.5 w-3.5" />
-                          )}
-                        </button>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className="text-xs">
-                        {scopeDisplay}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      {tok.is_paired ? (
-                        <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/30 text-[11px] gap-1">
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                          Terhubung
-                        </Badge>
-                      ) : (
-                        <Badge variant="secondary" className="text-[11px] text-amber-600 dark:text-amber-400 gap-1">
-                          <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-                          Menunggu Aktivasi
-                        </Badge>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-xs text-muted-foreground">
-                      {tok.last_used_at
-                        ? new Date(tok.last_used_at).toLocaleString('id-ID', {
-                            dateStyle: 'medium',
-                            timeStyle: 'short',
-                          })
-                        : 'Belum pernah'}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-destructive hover:bg-destructive/10"
-                        onClick={() => setDeletingToken(tok)}
-                        title="Cabut Akses Token"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                );
-              })
-            )}
-          </TableBody>
-        </Table>
-      </Card>
+                  return (
+                    <TableRow key={tok.id}>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <Laptop className="h-4 w-4 text-muted-foreground shrink-0" />
+                          <span className="font-medium">{tok.label}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1.5 font-mono text-sm font-bold bg-muted/60 px-2 py-0.5 rounded border max-w-fit">
+                          {tok.pair_code}
+                          <button
+                            onClick={() => handleCopy(tok.pair_code)}
+                            className="text-muted-foreground hover:text-foreground transition-colors"
+                          >
+                            {copiedCode === tok.pair_code
+                              ? <Check className="h-3.5 w-3.5 text-emerald-500" />
+                              : <Copy className="h-3.5 w-3.5" />}
+                          </button>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="text-xs">{scopeDisplay}</Badge>
+                      </TableCell>
+                      <TableCell>
+                        {tok.is_paired ? (
+                          <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 text-[11px] gap-1">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />Terhubung
+                          </Badge>
+                        ) : (
+                          <Badge variant="secondary" className="text-[11px] text-amber-600 dark:text-amber-400 gap-1">
+                            <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />Menunggu Aktivasi
+                          </Badge>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {tok.last_used_at
+                          ? new Date(tok.last_used_at).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })
+                          : 'Belum pernah'}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex justify-center">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setDeletingToken(tok)}
+                            className="text-destructive hover:text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      </div>
 
-      {/* Delete / Revoke Confirmation Dialog */}
-      <Dialog open={Boolean(deletingToken)} onOpenChange={(open) => !open && setDeletingToken(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Cabut Akses IWAN Admin?</DialogTitle>
-            <DialogDescription>
-              Tindakan ini akan mencabut token akses untuk konsol <strong>{deletingToken?.label}</strong>. Laptop aslab tidak akan dapat lagi mengambil daftar PC atau mengakses stream setelah akses dicabut.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="pt-2">
-            <Button variant="outline" onClick={() => setDeletingToken(null)}>
-              Batal
-            </Button>
-            <Button variant="destructive" onClick={handleDeleteSubmit} disabled={isSubmitting}>
+      {/* Revoke AlertDialog */}
+      <AlertDialog open={Boolean(deletingToken)} onOpenChange={(open) => !open && setDeletingToken(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cabut Akses IWAN Admin?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Token akses untuk konsol <strong>{deletingToken?.label}</strong> akan dicabut. Laptop aslab tidak dapat lagi mengambil daftar PC atau mengakses stream setelahnya.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Batal</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteSubmit}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
               Cabut Akses
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
-
