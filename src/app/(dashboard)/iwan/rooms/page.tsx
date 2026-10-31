@@ -32,7 +32,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { Plus, RefreshCw, KeyRound, Lock, Radio, Tv, Clock, Copy, Trash2 } from 'lucide-react';
+import { Plus, RefreshCw, KeyRound, Lock, Radio, Tv, Clock, Copy, Trash2, Pencil } from 'lucide-react';
 
 interface Room {
   id: string;
@@ -78,6 +78,12 @@ export default function IwanRoomsPage() {
 
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
   const [isDeletingRoom, setIsDeletingRoom] = React.useState(false);
+
+  const [isEditRoomOpen, setIsEditRoomOpen] = React.useState(false);
+  const [editRoomName, setEditRoomName] = React.useState('');
+  const [editRoomCapacity, setEditRoomCapacity] = React.useState(40);
+  const [editRoomDescription, setEditRoomDescription] = React.useState('');
+  const [isSavingRoom, setIsSavingRoom] = React.useState(false);
 
   const fetchRooms = React.useCallback(async () => {
     try {
@@ -197,6 +203,47 @@ export default function IwanRoomsPage() {
       }
     } catch {
       toast.error('Gagal menutup sesi pairing');
+    }
+  }
+
+  function openEditDialog() {
+    if (!selectedRoom) return;
+    setEditRoomName(selectedRoom.name);
+    setEditRoomCapacity(selectedRoom.capacity);
+    setEditRoomDescription(selectedRoom.description || '');
+    setIsEditRoomOpen(true);
+  }
+
+  async function handleUpdateRoom(e: React.FormEvent) {
+    e.preventDefault();
+    if (!selectedRoom) return;
+    if (!editRoomName.trim()) return toast.error('Nama ruangan tidak boleh kosong');
+    if (!editRoomCapacity || editRoomCapacity < 1) return toast.error('Kapasitas kursi minimal 1');
+
+    setIsSavingRoom(true);
+    try {
+      const res = await fetch(`/api/iwan/rooms/${selectedRoom.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: editRoomName.trim(),
+          capacity: Number(editRoomCapacity),
+          description: editRoomDescription.trim() || undefined,
+        }),
+      });
+      const json = await res.json();
+      if (json.ok) {
+        toast.success(`Ruangan ${editRoomName} berhasil diperbarui`);
+        setIsEditRoomOpen(false);
+        await fetchRooms();
+        await fetchRoomDetails(selectedRoom.id);
+      } else {
+        toast.error(json.error || 'Gagal memperbarui ruangan');
+      }
+    } catch {
+      toast.error('Terjadi kesalahan saat memperbarui ruangan');
+    } finally {
+      setIsSavingRoom(false);
     }
   }
 
@@ -342,15 +389,26 @@ export default function IwanRoomsPage() {
         </div>
 
         {selectedRoom && (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 text-xs gap-1.5"
-            onClick={() => setIsDeleteDialogOpen(true)}
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-            Hapus {selectedRoom.name}
-          </Button>
+          <div className="flex items-center gap-1.5">
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-xs gap-1.5 h-8"
+              onClick={openEditDialog}
+            >
+              <Pencil className="h-3.5 w-3.5" />
+              Edit Ruangan
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 text-xs gap-1.5 h-8"
+              onClick={() => setIsDeleteDialogOpen(true)}
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              Hapus
+            </Button>
+          </div>
         )}
       </div>
 
@@ -573,6 +631,62 @@ export default function IwanRoomsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Dialog Edit Ruangan & Kapasitas */}
+      <Dialog open={isEditRoomOpen} onOpenChange={setIsEditRoomOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Ruangan &amp; Kapasitas Kursi</DialogTitle>
+            <DialogDescription>
+              Ubah nama ruangan, kapasitas jumlah kursi fisik, atau keterangan lab.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleUpdateRoom} className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-room-name">Nama Ruangan</Label>
+              <Input
+                id="edit-room-name"
+                value={editRoomName}
+                onChange={(e) => setEditRoomName(e.target.value)}
+                placeholder="Contoh: TULT 0618"
+                required
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-room-cap">Kapasitas Jumlah Kursi Fisik</Label>
+              <Input
+                id="edit-room-cap"
+                type="number"
+                min={1}
+                max={100}
+                value={editRoomCapacity}
+                onChange={(e) => setEditRoomCapacity(Number(e.target.value))}
+                required
+              />
+              <p className="text-[11px] text-muted-foreground">
+                Mengubah kapasitas akan menyesuaikan nomor kursi pada denah grid (1 - {editRoomCapacity || 40}).
+              </p>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-room-desc">Keterangan (Opsional)</Label>
+              <Input
+                id="edit-room-desc"
+                value={editRoomDescription}
+                onChange={(e) => setEditRoomDescription(e.target.value)}
+                placeholder="Contoh: Lab Komputer Gedung TULT Lt. 6"
+              />
+            </div>
+            <DialogFooter className="pt-2">
+              <Button type="button" variant="outline" onClick={() => setIsEditRoomOpen(false)} disabled={isSavingRoom}>
+                Batal
+              </Button>
+              <Button type="submit" disabled={isSavingRoom}>
+                {isSavingRoom ? 'Menyimpan...' : 'Simpan Perubahan'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
