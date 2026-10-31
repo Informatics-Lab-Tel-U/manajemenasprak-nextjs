@@ -15,6 +15,16 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -22,7 +32,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { Plus, RefreshCw, KeyRound, Lock, Radio, Tv, Clock, Copy } from 'lucide-react';
+import { Plus, RefreshCw, KeyRound, Lock, Radio, Tv, Clock, Copy, Trash2 } from 'lucide-react';
 
 interface Room {
   id: string;
@@ -65,6 +75,9 @@ export default function IwanRoomsPage() {
 
   const [isNewSessionOpen, setIsNewSessionOpen] = React.useState(false);
   const [sessionDuration, setSessionDuration] = React.useState('120');
+
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
+  const [isDeletingRoom, setIsDeletingRoom] = React.useState(false);
 
   const fetchRooms = React.useCallback(async () => {
     try {
@@ -187,6 +200,30 @@ export default function IwanRoomsPage() {
     }
   }
 
+  async function handleDeleteRoom() {
+    if (!selectedRoom) return;
+    setIsDeletingRoom(true);
+    try {
+      const res = await fetch(`/api/iwan/rooms/${selectedRoom.id}`, {
+        method: 'DELETE',
+      });
+      const json = await res.json();
+      if (json.ok) {
+        toast.success(`Ruangan ${selectedRoom.name} berhasil dihapus`);
+        setIsDeleteDialogOpen(false);
+        const remaining = rooms.filter((r) => r.id !== selectedRoom.id);
+        setSelectedRoomId(remaining.length > 0 ? remaining[0].id : '');
+        await fetchRooms();
+      } else {
+        toast.error(json.error || 'Gagal menghapus ruangan');
+      }
+    } catch {
+      toast.error('Terjadi kesalahan saat menghapus ruangan');
+    } finally {
+      setIsDeletingRoom(false);
+    }
+  }
+
   function copyToClipboard(text: string) {
     navigator.clipboard.writeText(text);
     toast.success('Kode pairing disalin');
@@ -276,30 +313,44 @@ export default function IwanRoomsPage() {
       </div>
 
       {/* Tab Ruangan */}
-      <div className="flex flex-wrap items-center gap-2 mb-6 border-b pb-4">
-        <span className="text-sm font-medium text-muted-foreground">Lab:</span>
-        {isLoading ? (
-          <span className="text-sm text-muted-foreground">Memuat...</span>
-        ) : rooms.length === 0 ? (
-          <span className="text-sm text-muted-foreground">Belum ada ruangan.</span>
-        ) : (
-          rooms.map((room) => (
-            <Button
-              key={room.id}
-              variant={selectedRoomId === room.id ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setSelectedRoomId(room.id)}
-              className="rounded-full"
-            >
-              {room.name}
-              <Badge
-                variant="secondary"
-                className="ml-2 rounded-full px-1.5 py-0 text-[10px] font-semibold tabular-nums"
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-6 border-b pb-4">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-sm font-medium text-muted-foreground">Lab:</span>
+          {isLoading ? (
+            <span className="text-sm text-muted-foreground">Memuat...</span>
+          ) : rooms.length === 0 ? (
+            <span className="text-sm text-muted-foreground">Belum ada ruangan.</span>
+          ) : (
+            rooms.map((room) => (
+              <Button
+                key={room.id}
+                variant={selectedRoomId === room.id ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setSelectedRoomId(room.id)}
+                className="rounded-full"
               >
-                {room.onlineDevices}/{room.totalDevices}
-              </Badge>
-            </Button>
-          ))
+                {room.name}
+                <Badge
+                  variant="secondary"
+                  className="ml-2 rounded-full px-1.5 py-0 text-[10px] font-semibold tabular-nums"
+                >
+                  {room.onlineDevices}/{room.totalDevices}
+                </Badge>
+              </Button>
+            ))
+          )}
+        </div>
+
+        {selectedRoom && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 text-xs gap-1.5"
+            onClick={() => setIsDeleteDialogOpen(true)}
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+            Hapus {selectedRoom.name}
+          </Button>
         )}
       </div>
 
@@ -500,6 +551,28 @@ export default function IwanRoomsPage() {
           </p>
         )
       )}
+
+      {/* Dialog Hapus Ruangan */}
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Hapus Ruangan {selectedRoom?.name}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tindakan ini tidak dapat dibatalkan. Menghapus ruangan ini akan menghapus seluruh data pemetaan PC fisik ({devices.length} perangkat terdaftar) serta riwayat sesi pairing di ruangan ini.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeletingRoom}>Batal</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteRoom}
+              disabled={isDeletingRoom}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeletingRoom ? 'Menghapus...' : 'Ya, Hapus Ruangan'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
