@@ -72,11 +72,70 @@ test('proxy rejects paths outside IWAN without contacting the backend', async (t
   assert.equal(fetch.mock.callCount(), 0);
 });
 
-test('proxy returns a non-cacheable gateway error on network failure', async (t) => {
-  t.mock.method(globalThis, 'fetch', async () => { throw new Error('Disconnected'); });
+test('proxy identifies network failure and logs diagnostics without tokens or URLs', async (t) => {
+  const logs = t.mock.method(console, 'error', () => {});
+  t.mock.method(globalThis, 'fetch', async () => {
+    throw new TypeError('fetch failed: https://backend.test/?secret=private-query Bearer private-token');
+  });
+  const response = await proxyIwanRequest(new Request('https://manas.test/api/iwan/rooms?secret=private-query', {
+    headers: { 'cf-ray': 'frontend-ray' },
+  }), 'private-token', 'https://backend.test');
+  assert.equal(response.status, 502);
+  assert.equal(response.headers.get('cache-control'), 'private, no-store');
+  assert.equal(response.headers.get('x-iwan-error-source'), 'proxy');
+  assert.equal(response.headers.get('x-iwan-error-code'), 'IWAN_PROXY_FAILURE');
+  const body = await response.json();
+  assert.equal(body.code, 'IWAN_PROXY_FAILURE');
+  assert.equal(body.ok, false);
+  const details = logs.mock.calls[0].arguments[1];
+  assert.equal(details.rayId, 'frontend-ray');
+  assert.equal(details.errorName, 'TypeError');
+  assert.equal(details.path, '/api/iwan/rooms');
+  assert.equal(typeof details.elapsedWallMs, 'number');
+  assert.doesNotMatch(JSON.stringify(details), /private-token|private-query|https:\/\//);
+});
+
+test('proxy distinguishes an upstream 502 and preserves its body without parsing', async (t) => {
+  const logs = t.mock.method(console, 'error', () => {});
+  const upstream = new Response('upstream unavailable', { status: 502, headers: { 'cf-ray': 'backend-ray' } });
+  t.mock.method(upstream, 'json', () => { throw new Error('Must not parse upstream errors'); });
+  t.mock.method(globalThis, 'fetch', async () => upstream);
   const response = await proxyIwanRequest(new Request('https://manas.test/api/iwan/rooms'), 'session', 'https://backend.test');
   assert.equal(response.status, 502);
-  assert.equal((await response.json()).ok, false);
+  assert.equal(response.body, upstream.body);
+  assert.equal(response.headers.get('x-iwan-error-source'), 'upstream');
+  assert.equal(await response.text(), 'upstream unavailable');
+  assert.equal(logs.mock.calls[0].arguments[1].upstreamStatus, 502);
+  assert.equal(logs.mock.calls[0].arguments[1].upstreamRayId, 'backend-ray');
+});
+
+test('proxy rejects upstream redirects without forwarding authorization to another host', async (t) => {
+  const logs = t.mock.method(console, 'error', () => {});
+  const fetch = t.mock.method(globalThis, 'fetch', async (_url, init) => {
+    assert.equal(init.redirect, 'manual');
+    return new Response(null, { status: 302, headers: { Location: 'https://other.test/?secret=redirect-secret' } });
+  });
+  const response = await proxyIwanRequest(new Request('https://manas.test/api/iwan/rooms'), 'session', 'https://backend.test');
+  assert.equal(fetch.mock.callCount(), 1);
+  assert.equal(response.status, 502);
+  assert.equal(response.headers.get('location'), null);
+  assert.equal((await response.json()).code, 'IWAN_UPSTREAM_REDIRECT');
+  assert.equal(logs.mock.calls[0].arguments[1].upstreamStatus, 302);
+  assert.doesNotMatch(JSON.stringify(logs.mock.calls), /redirect-secret/);
+});
+
+test('proxy reports a backend timeout as 504 without retrying a mutation', async (t) => {
+  t.mock.method(console, 'error', () => {});
+  const fetch = t.mock.method(globalThis, 'fetch', async () => {
+    throw new DOMException('Timed out', 'TimeoutError');
+  });
+  const response = await proxyIwanRequest(new Request('https://manas.test/api/iwan/session/close', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{"code":"123456"}',
+  }), 'session', 'https://backend.test');
+  assert.equal(fetch.mock.callCount(), 1);
+  assert.equal(response.status, 504);
+  assert.equal(response.headers.get('x-iwan-error-source'), 'proxy');
+  assert.equal((await response.json()).code, 'IWAN_BACKEND_TIMEOUT');
 });
 
 test('polling never overlaps and aborts an active request on cleanup', async (t) => {

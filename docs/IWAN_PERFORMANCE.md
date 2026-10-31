@@ -59,6 +59,33 @@ polling tidak menjelaskan atau menjamin penyelesaian CPU-limit pada SSR halaman
 tersebut. Shared dashboard layout, middleware halaman, SSR/RSC Next.js dan OpenNext
 masih perlu diprofilkan jika error halaman tetap terjadi.
 
+## Membedakan 502 gateway dari CPU limit
+
+`outcome: "ok"` dengan HTTP 502 berarti Worker frontend menyelesaikan eksekusi
+namun mengembalikan respons error. Penghentian CPU frontend ditandai
+`outcome: "exceededCpu"`. CPU 19 ms tetap berisiko pada Free; toleransi sesekali
+bukan jaminan budget baru. CPU/error backend harus diperiksa terpisah.
+
+Proxy mencatat log terstruktur hanya pada kegagalan dan menambahkan header:
+
+| Header / body | Arti | Pemeriksaan berikutnya |
+| --- | --- | --- |
+| `X-Iwan-Error-Source: upstream` | Backend/platform upstream mengembalikan 5xx; body dan status diteruskan | Cari log backend; log frontend mencatat `upstreamRayId` jika tersedia |
+| `X-Iwan-Error-Source: proxy`, `IWAN_PROXY_FAILURE` | Exception saat proxy | Lihat `errorName` dan `errorMessage` pada event `iwan_proxy_failure` |
+| `X-Iwan-Error-Source: proxy`, `IWAN_UPSTREAM_REDIRECT` | Backend mengembalikan redirect | Periksa origin backend/routing/Access; proxy tidak mengikuti redirect atau meneruskan token ke host lain |
+| `X-Iwan-Error-Source: proxy`, `IWAN_BACKEND_TIMEOUT` | Timeout backend, HTTP 504 | Periksa log backend dan dependensinya; tidak ada retry otomatis mutasi |
+
+Kode kegagalan proxy juga tersedia di body JSON `code` dan header
+`X-Iwan-Error-Code`. `rayId` menghubungkan log proxy dengan invocation frontend.
+`elapsedWallMs` adalah waktu sampai kegagalan/header upstream, **bukan CPU time**.
+Tidak ada logging Authorization, cookie, body request, URL lengkap, atau query.
+Pesan exception meredaksi access token, Bearer token, dan URL.
+
+Jika 502 tidak mempunyai penanda tersebut, periksa versi deployment serta log
+adapter/platform sebelum menyimpulkan error berasal dari proxy ini. Logging ini
+memperbaiki keterlacakan error, bukan bukti bahwa akar kegagalan upstream atau
+CPU telah diperbaiki.
+
 ## Hubungan dengan pairing desktop / localhost
 
 Ini masalah terpisah dari limit CPU. Di `repka-user/src/api.ts`, URL kustom pada
