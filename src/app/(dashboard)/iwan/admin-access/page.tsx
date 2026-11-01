@@ -41,7 +41,7 @@ import { Plus, RefreshCw, Copy, Trash2, Check, Laptop } from 'lucide-react';
 interface AdminToken {
   id: string;
   pair_code: string;
-  auth_token: string;
+  auth_token: string | null;
   label: string;
   scope_all: boolean;
   allowed_room_ids: string[];
@@ -49,6 +49,9 @@ interface AdminToken {
   paired_at: string | null;
   last_used_at: string | null;
   created_at: string;
+  status?: 'pending' | 'active' | 'revoked';
+  bound_mac?: string | null;
+  installation_id?: string | null;
 }
 
 interface RoomOption {
@@ -70,6 +73,7 @@ export default function IwanAdminAccessPage() {
 
   const [generatedCodeResult, setGeneratedCodeResult] = React.useState<{ code: string; label: string } | null>(null);
   const [deletingToken, setDeletingToken] = React.useState<AdminToken | null>(null);
+  const [reissuingToken, setReissuingToken] = React.useState<AdminToken | null>(null);
 
   const loadData = React.useCallback(async (signal?: AbortSignal) => {
     try {
@@ -138,6 +142,27 @@ export default function IwanAdminAccessPage() {
         await fetchData();
       } else {
         toast.error(json.error || 'Gagal mencabut akses');
+      }
+    } catch {
+      toast.error('Terjadi kesalahan');
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  async function handleReissueSubmit() {
+    if (!reissuingToken) return;
+    setIsSubmitting(true);
+    try {
+      const res = await fetch(`/api/iwan/admin-tokens/${reissuingToken.id}/reissue`, { method: 'POST' });
+      const json = await res.json();
+      if (json.ok && json.data) {
+        const label = reissuingToken.label;
+        setReissuingToken(null);
+        setGeneratedCodeResult({ code: json.data.pair_code, label });
+        await fetchData();
+      } else {
+        toast.error(json.error || 'Gagal menerbitkan ulang kode');
       }
     } catch {
       toast.error('Terjadi kesalahan');
@@ -267,6 +292,7 @@ export default function IwanAdminAccessPage() {
                 <TableHead>Kode Aktivasi</TableHead>
                 <TableHead>Scope Ruangan</TableHead>
                 <TableHead>Status</TableHead>
+                <TableHead>Perangkat Terikat</TableHead>
                 <TableHead>Terakhir Digunakan</TableHead>
                 <TableHead className="text-center">Aksi</TableHead>
               </TableRow>
@@ -274,7 +300,7 @@ export default function IwanAdminAccessPage() {
             <TableBody>
               {tokens.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="h-32 text-center text-muted-foreground py-12">
+                  <TableCell colSpan={7} className="h-32 text-center text-muted-foreground py-12">
                     {isLoading ? 'Memuat token admin...' : 'Belum ada kode aktivasi admin.'}
                   </TableCell>
                 </TableRow>
@@ -309,14 +335,34 @@ export default function IwanAdminAccessPage() {
                         <Badge variant="outline" className="text-xs">{scopeDisplay}</Badge>
                       </TableCell>
                       <TableCell>
-                        {tok.is_paired ? (
-                          <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 text-[11px] gap-1">
-                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />Terhubung
-                          </Badge>
+                        {(() => {
+                          const status = tok.status ?? (tok.is_paired ? 'active' : 'pending');
+                          if (status === 'active') {
+                            return (
+                              <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 text-[11px] gap-1">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />Terhubung
+                              </Badge>
+                            );
+                          }
+                          if (status === 'revoked') {
+                            return (
+                              <Badge variant="secondary" className="text-[11px] text-destructive gap-1">
+                                <span className="w-1.5 h-1.5 rounded-full bg-destructive" />Dicabut
+                              </Badge>
+                            );
+                          }
+                          return (
+                            <Badge variant="secondary" className="text-[11px] text-amber-600 dark:text-amber-400 gap-1">
+                              <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />Menunggu Aktivasi
+                            </Badge>
+                          );
+                        })()}
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {tok.bound_mac ? (
+                          <span className="font-mono text-xs">{tok.bound_mac}</span>
                         ) : (
-                          <Badge variant="secondary" className="text-[11px] text-amber-600 dark:text-amber-400 gap-1">
-                            <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />Menunggu Aktivasi
-                          </Badge>
+                          <span className="text-xs">-</span>
                         )}
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">
@@ -325,12 +371,21 @@ export default function IwanAdminAccessPage() {
                           : 'Belum pernah'}
                       </TableCell>
                       <TableCell>
-                        <div className="flex justify-center">
+                        <div className="flex justify-center gap-0.5">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setReissuingToken(tok)}
+                            title="Terbitkan ulang kode"
+                          >
+                            <RefreshCw className="h-4 w-4" />
+                          </Button>
                           <Button
                             variant="ghost"
                             size="icon"
                             onClick={() => setDeletingToken(tok)}
                             className="text-destructive hover:text-destructive"
+                            title="Cabut akses"
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -344,6 +399,24 @@ export default function IwanAdminAccessPage() {
           </Table>
         </div>
       </Card>
+
+      {/* Reissue AlertDialog */}
+      <AlertDialog open={Boolean(reissuingToken)} onOpenChange={(open) => !open && setReissuingToken(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Terbitkan Ulang Kode Aktivasi?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Kode baru akan dibuat untuk konsol <strong>{reissuingToken?.label}</strong> dan token lamanya langsung dicabut. Gunakan ini untuk memindahkan konsol ke PC lain. Konsol harus aktivasi ulang dengan kode baru.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Batal</AlertDialogCancel>
+            <AlertDialogAction onClick={handleReissueSubmit} disabled={isSubmitting}>
+              Terbitkan Ulang
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Revoke AlertDialog */}
       <AlertDialog open={Boolean(deletingToken)} onOpenChange={(open) => !open && setDeletingToken(null)}>
