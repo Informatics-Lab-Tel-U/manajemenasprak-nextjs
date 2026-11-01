@@ -1,6 +1,6 @@
-import Image from 'next/image';
 import { Instagram } from 'lucide-react';
 import { GradientWave } from '@/components/ui/gradient-wave';
+import { ManasLogo } from '@/components/brand/ManasLogo';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 
@@ -22,14 +22,8 @@ export function AuthBrandingPanel() {
         <Card className="bg-card/60 backdrop-blur-md border-border/50 shadow-2xl">
           <CardHeader className="pb-4 pt-6 px-6">
             <div className="flex items-center gap-4">
-              <div className="relative size-16 shrink-0">
-                <Image
-                  src="/iflab.png"
-                  alt="Informatics Laboratory"
-                  fill
-                  priority
-                  className="object-contain"
-                />
+              <div className="flex size-16 shrink-0 items-center justify-center rounded-xl bg-white p-2 shadow-sm">
+                <ManasLogo className="size-full" />
               </div>
               <div>
                 <CardTitle className="text-2xl font-bold tracking-tight">

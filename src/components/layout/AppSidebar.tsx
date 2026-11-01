@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import Image from 'next/image';
+import { ManasLogo } from '@/components/brand/ManasLogo';
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
 import {
@@ -204,10 +204,8 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
               className="group-data-[collapsible=icon]:!p-0"
             >
               <Link prefetch={false} href="/" className="flex items-center gap-2 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:gap-0">
-                <div className="flex aspect-square bg-white p-0.5 size-8 items-center justify-center rounded-lg text-sidebar-primary-foreground shrink-0">
-                  <div className="relative w-full h-full overflow-hidden rounded-md">
-                    <Image src="/iflab.png" alt="Logo" fill sizes="32px" className="object-contain" />
-                  </div>
+                <div className="flex aspect-square bg-white size-8 items-center justify-center rounded-lg shrink-0 p-1">
+                  <ManasLogo className="size-full" />
                 </div>
                 <div className="grid flex-1 text-left text-sm leading-tight min-w-0 transition-opacity duration-200 group-data-[collapsible=icon]:opacity-0">
                   <span className="truncate font-semibold">Informatics Lab</span>
