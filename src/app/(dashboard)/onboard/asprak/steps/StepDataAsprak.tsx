@@ -94,7 +94,7 @@ export default function StepDataAsprak({
       try {
         const matrix = await parseSpreadsheet(file);
         if (matrix.length < 2) {
-          setError('File kosong — tidak ada data yang ditemukan.');
+          setError('File kosong, tidak ada data yang ditemukan.');
           setIsLoading(false);
           return;
         }
@@ -113,7 +113,7 @@ export default function StepDataAsprak({
         }, []);
 
         if (data.length === 0) {
-          setError('File kosong — tidak ada data yang ditemukan.');
+          setError('File kosong, tidak ada data yang ditemukan.');
           setIsLoading(false);
           return;
         }

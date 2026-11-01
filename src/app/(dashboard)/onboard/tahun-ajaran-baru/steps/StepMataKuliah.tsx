@@ -156,7 +156,7 @@ export default function MatkulStep() {
       }, []);
 
       if (data.length === 0) {
-        setUploadError('File kosong — tidak ada data yang ditemukan.');
+        setUploadError('File kosong, tidak ada data yang ditemukan.');
         return;
       }
 

@@ -141,7 +141,7 @@ export default function AsprakImportCSVModal({
       try {
         const matrix = await parseSpreadsheet(file);
         if (matrix.length < 2) {
-          setError('File kosong — tidak ada data yang ditemukan.');
+          setError('File kosong, tidak ada data yang ditemukan.');
           setIsProcessing(false);
           return;
         }
@@ -160,7 +160,7 @@ export default function AsprakImportCSVModal({
         }, []);
 
         if (data.length === 0) {
-          setError('File kosong — tidak ada data yang ditemukan.');
+          setError('File kosong, tidak ada data yang ditemukan.');
           setIsProcessing(false);
           return;
         }
@@ -387,7 +387,7 @@ export default function AsprakImportCSVModal({
             <Upload size={18} />
             Import CSV Asprak
             {step === 'preview' && (
-              <span className="text-sm font-normal text-muted-foreground ml-2">— Preview</span>
+              <span className="text-sm font-normal text-muted-foreground ml-2">· Preview</span>
             )}
           </DialogTitle>
 

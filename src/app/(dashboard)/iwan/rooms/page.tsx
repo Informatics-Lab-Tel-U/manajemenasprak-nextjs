@@ -7,10 +7,11 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -291,17 +292,7 @@ export default function IwanRoomsPage() {
     <div className="container mx-auto max-w-[2000px] 2xl:px-8">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-        <div>
-          <h1 className="text-2xl 2xl:text-3xl font-bold tracking-tight">Ruangan &amp; Sesi Pairing</h1>
-          <p className="text-sm 2xl:text-base text-muted-foreground mt-1">
-            Kelola ruangan lab dan buka sesi pairing untuk registrasi PC praktikan.
-          </p>
-          <p className="text-sm text-muted-foreground mt-1">
-            {autoRefresh
-              ? 'Status diperbarui setiap 5 detik selama tab aktif.'
-              : 'Pembaruan otomatis mati. Gunakan Segarkan untuk data terbaru.'}
-          </p>
-        </div>
+        <h1 className="text-2xl 2xl:text-3xl font-bold tracking-tight">Ruangan &amp; Sesi Pairing</h1>
 
         <div className="flex flex-wrap items-center gap-2">
           <Button
@@ -336,9 +327,6 @@ export default function IwanRoomsPage() {
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>Tambah Ruangan Lab</DialogTitle>
-                <DialogDescription>
-                  Daftarkan ruangan laboratorium komputer untuk monitoring IWAN.
-                </DialogDescription>
               </DialogHeader>
               <form onSubmit={handleCreateRoom} className="space-y-4 py-2">
                 <div className="space-y-1.5">
@@ -384,50 +372,37 @@ export default function IwanRoomsPage() {
         </div>
       </div>
 
-      {/* Tab Ruangan */}
+      {/* Pemilih ruangan */}
       <div className="flex flex-wrap items-center justify-between gap-2 mb-6 border-b pb-4">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-sm font-medium text-muted-foreground">Lab:</span>
-          {isLoading ? (
-            <span className="text-sm text-muted-foreground">Memuat...</span>
-          ) : rooms.length === 0 ? (
-            <span className="text-sm text-muted-foreground">Belum ada ruangan.</span>
-          ) : (
-            rooms.map((room) => (
-              <Button
-                key={room.id}
-                variant={selectedRoomId === room.id ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setSelectedRoomId(room.id)}
-                className="rounded-full"
-              >
-                {room.name}
-                <Badge
-                  variant="secondary"
-                  className="ml-2 rounded-full px-1.5 py-0 text-[10px] font-semibold tabular-nums"
-                >
-                  {room.onlineDevices}/{room.totalDevices}
-                </Badge>
-              </Button>
-            ))
-          )}
-        </div>
+        {isLoading ? (
+          <span className="text-sm text-muted-foreground">Memuat...</span>
+        ) : rooms.length === 0 ? (
+          <span className="text-sm text-muted-foreground">Belum ada ruangan.</span>
+        ) : (
+          <Tabs value={selectedRoomId} onValueChange={setSelectedRoomId} className="min-w-0">
+            <TabsList className="h-auto flex-wrap justify-start">
+              {rooms.map((room) => (
+                <TabsTrigger key={room.id} value={room.id} className="gap-2">
+                  {room.name}
+                  <Badge variant="secondary" className="px-1.5 py-0 text-[10px] font-semibold tabular-nums">
+                    {room.onlineDevices}/{room.totalDevices}
+                  </Badge>
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
+        )}
 
         {selectedRoom && (
           <div className="flex items-center gap-1.5">
-            <Button
-              variant="outline"
-              size="sm"
-              className="text-xs gap-1.5 h-8"
-              onClick={openEditDialog}
-            >
+            <Button variant="outline" size="sm" className="gap-1.5 h-8" onClick={openEditDialog}>
               <Pencil className="h-3.5 w-3.5" />
-              Edit Ruangan
+              Edit
             </Button>
             <Button
               variant="ghost"
               size="sm"
-              className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 text-xs gap-1.5 h-8"
+              className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 gap-1.5 h-8"
               onClick={() => setIsDeleteDialogOpen(true)}
             >
               <Trash2 className="h-3.5 w-3.5" />
@@ -441,20 +416,19 @@ export default function IwanRoomsPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Sesi Pairing */}
           <div className="lg:col-span-1 space-y-4">
-            <div className="card glass p-6 border border-border/50 space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <KeyRound className="h-4 w-4 text-muted-foreground" />
-                  <h2 className="font-semibold text-sm">Sesi Pairing Aktif</h2>
+            <Card className="gap-4 py-5">
+              <CardHeader className="px-5">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center gap-2 text-sm">
+                    <KeyRound className="h-4 w-4 text-muted-foreground" />
+                    Sesi Pairing Aktif
+                  </CardTitle>
+                  <Badge variant={activeSession ? 'default' : 'secondary'}>
+                    {activeSession ? 'Sesi Terbuka' : 'Terkunci'}
+                  </Badge>
                 </div>
-                <Badge variant={activeSession ? 'default' : 'secondary'}>
-                  {activeSession ? 'Sesi Terbuka' : 'Terkunci'}
-                </Badge>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Kode 6 digit untuk aslab yang menginstall IWAN User di PC praktikan.
-              </p>
-
+              </CardHeader>
+              <CardContent className="px-5">
               {activeSession ? (
                 <div className="space-y-4">
                   <div className="bg-muted/40 border border-dashed rounded-lg p-5 text-center relative">
@@ -478,15 +452,6 @@ export default function IwanRoomsPage() {
                     </Button>
                   </div>
 
-                  <div className="text-xs text-muted-foreground bg-muted/40 p-3 rounded-md border space-y-1">
-                    <p className="font-semibold text-foreground">Petunjuk:</p>
-                    <ol className="list-decimal pl-4 space-y-0.5">
-                      <li>Buka aplikasi IWAN User di setiap PC praktikan.</li>
-                      <li>Masukkan kode <span className="font-mono font-bold text-foreground">{activeSession.code}</span></li>
-                      <li>Pilih nomor kursi fisik di layar PC tersebut.</li>
-                    </ol>
-                  </div>
-
                   <Button variant="destructive" size="sm" className="w-full" onClick={handleCloseSession}>
                     <Lock className="h-4 w-4 mr-1.5" />
                     Kunci &amp; Selesaikan Sesi
@@ -497,12 +462,7 @@ export default function IwanRoomsPage() {
                   <div className="mx-auto w-10 h-10 rounded-full bg-muted flex items-center justify-center text-muted-foreground">
                     <Lock className="h-5 w-5" />
                   </div>
-                  <div>
-                    <p className="text-sm font-medium">Tidak ada sesi aktif</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      PC baru tidak dapat registrasi kursi sampai sesi dibuka.
-                    </p>
-                  </div>
+                  <p className="text-sm font-medium">Tidak ada sesi aktif</p>
 
                   <Dialog open={isNewSessionOpen} onOpenChange={setIsNewSessionOpen}>
                     <DialogTrigger asChild>
@@ -514,9 +474,6 @@ export default function IwanRoomsPage() {
                     <DialogContent>
                       <DialogHeader>
                         <DialogTitle>Buka Sesi Pairing: {selectedRoom.name}</DialogTitle>
-                        <DialogDescription>
-                          Kode acak 6-digit akan dibuat untuk digunakan aslab mengkonfigurasi PC praktikan.
-                        </DialogDescription>
                       </DialogHeader>
                       <div className="space-y-4 py-2">
                         <div className="space-y-1.5">
@@ -543,11 +500,15 @@ export default function IwanRoomsPage() {
                   </Dialog>
                 </div>
               )}
-            </div>
+              </CardContent>
+            </Card>
 
             {/* Statistik Ruangan */}
-            <div className="card glass p-4 border border-border/50">
-              <h2 className="text-sm font-semibold mb-3">Statistik Ruangan</h2>
+            <Card className="gap-3 py-4">
+              <CardHeader className="px-4">
+                <CardTitle className="text-sm">Statistik Ruangan</CardTitle>
+              </CardHeader>
+              <CardContent className="px-4">
               <div className="space-y-2 text-sm">
                 {[
                   { label: 'Nama Lab', value: selectedRoom.name },
@@ -567,26 +528,24 @@ export default function IwanRoomsPage() {
                   </div>
                 ))}
               </div>
-            </div>
+              </CardContent>
+            </Card>
           </div>
 
           {/* Denah Kursi */}
           <div className="lg:col-span-2">
-            <div className="card glass p-6 border border-border/50">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
-                <div>
-                  <h2 className="font-semibold">Denah Kursi ({selectedRoom.name})</h2>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    Status real-time tiap nomor kursi (1 - {capacity}).
-                  </p>
+            <Card className="gap-4 py-5">
+              <CardHeader className="px-5">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <CardTitle>Denah Kursi {selectedRoom.name}</CardTitle>
+                  <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                    <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-emerald-500" />Online</span>
+                    <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-zinc-400" />Offline</span>
+                    <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full border border-dashed border-zinc-400" />Kosong</span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                  <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-emerald-500" />Online</span>
-                  <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-zinc-400" />Offline</span>
-                  <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full border border-dashed border-zinc-400" />Kosong</span>
-                </div>
-              </div>
-
+              </CardHeader>
+              <CardContent className="px-5">
               <div className="grid grid-cols-5 sm:grid-cols-6 md:grid-cols-8 xl:grid-cols-10 gap-2">
                 {Array.from({ length: capacity }, (_, i) => i + 1).map((seatNum) => {
                   const dev = claimedDeviceMap.get(seatNum);
@@ -624,7 +583,8 @@ export default function IwanRoomsPage() {
                   );
                 })}
               </div>
-            </div>
+              </CardContent>
+            </Card>
           </div>
         </div>
       ) : (
@@ -662,9 +622,6 @@ export default function IwanRoomsPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Edit Ruangan &amp; Kapasitas Kursi</DialogTitle>
-            <DialogDescription>
-              Ubah nama ruangan, kapasitas jumlah kursi fisik, atau keterangan lab.
-            </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleUpdateRoom} className="space-y-4 py-2">
             <div className="space-y-1.5">
@@ -688,9 +645,6 @@ export default function IwanRoomsPage() {
                 onChange={(e) => setEditRoomCapacity(Number(e.target.value))}
                 required
               />
-              <p className="text-[11px] text-muted-foreground">
-                Mengubah kapasitas akan menyesuaikan nomor kursi pada denah grid (1 - {editRoomCapacity || 40}).
-              </p>
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="edit-room-desc">Keterangan (Opsional)</Label>

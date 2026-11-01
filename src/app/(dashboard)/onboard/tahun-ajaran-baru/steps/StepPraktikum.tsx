@@ -143,7 +143,7 @@ export default function PraktikumStep() {
       try {
         const matrix = await parseSpreadsheet(file);
         if (matrix.length < 2) {
-          setUploadError('File kosong — tidak ada data yang ditemukan.');
+          setUploadError('File kosong, tidak ada data yang ditemukan.');
           return;
         }
 
@@ -162,7 +162,7 @@ export default function PraktikumStep() {
         }, []);
 
         if (data.length === 0) {
-          setUploadError('File kosong — tidak ada data yang ditemukan.');
+          setUploadError('File kosong, tidak ada data yang ditemukan.');
           return;
         }
 

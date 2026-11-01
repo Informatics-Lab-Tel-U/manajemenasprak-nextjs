@@ -669,11 +669,11 @@ const PanduanClientPageComponent = function PanduanClientPage({ role }: PanduanC
                       sebagai konteks.
                     </li>
                     <li>
-                      Pilih <strong>Asprak yang Melanggar</strong> — bisa lebih dari 1 sekaligus
+                      Pilih <strong>Asprak yang Melanggar</strong>, bisa lebih dari 1 sekaligus
                       (multi-select). Tersedia search berdasarkan nama, kode, atau NIM.
                     </li>
                     <li>
-                      Pilih <strong>Kelas/Jadwal</strong> — tersedia search nama MK, kelas, atau
+                      Pilih <strong>Kelas/Jadwal</strong>. Tersedia search nama MK, kelas, atau
                       hari.
                     </li>
                     <li>
@@ -958,7 +958,7 @@ const PanduanClientPageComponent = function PanduanClientPage({ role }: PanduanC
                         (Praktikum, MK, Asprak, Jadwal) sekaligus menggunakan format .xlsx khusus.
                       </li>
                       <li>
-                        <strong>Export Excel:</strong> Tersedia di halaman Pelanggaran — unduh data
+                        <strong>Export Excel:</strong> Tersedia di halaman Pelanggaran untuk mengunduh data
                         pelanggaran dalam format .xlsx dengan kolom standar (NIM, Nama, Kode Asprak,
                         Modul, Kelas, Pelanggaran).
                       </li>

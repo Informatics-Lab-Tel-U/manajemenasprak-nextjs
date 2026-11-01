@@ -262,7 +262,7 @@ export default function MataKuliahImportModal({
               <Upload size={18} />
               Import Data Mata Kuliah
               {step === 'preview' && (
-                <span className="text-sm font-normal text-muted-foreground ml-2">— Pratinjau</span>
+                <span className="text-sm font-normal text-muted-foreground ml-2">· Pratinjau</span>
               )}
             </DialogTitle>
           </DialogHeader>

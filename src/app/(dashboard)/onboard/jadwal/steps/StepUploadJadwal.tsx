@@ -55,7 +55,7 @@ export default function StepUploadJadwal({ term, mataKuliahList }: StepUploadJad
       try {
         const matrix = await parseSpreadsheet(file);
         if (matrix.length < 2) {
-          setError('File kosong — tidak ada data yang ditemukan.');
+          setError('File kosong, tidak ada data yang ditemukan.');
           setIsLoading(false);
           return;
         }

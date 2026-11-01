@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Card } from '@/components/ui/card';
 import {
   Table,
   TableBody,
@@ -19,7 +20,6 @@ import {
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -160,12 +160,7 @@ export default function IwanAdminAccessPage() {
     <div className="container mx-auto max-w-[2000px] 2xl:px-8">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-        <div>
-          <h1 className="text-2xl 2xl:text-3xl font-bold tracking-tight">Akses Admin Console</h1>
-          <p className="text-sm 2xl:text-base text-muted-foreground mt-1">
-            Buat kode pairing 6-digit untuk konsol IWAN Admin di laptop aslab jaga.
-          </p>
-        </div>
+        <h1 className="text-2xl 2xl:text-3xl font-bold tracking-tight">Akses Admin Console</h1>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={fetchData}>
             <RefreshCw className="h-4 w-4 mr-1.5" />
@@ -181,9 +176,6 @@ export default function IwanAdminAccessPage() {
             <DialogContent className="max-w-md">
               <DialogHeader>
                 <DialogTitle>Buat Kode Pairing IWAN Admin</DialogTitle>
-                <DialogDescription>
-                  Kode 6-digit acak untuk dimasukkan pada konsol IWAN Admin di laptop aslab.
-                </DialogDescription>
               </DialogHeader>
               <form onSubmit={handleCreateToken} className="space-y-4 py-2">
                 <div className="space-y-1.5">
@@ -208,7 +200,6 @@ export default function IwanAdminAccessPage() {
                   </div>
                   {!scopeAll && (
                     <div className="border rounded-md p-3 space-y-2 bg-muted/30 max-h-40 overflow-y-auto">
-                      <p className="text-xs text-muted-foreground">Pilih ruangan yang diizinkan:</p>
                       {rooms.map((r) => {
                         const checked = selectedRoomIds.includes(r.id);
                         return (
@@ -244,12 +235,9 @@ export default function IwanAdminAccessPage() {
         <DialogContent className="max-w-md text-center">
           <DialogHeader>
             <DialogTitle>Kode Pairing Admin Berhasil Dibuat</DialogTitle>
-            <DialogDescription>
-              Berikan kode ini kepada aslab untuk dimasukkan pada aplikasi IWAN Admin.
-            </DialogDescription>
           </DialogHeader>
           {generatedCodeResult && (
-            <div className="py-4 space-y-4">
+            <div className="py-4">
               <div className="bg-muted/40 border border-dashed rounded-lg p-6">
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
                   {generatedCodeResult.label}
@@ -261,14 +249,6 @@ export default function IwanAdminAccessPage() {
                   <Copy className="h-4 w-4 mr-1.5" />Salin Kode
                 </Button>
               </div>
-              <div className="text-xs text-muted-foreground bg-muted/40 p-3 rounded-md border text-left space-y-1">
-                <p className="font-semibold text-foreground">Cara pakai di laptop aslab:</p>
-                <ol className="list-decimal pl-4 space-y-0.5">
-                  <li>Buka aplikasi IWAN Admin di laptop.</li>
-                  <li>Masukkan 6 digit kode di atas.</li>
-                  <li>Daftar PC sesuai scope ruangan akan termuat otomatis.</li>
-                </ol>
-              </div>
             </div>
           )}
           <DialogFooter>
@@ -278,8 +258,8 @@ export default function IwanAdminAccessPage() {
       </Dialog>
 
       {/* Table */}
-      <div className="card glass border border-border/50 overflow-hidden">
-        <div className="rounded-md border overflow-hidden">
+      <Card className="overflow-hidden py-0">
+        <div className="overflow-x-auto">
           <Table className="2xl:text-base">
             <TableHeader className="bg-muted/40">
               <TableRow>
@@ -363,7 +343,7 @@ export default function IwanAdminAccessPage() {
             </TableBody>
           </Table>
         </div>
-      </div>
+      </Card>
 
       {/* Revoke AlertDialog */}
       <AlertDialog open={Boolean(deletingToken)} onOpenChange={(open) => !open && setDeletingToken(null)}>

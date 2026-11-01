@@ -103,7 +103,7 @@ export default function StepPlottingAsprak({ term }: StepPlottingAsprakProps) {
     try {
       const matrix = await parseSpreadsheet(file);
       if (matrix.length < 2) {
-        setError('File kosong — tidak ada data yang ditemukan.');
+        setError('File kosong, tidak ada data yang ditemukan.');
         setLoading(false);
         return;
       }

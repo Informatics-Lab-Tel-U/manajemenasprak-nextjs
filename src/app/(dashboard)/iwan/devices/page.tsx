@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Card, CardContent } from '@/components/ui/card';
 import {
   Table,
   TableBody,
@@ -18,7 +19,6 @@ import {
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -211,17 +211,7 @@ export default function IwanDevicesPage() {
     <div className="container mx-auto max-w-[2000px] 2xl:px-8">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-        <div>
-          <h1 className="text-2xl 2xl:text-3xl font-bold tracking-tight">Pemetaan MAC &amp; PC Lab</h1>
-          <p className="text-sm 2xl:text-base text-muted-foreground mt-1">
-            Pemetaan permanen antara nomor meja fisik dan MAC Address PC praktikan.
-          </p>
-          <p className="text-sm text-muted-foreground mt-1">
-            {autoRefresh
-              ? 'Status diperbarui setiap 8 detik selama tab aktif.'
-              : 'Pembaruan otomatis mati. Gunakan Segarkan untuk data terbaru.'}
-          </p>
-        </div>
+        <h1 className="text-2xl 2xl:text-3xl font-bold tracking-tight">Pemetaan MAC &amp; PC Lab</h1>
         <div className="flex flex-wrap items-center gap-2">
           <Button
             type="button"
@@ -247,10 +237,12 @@ export default function IwanDevicesPage() {
           { label: 'Online', value: onlineCount, color: 'text-emerald-500' },
           { label: 'Offline', value: totalCount - onlineCount, color: 'text-muted-foreground' },
         ].map((s) => (
-          <div key={s.label} className="card glass p-4 border border-border/50">
-            <p className="text-xs text-muted-foreground">{s.label}</p>
-            <p className={`text-2xl font-bold font-mono mt-1 ${s.color}`}>{s.value}</p>
-          </div>
+          <Card key={s.label} className="gap-1 py-4">
+            <CardContent className="px-4">
+              <p className="text-xs text-muted-foreground">{s.label}</p>
+              <p className={`text-2xl font-bold font-mono mt-1 tabular-nums ${s.color}`}>{s.value}</p>
+            </CardContent>
+          </Card>
         ))}
       </div>
 
@@ -279,8 +271,8 @@ export default function IwanDevicesPage() {
       </div>
 
       {/* Table */}
-      <div className="card glass border border-border/50 overflow-hidden">
-        <div className="rounded-md border overflow-hidden">
+      <Card className="overflow-hidden py-0">
+        <div className="overflow-x-auto">
           <Table className="2xl:text-base">
             <TableHeader className="bg-muted/40">
               <TableRow>
@@ -379,16 +371,13 @@ export default function IwanDevicesPage() {
             </TableBody>
           </Table>
         </div>
-      </div>
+      </Card>
 
       {/* Edit Dialog */}
       <Dialog open={Boolean(editingDevice)} onOpenChange={(open) => !open && setEditingDevice(null)}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Edit Informasi Perangkat</DialogTitle>
-            <DialogDescription>
-              Ubah label atau nomor kursi fisik PC lab ini.
-            </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleEditSubmit} className="space-y-4 py-2">
             <div className="space-y-1.5">
