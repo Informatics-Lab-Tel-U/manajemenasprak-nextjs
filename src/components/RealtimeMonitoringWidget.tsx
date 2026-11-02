@@ -22,7 +22,7 @@ export default function RealtimeMonitoringWidget({ initialData }: { initialData:
   }, [initialData, setInitialLabStatus, init]);
 
   return (
-    <Card className="w-full transition-colors border bg-card hover:border-foreground/20 shadow-sm border-blue-200/50 dark:border-blue-500/20 py-0 mb-6">
+    <Card className="w-full transition-colors border bg-transparent hover:border-foreground/20 shadow-none border-blue-200/50 dark:border-blue-500/20 py-0 mb-6">
       <CardContent className="px-6 py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6 w-full flex-1">
           <div className="shrink-0">
@@ -44,10 +44,10 @@ export default function RealtimeMonitoringWidget({ initialData }: { initialData:
               return (
                 <div
                   key={room}
-                  className={`flex flex-col items-start justify-center gap-1 rounded-md px-3 py-2 text-sm font-semibold shadow-sm border transition-colors grow shrink-0 min-w-[120px] h-full ${
+                  className={`flex flex-col items-start justify-center gap-1 rounded-md px-3 py-2 text-sm font-semibold border bg-transparent shadow-none transition-colors grow shrink-0 min-w-[120px] h-full ${
                     isOnline
-                      ? 'bg-card border-green-200 dark:border-green-900'
-                      : 'bg-muted/30 border-border opacity-70'
+                      ? 'border-green-200 dark:border-green-900'
+                      : 'border-border opacity-70'
                   }`}
                   title={isOnline ? `Online (${data?.kelas || 'N/A'})` : 'Offline'}
                 >

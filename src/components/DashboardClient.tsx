@@ -35,11 +35,18 @@ export default function DashboardClient({
   userRole,
   initialMonitoringData,
 }: DashboardClientProps) {
-  const { terms, selectedTerm, stats, rawJadwal, jadwalPengganti, loading } =
-    useDashboard(initialTerms, initialStats, initialJadwal, initialPengganti, activeModul);
+  const { selectedTerm, stats, rawJadwal, jadwalPengganti, loading, error } = useDashboard(
+    initialTerms,
+    initialStats,
+    initialJadwal,
+    initialPengganti,
+    activeModul
+  );
 
   const todayDate = new Date();
-  const currentDayNameRaw = format(todayDate, 'EEEE', { locale: id }).toUpperCase();
+  const todayLabel = format(todayDate, 'EEEE', { locale: id });
+  const termLabel = selectedTerm ? `term ${selectedTerm}` : 'term ini';
+  const currentDayNameRaw = todayLabel.toUpperCase();
   const validDays = ['SENIN', 'SELASA', 'RABU', 'KAMIS', 'JUMAT', 'SABTU', 'MINGGU'];
   const currentDayName = validDays.includes(currentDayNameRaw) ? currentDayNameRaw : 'SENIN';
 
@@ -55,41 +62,52 @@ export default function DashboardClient({
   return (
     <>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 2xl:gap-8 mb-6">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-6 *:data-[slot=card]:bg-linear-to-t *:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card *:data-[slot=card]:shadow-xs dark:*:data-[slot=card]:bg-card">
         <StatCard
           title="Total Asprak"
           value={stats.asprakCount}
-          subtitle="Terdaftar pada term ini"
-          icon={Users}
-          trend="Aktif"
-          color="purple"
+          headline="Asprak terdaftar"
+          headlineIcon={Users}
+          description={`Memiliki penugasan pada ${termLabel}`}
           loading={loading}
+          error={!!error}
         />
         <StatCard
           title="Total Jadwal"
           value={stats.jadwalCount}
-          subtitle="Kelas terjadwal"
-          icon={BookOpen}
-          color="blue"
+          headline="Kelas terjadwal"
+          headlineIcon={BookOpen}
+          description={`Seluruh hari pada ${termLabel}`}
           loading={loading}
+          error={!!error}
         />
         <StatCard
           title="Pelanggaran"
           value={stats.pelanggaranCount}
-          subtitle="Total tercatat"
-          icon={AlertTriangle}
-          trend="Perlu tinjauan"
-          color="red"
+          headline="Pelanggaran tercatat"
+          headlineIcon={AlertTriangle}
+          description={`Semua modul, ${termLabel}`}
+          badge={
+            stats.pelanggaranCount > 0
+              ? { label: 'Perlu ditinjau', icon: AlertTriangle, tone: 'warning' }
+              : undefined
+          }
           loading={loading}
+          error={!!error}
         />
-
         <StatCard
           title="Jadwal Hari Ini"
           value={processedJadwalList.length}
-          subtitle="Sesi hari ini"
-          icon={Calendar}
-          color="green"
+          headline="Kelas hari ini"
+          headlineIcon={Calendar}
+          description={
+            processedJadwalList.length === 0
+              ? 'Tidak ada kelas terjadwal hari ini'
+              : `Modul ${activeModul}, termasuk jadwal pengganti`
+          }
+          badge={{ label: todayLabel, icon: Calendar }}
           loading={loading}
+          error={!!error}
         />
       </div>
 
