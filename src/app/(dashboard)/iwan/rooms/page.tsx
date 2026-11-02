@@ -7,7 +7,15 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Switch } from '@/components/ui/switch';
+import {
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import {
   Dialog,
@@ -28,14 +36,23 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { toast } from 'sonner';
-import { Plus, RefreshCw, KeyRound, Lock, Radio, Clock, Copy, Trash2, Pencil } from 'lucide-react';
+import { Clock, Copy, MoreHorizontal, Pencil, Plus, RefreshCw, Trash2 } from 'lucide-react';
 
 interface Room {
   id: string;
@@ -61,6 +78,23 @@ interface RoomDevice {
   localIp: string;
   computedStatus: 'online' | 'offline' | 'streaming';
   lastSeen: string;
+}
+
+const DEVICE_STATUS_LABEL: Record<RoomDevice['computedStatus'], string> = {
+  online: 'Online',
+  offline: 'Offline',
+  streaming: 'Streaming',
+};
+
+function seatTone(dev: RoomDevice | undefined) {
+  if (!dev) return 'border-dashed text-muted-foreground';
+  if (dev.computedStatus === 'streaming') {
+    return 'border-blue-500/40 bg-blue-500/10 text-blue-600 dark:text-blue-400';
+  }
+  if (dev.computedStatus === 'online') {
+    return 'border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400';
+  }
+  return 'text-muted-foreground';
 }
 
 export default function IwanRoomsPage() {
@@ -287,24 +321,22 @@ export default function IwanRoomsPage() {
   const capacity = selectedRoom?.capacity || 40;
   const claimedDeviceMap = new Map<number, RoomDevice>();
   devices.forEach((d) => claimedDeviceMap.set(d.seatNumber, d));
+  const onlineDeviceCount = devices.filter((d) => d.computedStatus !== 'offline').length;
 
   return (
     <div className="container mx-auto max-w-[2000px] 2xl:px-8">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-        <h1 className="text-2xl 2xl:text-3xl font-bold tracking-tight">Ruangan &amp; Sesi Pairing</h1>
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <h1 className="text-2xl font-bold tracking-tight 2xl:text-3xl">Ruangan &amp; Sesi</h1>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <Button
-            type="button"
-            variant={autoRefresh ? 'secondary' : 'outline'}
-            size="sm"
-            aria-label="Pembaruan otomatis status ruangan"
-            aria-pressed={autoRefresh}
-            onClick={() => setAutoRefresh((current) => !current)}
-          >
-            Otomatis: {autoRefresh ? 'ON (5 dtk)' : 'OFF'}
-          </Button>
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-2">
+            <Switch id="auto-refresh" checked={autoRefresh} onCheckedChange={setAutoRefresh} />
+            <Label htmlFor="auto-refresh" className="text-sm font-normal">
+              Otomatis{autoRefresh ? ' (5 dtk)' : ''}
+            </Label>
+          </div>
+
           <Button
             variant="outline"
             size="sm"
@@ -313,20 +345,20 @@ export default function IwanRoomsPage() {
               if (selectedRoomId) void fetchRoomDetails(selectedRoomId).catch(() => toast.error('Gagal memperbarui status ruangan'));
             }}
           >
-            <RefreshCw className="h-4 w-4 mr-1.5" />
+            <RefreshCw />
             Segarkan
           </Button>
 
           <Dialog open={isCreateRoomOpen} onOpenChange={setIsCreateRoomOpen}>
             <DialogTrigger asChild>
               <Button size="sm">
-                <Plus className="h-4 w-4 mr-1.5" />
+                <Plus />
                 Tambah Ruangan
               </Button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Tambah Ruangan Lab</DialogTitle>
+                <DialogTitle>Tambah Ruangan</DialogTitle>
               </DialogHeader>
               <form onSubmit={handleCreateRoom} className="space-y-4 py-2">
                 <div className="space-y-1.5">
@@ -340,7 +372,7 @@ export default function IwanRoomsPage() {
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="room-cap">Kapasitas Kursi Fisik</Label>
+                  <Label htmlFor="room-cap">Jumlah Kursi</Label>
                   <Input
                     id="room-cap"
                     type="number"
@@ -372,243 +404,243 @@ export default function IwanRoomsPage() {
         </div>
       </div>
 
-      {/* Pemilih ruangan */}
-      <div className="flex flex-wrap items-center justify-between gap-2 mb-6 border-b pb-4">
-        {isLoading ? (
-          <span className="text-sm text-muted-foreground">Memuat...</span>
-        ) : rooms.length === 0 ? (
-          <span className="text-sm text-muted-foreground">Belum ada ruangan.</span>
-        ) : (
-          <ToggleGroup
-            type="single"
-            value={selectedRoomId}
-            onValueChange={(value) => {
-              if (value) setSelectedRoomId(value);
-            }}
-            variant="outline"
-            aria-label="Pilih ruangan"
-            className="max-w-full flex-wrap justify-start *:data-[slot=toggle-group-item]:px-4!"
-          >
-            {rooms.map((room) => (
-              <ToggleGroupItem key={room.id} value={room.id} className="gap-2">
-                {room.name}
-                <Badge variant="secondary" className="px-1.5 py-0 text-[10px] font-semibold tabular-nums">
-                  {room.onlineDevices}/{room.totalDevices}
-                </Badge>
-              </ToggleGroupItem>
-            ))}
-          </ToggleGroup>
-        )}
-
-        {selectedRoom && (
-          <div className="flex items-center gap-1.5">
-            <Button variant="outline" size="sm" className="gap-1.5 h-8" onClick={openEditDialog}>
-              <Pencil className="h-3.5 w-3.5" />
-              Edit
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 gap-1.5 h-8"
-              onClick={() => setIsDeleteDialogOpen(true)}
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-              Hapus
-            </Button>
+      {isLoading ? (
+        <div className="grid gap-4 lg:grid-cols-[20rem_1fr]">
+          <div className="space-y-4">
+            <Skeleton className="h-52 rounded-md" />
+            <Skeleton className="h-36 rounded-md" />
           </div>
-        )}
-      </div>
-
-      {selectedRoom ? (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Sesi Pairing */}
-          <div className="lg:col-span-1 space-y-4">
-            <Card className="gap-4 py-5">
-              <CardHeader className="px-5">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="flex items-center gap-2 text-sm">
-                    <KeyRound className="h-4 w-4 text-muted-foreground" />
-                    Sesi Pairing Aktif
-                  </CardTitle>
-                  <Badge variant={activeSession ? 'default' : 'secondary'}>
-                    {activeSession ? 'Sesi Terbuka' : 'Terkunci'}
-                  </Badge>
-                </div>
-              </CardHeader>
-              <CardContent className="px-5">
-              {activeSession ? (
-                <div className="space-y-4">
-                  <div className="bg-muted/40 border border-dashed rounded-lg p-5 text-center relative">
-                    <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">
-                      Kode Pairing
-                    </p>
-                    <div className="font-mono text-4xl font-black tracking-[0.3em] text-primary select-all">
-                      {activeSession.code}
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-2 flex items-center justify-center gap-1">
-                      <Clock className="h-3 w-3" />
-                      Kadaluarsa pukul {new Date(activeSession.expires_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
-                    </p>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="absolute top-2 right-2 h-7 w-7 text-muted-foreground"
-                      onClick={() => copyToClipboard(activeSession.code)}
-                    >
-                      <Copy className="h-3.5 w-3.5" />
-                    </Button>
-                  </div>
-
-                  <Button variant="destructive" size="sm" className="w-full" onClick={handleCloseSession}>
-                    <Lock className="h-4 w-4 mr-1.5" />
-                    Kunci &amp; Selesaikan Sesi
-                  </Button>
-                </div>
-              ) : (
-                <div className="py-4 text-center space-y-3">
-                  <div className="mx-auto w-10 h-10 rounded-full bg-muted flex items-center justify-center text-muted-foreground">
-                    <Lock className="h-5 w-5" />
-                  </div>
-                  <p className="text-sm font-medium">Tidak ada sesi aktif</p>
-
-                  <Dialog open={isNewSessionOpen} onOpenChange={setIsNewSessionOpen}>
-                    <DialogTrigger asChild>
-                      <Button size="sm" className="w-full gap-2">
-                        <Radio className="h-4 w-4" />
-                        Buka Sesi Pairing Baru
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                      <DialogHeader>
-                        <DialogTitle>Buka Sesi Pairing: {selectedRoom.name}</DialogTitle>
-                      </DialogHeader>
-                      <div className="space-y-4 py-2">
-                        <div className="space-y-1.5">
-                          <Label htmlFor="session-ttl">Durasi Sesi</Label>
-                          <Select value={sessionDuration} onValueChange={setSessionDuration}>
-                            <SelectTrigger id="session-ttl">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="60">1 Jam</SelectItem>
-                              <SelectItem value="120">2 Jam (Standar)</SelectItem>
-                              <SelectItem value="240">4 Jam</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
-                      <DialogFooter>
-                        <Button variant="outline" onClick={() => setIsNewSessionOpen(false)}>Batal</Button>
-                        <Button onClick={handleStartSession} disabled={isSessionLoading}>
-                          Generate Kode 6 Digit
-                        </Button>
-                      </DialogFooter>
-                    </DialogContent>
-                  </Dialog>
-                </div>
-              )}
-              </CardContent>
-            </Card>
-
-            {/* Statistik Ruangan */}
-            <Card className="gap-3 py-4">
-              <CardHeader className="px-4">
-                <CardTitle className="text-sm">Statistik Ruangan</CardTitle>
-              </CardHeader>
-              <CardContent className="px-4">
-              <div className="space-y-2 text-sm">
-                {[
-                  { label: 'Nama Lab', value: selectedRoom.name },
-                  { label: 'Kapasitas Fisik', value: `${selectedRoom.capacity} meja` },
-                  { label: 'PC Terdaftar', value: `${devices.length} perangkat` },
-                  {
-                    label: 'PC Online',
-                    value: `${devices.filter((d) => d.computedStatus !== 'offline').length} perangkat`,
-                    highlight: true,
-                  },
-                ].map((row) => (
-                  <div key={row.label} className="flex justify-between py-1 border-b last:border-0">
-                    <span className="text-muted-foreground text-xs">{row.label}</span>
-                    <span className={`text-xs font-semibold font-mono ${row.highlight ? 'text-emerald-500' : ''}`}>
-                      {row.value}
-                    </span>
-                  </div>
-                ))}
-              </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Denah Kursi */}
-          <div className="lg:col-span-2">
-            <Card className="gap-4 py-5">
-              <CardHeader className="px-5">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                  <CardTitle>Denah Kursi {selectedRoom.name}</CardTitle>
-                  <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                    <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-emerald-500" />Online</span>
-                    <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-zinc-400" />Offline</span>
-                    <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full border border-dashed border-zinc-400" />Kosong</span>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="px-5">
-              <div className="grid grid-cols-5 sm:grid-cols-6 md:grid-cols-8 xl:grid-cols-10 gap-2">
-                {Array.from({ length: capacity }, (_, i) => i + 1).map((seatNum) => {
-                  const dev = claimedDeviceMap.get(seatNum);
-                  const isClaimed = Boolean(dev);
-                  const isOnline = dev && dev.computedStatus !== 'offline';
-                  const isStreaming = dev && dev.computedStatus === 'streaming';
-
-                  return (
-                    <div
-                      key={seatNum}
-                      className={`rounded-md p-2 text-center flex flex-col items-center justify-center transition-colors ${
-                        !isClaimed
-                          ? 'border border-dashed border-zinc-300 dark:border-zinc-800 text-muted-foreground'
-                          : isStreaming
-                          ? 'border border-blue-500/40 bg-blue-500/10 text-blue-600 dark:text-blue-400'
-                          : isOnline
-                          ? 'border border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
-                          : 'border border-zinc-300 dark:border-zinc-700 bg-muted/30 text-zinc-500'
-                      }`}
-                    >
-                      <span className="text-[11px] font-mono font-bold">
-                        {seatNum < 10 ? `0${seatNum}` : seatNum}
-                      </span>
-                      <span className="text-[9px] truncate max-w-full mt-0.5">
-                        {dev ? dev.label : 'Kosong'}
-                      </span>
-                      {isClaimed && (
-                        <span
-                          className={`w-1.5 h-1.5 rounded-full mt-0.5 ${
-                            isStreaming ? 'bg-blue-500 animate-pulse' : isOnline ? 'bg-emerald-500' : 'bg-zinc-400'
-                          }`}
-                        />
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-              </CardContent>
-            </Card>
-          </div>
+          <Skeleton className="h-96 rounded-md" />
+        </div>
+      ) : rooms.length === 0 ? (
+        <div className="flex flex-col items-center gap-3 rounded-md border border-dashed py-12 text-center">
+          <p className="text-sm text-muted-foreground">Belum ada ruangan lab yang terdaftar.</p>
+          <Button size="sm" onClick={() => setIsCreateRoomOpen(true)}>
+            <Plus />
+            Tambah Ruangan
+          </Button>
         </div>
       ) : (
-        !isLoading && (
-          <p className="text-muted-foreground text-sm text-center py-16">
-            Belum ada ruangan lab yang terdaftar.
-          </p>
-        )
+        <>
+          {/* Pemilih ruangan */}
+          <div className="mb-6 flex flex-col gap-3 border-b pb-4 sm:flex-row sm:items-center sm:justify-between">
+            <ToggleGroup
+              type="single"
+              value={selectedRoomId}
+              onValueChange={(value) => {
+                if (value) setSelectedRoomId(value);
+              }}
+              variant="outline"
+              aria-label="Pilih ruangan"
+              className="max-w-full flex-wrap justify-start *:data-[slot=toggle-group-item]:px-4!"
+            >
+              {rooms.map((room) => (
+                <ToggleGroupItem key={room.id} value={room.id} className="gap-2">
+                  {room.name}
+                  <Badge variant="outline" className="px-1.5 text-muted-foreground tabular-nums">
+                    {room.onlineDevices}/{room.totalDevices}
+                  </Badge>
+                </ToggleGroupItem>
+              ))}
+            </ToggleGroup>
+
+            {selectedRoom && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="icon-sm" aria-label={`Aksi untuk ${selectedRoom.name}`}>
+                    <MoreHorizontal />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-44">
+                  <DropdownMenuItem onSelect={() => openEditDialog()}>
+                    <Pencil />
+                    Edit ruangan
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem variant="destructive" onSelect={() => setIsDeleteDialogOpen(true)}>
+                    <Trash2 />
+                    Hapus ruangan
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+          </div>
+
+          {selectedRoom && (
+            <div className="grid gap-4 lg:grid-cols-[20rem_1fr]">
+              <div className="space-y-4">
+                {/* Sesi pairing */}
+                <Card className="gap-4 rounded-md bg-transparent py-4 shadow-none">
+                  <CardHeader className="px-4">
+                    <CardTitle className="text-base">Sesi pairing</CardTitle>
+                    <CardAction>
+                      {activeSession ? (
+                        <Badge variant="outline" className="gap-1.5 px-1.5 text-muted-foreground">
+                          <span className="size-1.5 rounded-full bg-emerald-500" />
+                          Terbuka
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="gap-1.5 px-1.5 text-muted-foreground">
+                          <span className="size-1.5 rounded-full bg-zinc-400" />
+                          Tertutup
+                        </Badge>
+                      )}
+                    </CardAction>
+                  </CardHeader>
+                  <CardContent className="px-4">
+                    {activeSession ? (
+                      <div className="space-y-4">
+                        <div className="rounded-md border p-4 text-center">
+                          <p className="text-xs text-muted-foreground">Kode pairing</p>
+                          <p className="mt-1 select-all font-mono text-3xl font-semibold tracking-[0.3em]">
+                            {activeSession.code}
+                          </p>
+                          <p className="mt-2 flex items-center justify-center gap-1 text-xs text-muted-foreground">
+                            <Clock className="size-3" />
+                            Berakhir pukul{' '}
+                            {new Date(activeSession.expires_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
+                          </p>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <Button variant="outline" size="sm" onClick={() => copyToClipboard(activeSession.code)}>
+                            <Copy />
+                            Salin kode
+                          </Button>
+                          <Button variant="outline" size="sm" onClick={handleCloseSession}>
+                            Tutup sesi
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center gap-3 py-2 text-center">
+                        <p className="text-sm text-muted-foreground">Belum ada sesi aktif.</p>
+                        <Dialog open={isNewSessionOpen} onOpenChange={setIsNewSessionOpen}>
+                          <DialogTrigger asChild>
+                            <Button size="sm">Buka sesi</Button>
+                          </DialogTrigger>
+                          <DialogContent>
+                            <DialogHeader>
+                              <DialogTitle>Buka sesi pairing</DialogTitle>
+                            </DialogHeader>
+                            <div className="space-y-4 py-2">
+                              <div className="space-y-1.5">
+                                <Label htmlFor="session-ttl">Durasi</Label>
+                                <Select value={sessionDuration} onValueChange={setSessionDuration}>
+                                  <SelectTrigger id="session-ttl" className="w-full">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="60">1 jam</SelectItem>
+                                    <SelectItem value="120">2 jam (standar)</SelectItem>
+                                    <SelectItem value="240">4 jam</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            </div>
+                            <DialogFooter>
+                              <Button variant="outline" onClick={() => setIsNewSessionOpen(false)}>Batal</Button>
+                              <Button onClick={handleStartSession} disabled={isSessionLoading}>
+                                Buat kode
+                              </Button>
+                            </DialogFooter>
+                          </DialogContent>
+                        </Dialog>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Statistik */}
+                <Card className="gap-4 rounded-md bg-transparent py-4 shadow-none">
+                  <CardHeader className="px-4">
+                    <CardTitle className="text-base">Statistik</CardTitle>
+                  </CardHeader>
+                  <CardContent className="px-4">
+                    <dl className="divide-y text-sm">
+                      <div className="flex items-center justify-between py-2">
+                        <dt className="text-muted-foreground">Kursi</dt>
+                        <dd className="font-medium tabular-nums">{selectedRoom.capacity}</dd>
+                      </div>
+                      <div className="flex items-center justify-between py-2">
+                        <dt className="text-muted-foreground">PC terdaftar</dt>
+                        <dd className="font-medium tabular-nums">{devices.length}</dd>
+                      </div>
+                      <div className="flex items-center justify-between py-2">
+                        <dt className="text-muted-foreground">PC online</dt>
+                        <dd className="font-medium tabular-nums text-emerald-600 dark:text-emerald-400">
+                          {onlineDeviceCount}
+                        </dd>
+                      </div>
+                    </dl>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Denah kursi */}
+              <Card className="gap-4 rounded-md bg-transparent py-4 shadow-none">
+                <CardHeader className="px-4">
+                  <CardTitle className="text-base">Denah kursi</CardTitle>
+                  <CardDescription>
+                    {selectedRoom.name} · {capacity} kursi
+                  </CardDescription>
+                  <CardAction>
+                    <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                      <span className="flex items-center gap-1.5">
+                        <span className="size-2 rounded-full bg-emerald-500" />
+                        Online
+                      </span>
+                      <span className="flex items-center gap-1.5">
+                        <span className="size-2 rounded-full bg-zinc-400" />
+                        Offline
+                      </span>
+                      <span className="flex items-center gap-1.5">
+                        <span className="size-2 rounded-full border border-dashed border-muted-foreground" />
+                        Kosong
+                      </span>
+                    </div>
+                  </CardAction>
+                </CardHeader>
+                <CardContent className="px-4">
+                  <div className="grid grid-cols-4 gap-2 sm:grid-cols-6 md:grid-cols-8 xl:grid-cols-10">
+                    {Array.from({ length: capacity }, (_, i) => i + 1).map((seatNum) => {
+                      const dev = claimedDeviceMap.get(seatNum);
+                      const tile = (
+                        <div
+                          className={`flex min-w-0 flex-col items-center gap-0.5 rounded-md border px-1.5 py-2 text-center ${seatTone(dev)}`}
+                        >
+                          <span className="text-xs font-medium tabular-nums">
+                            {String(seatNum).padStart(2, '0')}
+                          </span>
+                          <span className="w-full truncate text-[11px]">{dev ? dev.label : 'Kosong'}</span>
+                        </div>
+                      );
+
+                      if (!dev) return <div key={seatNum}>{tile}</div>;
+
+                      return (
+                        <Tooltip key={seatNum}>
+                          <TooltipTrigger asChild>{tile}</TooltipTrigger>
+                          <TooltipContent>
+                            {dev.label} · {DEVICE_STATUS_LABEL[dev.computedStatus]} · {dev.macAddress} · {dev.localIp}
+                          </TooltipContent>
+                        </Tooltip>
+                      );
+                    })}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+        </>
       )}
 
       {/* Dialog Hapus Ruangan */}
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Hapus Ruangan {selectedRoom?.name}?</AlertDialogTitle>
+            <AlertDialogTitle>Hapus ruangan {selectedRoom?.name}?</AlertDialogTitle>
             <AlertDialogDescription>
-              Tindakan ini tidak dapat dibatalkan. Menghapus ruangan ini akan menghapus seluruh data pemetaan PC fisik ({devices.length} perangkat terdaftar) serta riwayat sesi pairing di ruangan ini.
+              Tindakan ini tidak dapat dibatalkan. Seluruh pemetaan PC ({devices.length} perangkat) dan riwayat sesi pairing di ruangan ini ikut dihapus.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -618,17 +650,17 @@ export default function IwanRoomsPage() {
               disabled={isDeletingRoom}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {isDeletingRoom ? 'Menghapus...' : 'Ya, Hapus Ruangan'}
+              {isDeletingRoom ? 'Menghapus...' : 'Ya, hapus ruangan'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Dialog Edit Ruangan & Kapasitas */}
+      {/* Dialog Edit Ruangan */}
       <Dialog open={isEditRoomOpen} onOpenChange={setIsEditRoomOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Edit Ruangan &amp; Kapasitas Kursi</DialogTitle>
+            <DialogTitle>Edit ruangan</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleUpdateRoom} className="space-y-4 py-2">
             <div className="space-y-1.5">
@@ -642,7 +674,7 @@ export default function IwanRoomsPage() {
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="edit-room-cap">Kapasitas Jumlah Kursi Fisik</Label>
+              <Label htmlFor="edit-room-cap">Jumlah Kursi</Label>
               <Input
                 id="edit-room-cap"
                 type="number"
@@ -667,7 +699,7 @@ export default function IwanRoomsPage() {
                 Batal
               </Button>
               <Button type="submit" disabled={isSavingRoom}>
-                {isSavingRoom ? 'Menyimpan...' : 'Simpan Perubahan'}
+                {isSavingRoom ? 'Menyimpan...' : 'Simpan'}
               </Button>
             </DialogFooter>
           </form>
