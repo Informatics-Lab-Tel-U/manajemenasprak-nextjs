@@ -21,10 +21,22 @@ import React, { useMemo, useEffect } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useJaga } from '@/hooks/useJaga';
 import { getJagaShiftsByDay } from '@/utils/jagaUtils';
+import { getCourseColor } from '@/utils/colorUtils';
 import { useMonitoringStore } from '@/store/useMonitoringStore';
 import { usePresensiJagaStore } from '@/store/usePresensiJagaStore';
 import { isLabOnline } from '@/lib/labStatus';
 import { CheckCircle2 } from 'lucide-react';
+
+const MAX_JAGA_CODES = 6;
+
+// 1 kode = 1 kotak penuh. 2 kode = sejajar. 3–4 kode = 2 kolom (4 orang jadi 2 atas + 2 bawah).
+// 5–6 kode = 3 kolom.
+function splitJagaRows<T>(tiles: T[]): T[][] {
+  const cols = tiles.length <= 2 ? tiles.length : tiles.length <= 4 ? 2 : 3;
+  const rows: T[][] = [];
+  for (let i = 0; i < tiles.length; i += cols) rows.push(tiles.slice(i, i + cols));
+  return rows;
+}
 
 const chartConfigAsprak = {
   count: {
@@ -148,7 +160,7 @@ export default function DashboardCharts({
   }
 
   return (
-    <div className="grid grid-cols-1 gap-6">
+    <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
       {/* Schedule Visualization */}
       <Card className="col-span-full border-border/50 shadow-sm bg-card">
         <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -183,7 +195,6 @@ export default function DashboardCharts({
                       <th className="p-2 border-r-0 min-w-[120px]">
                         <Skeleton className="h-6 w-16 mx-auto" />
                       </th>
-                      <th className="w-4 bg-transparent border-none"></th>
                       <th className="p-2 border-r border-l border-border min-w-[60px]">
                         <Skeleton className="h-4 w-8 mx-auto" />
                       </th>
@@ -200,7 +211,6 @@ export default function DashboardCharts({
                         <td className="p-2 border-r-0 bg-muted/5 align-middle">
                           <Skeleton className="h-6 w-16 mx-auto rounded-sm" />
                         </td>
-                        <td className="w-4 bg-transparent border-none"></td>
                         <td className="p-2 border-r border-l border-border text-center align-middle">
                           <div className="space-y-1">
                             <Skeleton className="h-4 w-10 mx-auto" />
@@ -233,7 +243,6 @@ export default function DashboardCharts({
                         <br />
                         <span className="text-blue-700 dark:text-blue-300">(Modul {activeModul})</span>
                       </th>
-                      <th className="w-4 bg-transparent border-none"></th>
                       <th className="p-2 border-r border-l border-border text-center font-bold min-w-[60px] text-xs 2xl:text-sm uppercase text-muted-foreground">
                         Sesi
                       </th>
@@ -255,85 +264,109 @@ export default function DashboardCharts({
                       const shiftJaga = jagaList.filter(
                         (j) => j.shift?.toString() === matchedShift?.shift?.toString()
                       );
+                      // Lebih dari 6 kode: 5 kode tampil, slot ke-6 jadi "+N".
+                      const hasOverflow = shiftJaga.length > MAX_JAGA_CODES;
+                      const visibleJaga = shiftJaga.slice(
+                        0,
+                        hasOverflow ? MAX_JAGA_CODES - 1 : MAX_JAGA_CODES
+                      );
+                      const overflowCount = shiftJaga.length - visibleJaga.length;
+                      const jagaTiles: Array<(typeof visibleJaga)[number] | null> = hasOverflow
+                        ? [...visibleJaga, null]
+                        : visibleJaga;
 
                       return (
                         <tr
                           key={session.rowKey}
                           className="hover:bg-muted/30 transition-colors border-b border-border/50"
                         >
-                          <td className="p-2 border-r-0 text-center align-top relative bg-muted/5">
-                            <div className="flex flex-wrap gap-1 justify-center max-w-[120px] mx-auto min-h-[40px] items-center">
-                              {shiftJaga.length > 0 ? (
-                                <TooltipProvider>
-                                  {shiftJaga.map((j) => {
-                                    const presensi = todayPresensi.find(
-                                      (p) =>
-                                        p.id_asprak === j.id_asprak &&
-                                        p.shift === j.shift &&
-                                        p.hari.toUpperCase() === currentDayName.toUpperCase() &&
-                                        p.modul === activeModul
-                                    );
-                                    const isHadir = !!presensi;
-                                    const hadirTime = presensi?.waktu_masuk
-                                      ? format(new Date(presensi.waktu_masuk), 'HH:mm', { locale: id })
-                                      : null;
+                          <td className="border-r-0 p-0 align-top h-[60px] 2xl:h-[80px]">
+                            {shiftJaga.length > 0 ? (
+                              <TooltipProvider>
+                                <div className="flex h-full flex-col gap-px bg-border">
+                                  {splitJagaRows(jagaTiles).map((row, rowIndex) => (
+                                    <div key={rowIndex} className="flex flex-1 gap-px">
+                                      {row.map((j, colIndex) => {
+                                        if (j === null) {
+                                          return (
+                                            <div
+                                              key={`more-${colIndex}`}
+                                              className="flex min-w-0 flex-1 items-center justify-center bg-muted text-[10px] sm:text-xs 2xl:text-sm font-bold text-muted-foreground"
+                                              title={`${overflowCount} kode lainnya`}
+                                            >
+                                              +{overflowCount}
+                                            </div>
+                                          );
+                                        }
 
-                                    return (
-                                      <Tooltip key={j.id}>
-                                        <TooltipTrigger asChild>
-                                          <div
-                                            className={`text-xs px-1.5 py-0.5 rounded-sm font-bold transition-all hover:scale-105 cursor-default border flex items-center gap-1 ${
-                                              isHadir
-                                                ? 'bg-green-50/90 text-green-800 border-green-400 ring-2 ring-green-500/70 shadow-sm dark:bg-green-950/60 dark:text-green-300 dark:border-green-700'
-                                                : j.asprak?.role === 'ASLAB'
-                                                ? 'bg-blue-50/50 text-blue-700 border-blue-200/60 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-800/40'
-                                                : 'bg-slate-50/50 text-slate-700 border-slate-200/60 dark:bg-slate-800/40 dark:text-slate-300 dark:border-slate-700/60'
-                                            }`}
-                                          >
-                                            {isHadir ? (
-                                              <span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse shrink-0" />
-                                            ) : null}
-                                            {j.asprak?.kode || 'Unknown'}
-                                          </div>
-                                        </TooltipTrigger>
-                                        <TooltipContent
-                                          side="right"
-                                          className="flex flex-col gap-1.5"
-                                        >
-                                          <div className="flex items-center gap-2 border-b pb-1.5 border-background/20">
-                                            <span className="text-[10px] px-1.5 py-0.5 rounded-sm uppercase font-bold bg-primary text-primary-foreground">
-                                              {j.asprak?.role}
-                                            </span>
-                                            <span className="font-bold text-xs">
-                                              {j.asprak?.kode}
-                                            </span>
-                                            {isHadir ? (
-                                              <span className="text-[10px] px-1.5 py-0.5 rounded-sm uppercase font-bold bg-green-600 text-white">
-                                                HADIR {hadirTime}
-                                              </span>
-                                            ) : null}
-                                          </div>
-                                          <div>
-                                            <div className="font-semibold text-xs leading-none mb-1">
-                                              {j.asprak?.nama_lengkap}
-                                            </div>
-                                            <div className="text-[10px] opacity-70 leading-none">
-                                              {j.asprak?.nim}
-                                            </div>
-                                          </div>
-                                        </TooltipContent>
-                                      </Tooltip>
-                                    );
-                                  })}
-                                </TooltipProvider>
-                              ) : (
+                                        const presensi = todayPresensi.find(
+                                          (p) =>
+                                            p.id_asprak === j.id_asprak &&
+                                            p.shift === j.shift &&
+                                            p.hari.toUpperCase() === currentDayName.toUpperCase() &&
+                                            p.modul === activeModul
+                                        );
+                                        const isHadir = !!presensi;
+                                        const hadirTime = presensi?.waktu_masuk
+                                          ? format(new Date(presensi.waktu_masuk), 'HH:mm', { locale: id })
+                                          : null;
+
+                                        return (
+                                          <Tooltip key={j.id}>
+                                            <TooltipTrigger asChild>
+                                              <div
+                                                className="relative flex min-w-0 flex-1 items-center justify-center p-1 text-[10px] sm:text-xs 2xl:text-sm font-bold text-white drop-shadow-md cursor-default transition-all hover:brightness-110"
+                                                style={{
+                                                  backgroundColor: getCourseColor(j.asprak?.kode || 'Unknown'),
+                                                }}
+                                              >
+                                                <span className="truncate">
+                                                  {j.asprak?.kode || 'Unknown'}
+                                                </span>
+                                                {isHadir ? (
+                                                  <span
+                                                    className="absolute right-1 top-1 size-1.5 rounded-full bg-white ring-1 ring-black/20"
+                                                    aria-label="Sudah hadir"
+                                                  />
+                                                ) : null}
+                                              </div>
+                                            </TooltipTrigger>
+                                            <TooltipContent side="right" className="flex flex-col gap-1.5">
+                                              <div className="flex items-center gap-2 border-b pb-1.5 border-background/20">
+                                                <span className="text-[10px] px-1.5 py-0.5 rounded-sm uppercase font-bold bg-primary text-primary-foreground">
+                                                  {j.asprak?.role}
+                                                </span>
+                                                <span className="font-bold text-xs">{j.asprak?.kode}</span>
+                                                {isHadir ? (
+                                                  <span className="text-[10px] px-1.5 py-0.5 rounded-sm uppercase font-bold bg-green-600 text-white">
+                                                    HADIR {hadirTime}
+                                                  </span>
+                                                ) : null}
+                                              </div>
+                                              <div>
+                                                <div className="font-semibold text-xs leading-none mb-1">
+                                                  {j.asprak?.nama_lengkap}
+                                                </div>
+                                                <div className="text-[10px] opacity-70 leading-none">
+                                                  {j.asprak?.nim}
+                                                </div>
+                                              </div>
+                                            </TooltipContent>
+                                          </Tooltip>
+                                        );
+                                      })}
+                                    </div>
+                                  ))}
+                                </div>
+                              </TooltipProvider>
+                            ) : (
+                              <div className="flex h-full items-center justify-center">
                                 <span className="text-xs text-muted-foreground italic opacity-50">
                                   -
                                 </span>
-                              )}
-                            </div>
+                              </div>
+                            )}
                           </td>
-                          <td className="w-4 bg-transparent border-none"></td>
                           <td className="p-2 border-r border-l border-border text-center font-medium text-muted-foreground text-xs 2xl:text-sm">
                             {session.sesi ? (
                               <div className="font-bold">Sesi {session.sesi}</div>
