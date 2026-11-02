@@ -22,6 +22,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useJaga } from '@/hooks/useJaga';
 import { getJagaShiftsByDay } from '@/utils/jagaUtils';
 import { getCourseColor } from '@/utils/colorUtils';
+import { SynchronizedJagaSnakeBorder } from '@/components/jadwal/JagaCell';
 import { useMonitoringStore } from '@/store/useMonitoringStore';
 import { usePresensiJagaStore } from '@/store/usePresensiJagaStore';
 import { isLabOnline } from '@/lib/labStatus';
@@ -307,6 +308,10 @@ export default function DashboardCharts({
                                             p.modul === activeModul
                                         );
                                         const isHadir = !!presensi;
+                                        const isTerlambat = presensi?.status === 'TERLAMBAT';
+                                        const tileColor = getCourseColor(
+                                          j.asprak?.kode || j.asprak?.nama_lengkap || 'ASPRAK'
+                                        );
                                         const hadirTime = presensi?.waktu_masuk
                                           ? format(new Date(presensi.waktu_masuk), 'HH:mm', { locale: id })
                                           : null;
@@ -315,20 +320,14 @@ export default function DashboardCharts({
                                           <Tooltip key={j.id}>
                                             <TooltipTrigger asChild>
                                               <div
-                                                className="relative flex min-w-0 flex-1 items-center justify-center p-1 text-[10px] sm:text-xs 2xl:text-sm font-bold text-white drop-shadow-md cursor-default transition-all hover:brightness-110"
-                                                style={{
-                                                  backgroundColor: getCourseColor(j.asprak?.kode || 'Unknown'),
-                                                }}
+                                                className="relative flex min-w-0 flex-1 items-center justify-center overflow-hidden p-1 text-[10px] sm:text-xs 2xl:text-sm font-bold text-white cursor-default transition-all hover:brightness-110"
+                                                style={{ backgroundColor: tileColor }}
+                                                aria-label={isHadir ? `${j.asprak?.kode} sudah hadir` : undefined}
                                               >
-                                                <span className="truncate">
+                                                {isHadir && <SynchronizedJagaSnakeBorder isTerlambat={isTerlambat} />}
+                                                <span className="relative z-10 truncate drop-shadow-sm">
                                                   {j.asprak?.kode || 'Unknown'}
                                                 </span>
-                                                {isHadir ? (
-                                                  <span
-                                                    className="absolute right-1 top-1 size-1.5 rounded-full bg-white ring-1 ring-black/20"
-                                                    aria-label="Sudah hadir"
-                                                  />
-                                                ) : null}
                                               </div>
                                             </TooltipTrigger>
                                             <TooltipContent side="right" className="flex flex-col gap-1.5">

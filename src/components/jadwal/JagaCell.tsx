@@ -16,7 +16,7 @@ interface JagaCellProps {
   onDeletePresensi?: (presensiId: string, asprakName: string) => void;
 }
 
-const SynchronizedJagaSnakeBorder: React.FC<{ isTerlambat?: boolean }> = ({ isTerlambat }) => {
+export const SynchronizedJagaSnakeBorder: React.FC<{ isTerlambat?: boolean }> = ({ isTerlambat }) => {
   // Synchronize animation phase with global epoch clock so all cells move in unison
   const [syncDelay] = React.useState(() => `${-((Date.now() % 2000) / 1000)}s`);
 
