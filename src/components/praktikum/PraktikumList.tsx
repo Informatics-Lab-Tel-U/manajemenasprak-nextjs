@@ -1,7 +1,7 @@
 'use client';
 
 import { Skeleton } from '@/components/ui/skeleton';
-import { Card } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import PraktikumCard from './PraktikumCard';
 import type { PraktikumWithStats } from '@/services/praktikumService';
 
@@ -13,23 +13,25 @@ interface PraktikumListProps {
 
 export function PraktikumCardSkeleton() {
   return (
-    <Card className="bg-card shadow-sm h-full min-h-[142px] flex flex-col">
-      <div className="p-4 flex flex-col h-full">
-        <div className="flex justify-between items-start mb-3">
-          <Skeleton className="h-4 w-16" />
-          <Skeleton className="h-5 w-20 rounded-full" />
+    <Card className="gap-3 rounded-md bg-transparent py-4 shadow-none">
+      <CardHeader className="gap-2 px-4">
+        <div className="flex items-start justify-between gap-2">
+          <Skeleton className="h-5 w-3/4" />
+          <Skeleton className="h-5 w-16 rounded-full" />
         </div>
-        <div className="flex-grow mb-2">
-          <Skeleton className="h-6 w-3/4 rounded-md" />
-        </div>
-        <div className="mt-auto pt-3 border-t border-border/50 flex items-center gap-2">
-          <Skeleton className="h-4 w-4 rounded-full shrink-0" />
-          <div className="flex flex-col gap-1">
+      </CardHeader>
+      <CardContent className="px-4">
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-1.5">
+            <Skeleton className="h-3 w-12" />
+            <Skeleton className="h-4 w-16" />
+          </div>
+          <div className="space-y-1.5">
             <Skeleton className="h-3 w-16" />
-            <Skeleton className="h-4 w-12" />
+            <Skeleton className="h-4 w-20" />
           </div>
         </div>
-      </div>
+      </CardContent>
     </Card>
   );
 }
@@ -47,11 +49,11 @@ export default function PraktikumList({ praktikums, loading, onSelect }: Praktik
 
   if (praktikums.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center h-64 border-2 border-dashed rounded-lg bg-muted/20">
-        <p className="text-muted-foreground font-medium">
+      <div className="flex h-64 flex-col items-center justify-center rounded-md border border-dashed">
+        <p className="font-medium text-muted-foreground">
           Tidak ada data praktikum untuk term ini.
         </p>
-        <p className="text-xs text-muted-foreground mt-1">
+        <p className="mt-1 text-xs text-muted-foreground">
           Silakan import data praktikum terlebih dahulu.
         </p>
       </div>

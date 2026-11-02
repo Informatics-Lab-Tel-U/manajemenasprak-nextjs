@@ -1,7 +1,6 @@
-import { Card, CardHeader, CardTitle, CardDescription, CardAction, CardFooter } from '@/components/ui/card';
-import { BookOpen, UserCircle } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { MataKuliahWithPraktikum } from '@/services/mataKuliahService';
+import type { MataKuliahWithPraktikum } from '@/services/mataKuliahService';
 
 interface MataKuliahCardProps {
   mk: MataKuliahWithPraktikum;
@@ -11,32 +10,42 @@ export default function MataKuliahCard({ mk }: MataKuliahCardProps) {
   const isPJJ = mk.program_studi.includes('PJJ');
 
   return (
-    <Card className="@container/card bg-card shadow-sm hover:shadow-md transition-shadow group flex flex-col">
-      <CardHeader>
-        <CardDescription className="line-clamp-1">{mk.praktikum.nama}</CardDescription>
-        <CardTitle className="text-lg 2xl:text-xl font-bold line-clamp-2 leading-tight transition-colors" title={mk.nama_lengkap}>
-          {mk.nama_lengkap}
-        </CardTitle>
-        <CardAction className="flex gap-1.5 flex-col items-end">
-          <Badge variant="outline" className="text-foreground/80">
-            <BookOpen size={12} className="mr-1 opacity-70" />
-            {mk.program_studi}
-          </Badge>
-          {isPJJ && (
-            <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4">
-              PJJ
+    <Card className="gap-3 rounded-md bg-transparent py-4 shadow-none transition-colors hover:border-foreground/20">
+      <CardHeader className="gap-2 px-4">
+        <div className="flex items-start justify-between gap-2">
+          <CardTitle
+            role="heading"
+            aria-level={3}
+            title={mk.nama_lengkap}
+            className="min-w-0 text-base leading-snug line-clamp-2"
+          >
+            {mk.nama_lengkap}
+          </CardTitle>
+          <div className="flex shrink-0 items-center gap-1">
+            {isPJJ && (
+              <Badge variant="secondary" className="px-1.5">
+                PJJ
+              </Badge>
+            )}
+            <Badge variant="outline" className="px-1.5 text-muted-foreground">
+              {mk.program_studi}
             </Badge>
-          )}
-        </CardAction>
+          </div>
+        </div>
       </CardHeader>
 
-      <CardFooter className="mt-auto flex items-center gap-2 text-sm pt-4 border-t border-border/50">
-        <UserCircle className="size-4 text-muted-foreground shrink-0" />
-        <div className="flex flex-col gap-0.5">
-          <span className="text-xs text-muted-foreground">Koordinator</span>
-          <span className="text-sm font-semibold text-foreground">{mk.dosen_koor}</span>
-        </div>
-      </CardFooter>
+      <CardContent className="px-4">
+        <dl className="grid grid-cols-2 gap-4 text-sm">
+          <div className="min-w-0 space-y-0.5">
+            <dt className="text-xs text-muted-foreground">Koordinator</dt>
+            <dd className="truncate font-medium">{mk.dosen_koor || '-'}</dd>
+          </div>
+          <div className="min-w-0 space-y-0.5">
+            <dt className="text-xs text-muted-foreground">Praktikum</dt>
+            <dd className="truncate font-medium">{mk.praktikum.nama}</dd>
+          </div>
+        </dl>
+      </CardContent>
     </Card>
   );
 }

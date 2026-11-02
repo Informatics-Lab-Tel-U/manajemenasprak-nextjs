@@ -17,17 +17,17 @@ export default function MataKuliahLoading() {
         </div>
       </div>
 
-      <div className="card glass p-4">
-        <div className="flex flex-col sm:flex-row gap-4 items-center">
-          <Skeleton className="h-10 flex-1 w-full" />
-          <Skeleton className="h-10 w-full sm:w-[180px]" />
-        </div>
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+        <Skeleton className="h-9 w-full sm:max-w-sm" />
       </div>
 
       <div className="space-y-8">
         {[1, 2].map((i) => (
           <div key={i} className="space-y-4">
-            <Skeleton className="h-7 w-48" />
+            <div className="flex items-center justify-between gap-2 border-b pb-2">
+              <Skeleton className="h-5 w-32" />
+              <Skeleton className="h-5 w-14 rounded-full" />
+            </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 min-[2000px]:grid-cols-6 gap-4 2xl:gap-6 animate-pulse">
               {Array.from({ length: 6 }).map((_, j) => (
                 <MataKuliahCardSkeleton key={j} />

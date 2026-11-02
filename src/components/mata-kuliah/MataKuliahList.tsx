@@ -1,5 +1,6 @@
 import { Skeleton } from '@/components/ui/skeleton';
-import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import MataKuliahCard from './MataKuliahCard';
 import type { MataKuliahGrouped } from '@/services/mataKuliahService';
 
@@ -10,23 +11,25 @@ interface MataKuliahListProps {
 
 export function MataKuliahCardSkeleton() {
   return (
-    <Card className="bg-card shadow-sm h-full min-h-[160px] flex flex-col">
-      <div className="p-4 flex flex-col h-full">
-        <div className="flex justify-between items-start mb-3">
-          <Skeleton className="h-4 w-20" />
-          <Skeleton className="h-5 w-24 rounded-full" />
+    <Card className="gap-3 rounded-md bg-transparent py-4 shadow-none">
+      <CardHeader className="gap-2 px-4">
+        <div className="flex items-start justify-between gap-2">
+          <Skeleton className="h-5 w-3/4" />
+          <Skeleton className="h-5 w-14 rounded-full" />
         </div>
-        <div className="flex-grow mb-2">
-          <Skeleton className="h-6 w-3/4 rounded-md" />
-        </div>
-        <div className="mt-auto pt-3 border-t border-border/50 flex items-center gap-2">
-          <Skeleton className="h-4 w-4 rounded-full shrink-0" />
-          <div className="flex flex-col gap-1">
+      </CardHeader>
+      <CardContent className="px-4">
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-1.5">
             <Skeleton className="h-3 w-16" />
             <Skeleton className="h-4 w-24" />
           </div>
+          <div className="space-y-1.5">
+            <Skeleton className="h-3 w-14" />
+            <Skeleton className="h-4 w-28" />
+          </div>
         </div>
-      </div>
+      </CardContent>
     </Card>
   );
 }
@@ -37,9 +40,9 @@ export default function MataKuliahList({ groupedData, loading }: MataKuliahListP
       <div className="space-y-8 animate-pulse">
         {[1, 2].map((groupIndex) => (
           <div key={groupIndex} className="space-y-4">
-            <div className="flex items-center gap-2 border-b pb-2">
-              <Skeleton className="h-7 w-48" />
-              <Skeleton className="h-4 w-16 rounded-full" />
+            <div className="flex items-center justify-between gap-2 border-b pb-2">
+              <Skeleton className="h-5 w-32" />
+              <Skeleton className="h-5 w-14 rounded-full" />
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 min-[2000px]:grid-cols-6 gap-4 2xl:gap-6">
               {[1, 2, 3, 4, 5, 6].map((i) => (
@@ -54,11 +57,11 @@ export default function MataKuliahList({ groupedData, loading }: MataKuliahListP
 
   if (groupedData.length === 0) {
     return (
-      <div className="text-center py-12 border-2 border-dashed rounded-xl">
-        <h3 className="text-lg font-medium text-muted-foreground">
+      <div className="flex flex-col items-center justify-center rounded-md border border-dashed py-12 text-center">
+        <h3 className="text-base font-medium text-muted-foreground">
           Belum ada data mata kuliah untuk term ini.
         </h3>
-        <p className="text-sm text-muted-foreground mt-1">Silakan import CSV atau tambah manual.</p>
+        <p className="mt-1 text-sm text-muted-foreground">Silakan import CSV atau tambah manual.</p>
       </div>
     );
   }
@@ -67,11 +70,13 @@ export default function MataKuliahList({ groupedData, loading }: MataKuliahListP
     <div className="space-y-8">
       {groupedData.map((group) => (
         <div key={group.mk_singkat} className="space-y-4">
-          <div className="flex items-center gap-2 border-b pb-2">
-            <h2 className="text-xl 2xl:text-2xl font-bold tracking-tight text-foreground">{group.mk_singkat}</h2>
-            <span className="text-xs font-mono bg-muted px-2 py-0.5 rounded-full text-muted-foreground">
-              {group.items.length} variants
-            </span>
+          <div className="flex items-center justify-between gap-2 border-b pb-2">
+            <h2 className="text-lg font-semibold tracking-tight text-foreground">
+              {group.mk_singkat}
+            </h2>
+            <Badge variant="outline" className="shrink-0 px-1.5 text-muted-foreground">
+              {group.items.length} varian
+            </Badge>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 min-[2000px]:grid-cols-6 gap-4 2xl:gap-6">
