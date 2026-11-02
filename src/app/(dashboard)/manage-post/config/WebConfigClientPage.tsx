@@ -47,7 +47,7 @@ export default function WebConfigClientPage({
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
         <div>
           <h1 className="text-2xl 2xl:text-3xl font-bold tracking-tight">
-            Konfigurasi Web Publik
+            Konfigurasi Web
           </h1>
           <p className="text-sm 2xl:text-base text-muted-foreground mt-1">
             Atur konten dan data yang akan diekspos ke website publik (Informatics Blog).

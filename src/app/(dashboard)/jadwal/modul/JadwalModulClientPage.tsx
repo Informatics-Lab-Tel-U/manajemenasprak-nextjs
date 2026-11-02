@@ -220,7 +220,7 @@ export default function JadwalModulClientPage() {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 w-full md:w-auto">
           <div>
-            <h1 className="text-2xl 2xl:text-3xl font-bold tracking-tight">Jadwal Tanggal Modul</h1>
+            <h1 className="text-2xl 2xl:text-3xl font-bold tracking-tight">Tanggal Modul</h1>
             <p className="text-sm 2xl:text-base text-muted-foreground mt-1">Atur tanggal mulai praktikum untuk setiap modul (1-16).</p>
           </div>
         </div>

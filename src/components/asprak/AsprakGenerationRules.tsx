@@ -88,7 +88,7 @@ export default function AsprakGenerationRules({ existingCodes = EMPTY_ITEMS }: A
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
       <div className="mb-6">
-        <h2 className="text-lg font-bold tracking-tight">Sistem Kode Asprak (3 Huruf)</h2>
+        <h2 className="text-lg font-bold tracking-tight">Kode Asprak (3 Huruf)</h2>
         <p className="text-sm text-muted-foreground mt-1 leading-relaxed">
           Sistem ini menggunakan algoritma deterministik bertingkat untuk menghasilkan kode unik 3
           huruf berdasarkan nama lengkap asisten. Jika terjadi konflik (kode sudah dipakai), sistem

@@ -20,7 +20,7 @@ import { requireRole } from '@/lib/auth';
 export const dynamic = 'force-dynamic';
 
 export const metadata = {
-  title: 'Kelola Post Lab',
+  title: 'Semua Post',
 };
 
 // Lebih lega dari px-2 default di sisi tepi tabel, supaya kolom pertama dan terakhir tidak menempel ke border.
@@ -46,7 +46,7 @@ export default async function ManagePostPage() {
     <div className="container mx-auto max-w-[2000px] 2xl:px-8 relative">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
         <div>
-          <h1 className="text-2xl 2xl:text-3xl font-bold tracking-tight">Kelola Post Lab</h1>
+          <h1 className="text-2xl 2xl:text-3xl font-bold tracking-tight">Semua Post</h1>
           <p className="text-sm 2xl:text-base text-muted-foreground mt-1">Manajemen konten artikel dan pengumuman lab.</p>
         </div>
         <div className="flex flex-wrap gap-2 md:gap-3 items-center w-full md:w-auto">

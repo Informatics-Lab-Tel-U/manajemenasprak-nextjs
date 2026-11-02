@@ -209,7 +209,7 @@ export default function JadwalPenggantiClientPage({
     <div className="container mx-auto max-w-[2000px] 2xl:px-8 animate-in fade-in duration-500" style={{ position: 'relative' }}>
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
         <div>
-          <h1 className="text-2xl 2xl:text-3xl font-bold tracking-tight">Manage Jadwal Pengganti</h1>
+          <h1 className="text-2xl 2xl:text-3xl font-bold tracking-tight">Jadwal Pengganti</h1>
           <p className="text-sm 2xl:text-base text-muted-foreground mt-1">
             Kelola semua jadwal pengganti praktikum
           </p>

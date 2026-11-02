@@ -215,7 +215,7 @@ export default function IwanDevicesPage() {
     <div className="container mx-auto max-w-[2000px] 2xl:px-8">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-        <h1 className="text-2xl 2xl:text-3xl font-bold tracking-tight">Pemetaan MAC &amp; PC Lab</h1>
+        <h1 className="text-2xl 2xl:text-3xl font-bold tracking-tight">Pemetaan PC</h1>
         <div className="flex flex-wrap items-center gap-2">
           <Button
             type="button"

@@ -5,7 +5,7 @@ export default function AsprakLoading() {
     <div className="container mx-auto max-w-[2000px] 2xl:px-8 relative space-y-8">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div className="space-y-2">
-          <h1 className="text-2xl font-bold tracking-tight">Data Asisten Praktikum</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Daftar Asprak</h1>
           <p className="text-sm text-muted-foreground mt-1">Kelola daftar asisten praktikum</p>
         </div>
         <div className="flex flex-wrap gap-2 md:gap-3 items-center w-full md:w-auto">

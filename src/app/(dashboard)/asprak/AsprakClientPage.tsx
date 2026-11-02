@@ -398,7 +398,7 @@ export default function AsprakClientPage({
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
         <div>
-          <h1 className="text-2xl 2xl:text-3xl font-bold tracking-tight">Data Asisten Praktikum</h1>
+          <h1 className="text-2xl 2xl:text-3xl font-bold tracking-tight">Daftar Asprak</h1>
           <p className="text-sm 2xl:text-base text-muted-foreground mt-1">Kelola daftar asisten praktikum</p>
         </div>
         <div className="flex flex-wrap gap-2 md:gap-3 items-center w-full md:w-auto">

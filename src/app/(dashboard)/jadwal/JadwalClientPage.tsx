@@ -363,7 +363,7 @@ export default function JadwalClientPage({
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 w-full md:w-auto">
           <div>
             <h1 className="text-2xl 2xl:text-3xl font-bold tracking-tight">Jadwal Praktikum</h1>
-            <p className="text-sm 2xl:text-base text-muted-foreground mt-1">Overview jadwal per ruangan</p>
+            <p className="text-sm 2xl:text-base text-muted-foreground mt-1">Jadwal per ruangan</p>
           </div>
 
           <ToggleGroup

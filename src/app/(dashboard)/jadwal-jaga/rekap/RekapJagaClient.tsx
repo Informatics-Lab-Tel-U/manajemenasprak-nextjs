@@ -94,7 +94,7 @@ export default function RekapJagaClient({ initialTerms: _initialTerms }: { initi
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl 2xl:text-3xl font-bold tracking-tight">Rekapitulasi Penjagaan</h1>
+          <h1 className="text-2xl 2xl:text-3xl font-bold tracking-tight">Rekap Penjagaan</h1>
           <p className="text-sm 2xl:text-base text-muted-foreground mt-1">
             Pantau total shift jaga tiap asisten per modul
           </p>

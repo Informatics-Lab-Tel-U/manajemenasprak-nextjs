@@ -188,7 +188,7 @@ export default function IwanAdminAccessPage() {
     <div className="container mx-auto max-w-[2000px] 2xl:px-8">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-        <h1 className="text-2xl 2xl:text-3xl font-bold tracking-tight">Akses Admin Console</h1>
+        <h1 className="text-2xl 2xl:text-3xl font-bold tracking-tight">Akses Admin</h1>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={fetchData}>
             <RefreshCw className="h-4 w-4 mr-1.5" />

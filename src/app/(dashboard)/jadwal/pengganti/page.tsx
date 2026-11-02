@@ -6,7 +6,7 @@ import JadwalPenggantiClientPage from './JadwalPenggantiClientPage';
 export const dynamic = 'force-dynamic';
 
 export const metadata = {
-  title: 'Manage Jadwal Pengganti | Manajemen Praktikum',
+  title: 'Jadwal Pengganti | Manajemen Asprak',
   description: 'Kelola jadwal pengganti praktikum',
 };
 

@@ -8,7 +8,7 @@ import { requireAuth } from '@/lib/auth';
 export const dynamic = 'force-dynamic';
 
 export const metadata = {
-  title: 'Input Jadwal Jaga | Informatics Lab',
+  title: 'Manajemen Penjagaan | Informatics Lab',
   description: 'Kelola jadwal jaga Asisten Laboratorium',
 };
 

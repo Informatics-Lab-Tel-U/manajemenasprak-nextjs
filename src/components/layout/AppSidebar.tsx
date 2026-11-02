@@ -5,23 +5,25 @@ import { ManasLogo } from '@/components/brand/ManasLogo';
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
 import {
-  Home,
-  Users,
-  Calendar,
   AlertTriangle,
   BookOpen,
-  HelpCircle,
-  Settings,
-  Notebook,
-  Logs,
-  Shield,
-  UserRoundCheck,
-  PlusCircle,
+  Calendar,
+  ChevronRight,
   FileSpreadsheet,
-  Monitor,
   FileText,
   Fingerprint,
+  FlaskConical,
+  GraduationCap,
+  HelpCircle,
+  Home,
+  Logs,
+  Monitor,
+  PlusCircle,
+  Settings,
+  Shield,
   Tv,
+  UserCog,
+  Users,
 } from 'lucide-react';
 import {
   Sidebar,
@@ -40,7 +42,6 @@ import {
   SidebarMenuSubButton,
 } from '@/components/ui/sidebar';
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
-import { ChevronRight } from 'lucide-react';
 import { AccountSwitcher } from '../sidebar/AccountSwitcher';
 import type { Role } from '@/config/rbac';
 import { hasAccess } from '@/config/rbac';
@@ -50,15 +51,21 @@ type NavSubItem = {
   href: string;
 };
 
-type NavItem = {
+/** Item tanpa sub-menu: langsung membuka halaman. */
+type NavLeaf = {
   label: string;
   href: string;
   icon: React.ElementType;
-  /** If provided, the item expands into sub-items */
-  items?: NavSubItem[];
-  /** If true, item renders with primary background */
-  isPrimary?: boolean;
 };
+
+/** Item dengan sub-menu: hanya membuka/menutup daftar, tidak punya halaman sendiri. */
+type NavParent = {
+  label: string;
+  icon: React.ElementType;
+  items: NavSubItem[];
+};
+
+type NavItem = NavLeaf | NavParent;
 
 type NavGroup = {
   label: string;
@@ -66,80 +73,75 @@ type NavGroup = {
 };
 
 /**
- * All possible nav groups. Visibility of items is controlled by `hasAccess()` from rbac.ts.
- * If a group has no visible items, it will not be rendered.
+ * Urutan: pekerjaan harian dulu, lalu data akademik, alat, konten, dan terakhir administrasi sistem.
+ * Label mengikuti judul halaman yang dibuka. Visibilitas item dikontrol `hasAccess()` dari rbac.ts.
  */
 const ALL_NAV_GROUPS: NavGroup[] = [
   {
-    label: 'Main Menu',
+    label: 'Utama',
     items: [
-      { label: 'Setup Tahun Ajaran', href: '/onboard', icon: PlusCircle, isPrimary: true },
-      { label: 'Overview', href: '/', icon: Home },
+      { label: 'Beranda', href: '/', icon: Home },
+      { label: 'Setup Tahun Ajaran', href: '/onboard', icon: PlusCircle },
     ],
   },
   {
-    label: 'Akademik & Data',
-    items: [
-      { label: 'Data Praktikum', href: '/praktikum', icon: BookOpen },
-      { label: 'Data Praktikan', href: '/data-praktikan', icon: UserRoundCheck },
-      { label: 'Mata Kuliah', href: '/mata-kuliah', icon: BookOpen },
-      {
-        label: 'Data Asisten Praktikum',
-        href: '#',
-        icon: Users,
-        items: [
-          { label: 'Data Asprak', href: '/asprak?tab=data' },
-          { label: 'Generate Kode Asprak', href: '/asprak?tab=rules' },
-        ],
-      },
-    ],
-  },
-  {
-    label: 'Generator',
-    items: [
-      { label: 'Generate Presensi', href: '/generator/presensi', icon: FileSpreadsheet },
-      { label: 'Font Fingerprint', href: '/generator/font-generator', icon: Fingerprint },
-    ],
-  },
-  {
-    label: 'Jadwal & Pelanggaran',
+    label: 'Operasional',
     items: [
       {
-        label: 'Jadwal Praktikum',
-        href: '#',
+        label: 'Jadwal',
         icon: Calendar,
         items: [
-          { label: 'Overview Jadwal', href: '/jadwal' },
+          { label: 'Jadwal Praktikum', href: '/jadwal' },
           { label: 'Jadwal Pengganti', href: '/jadwal/pengganti' },
-          { label: 'Tanggal Mulai Modul', href: '/jadwal/modul' },
+          { label: 'Tanggal Modul', href: '/jadwal/modul' },
+        ],
+      },
+      {
+        label: 'Penjagaan',
+        icon: Shield,
+        items: [
+          { label: 'Manajemen Penjagaan', href: '/jadwal-jaga' },
+          { label: 'Rekap Penjagaan', href: '/jadwal-jaga/rekap' },
         ],
       },
       {
         label: 'Pelanggaran',
-        href: '#',
         icon: AlertTriangle,
         items: [
-          { label: 'Kelola Pelanggaran', href: '/pelanggaran' },
-          { label: 'Lihat Pelanggaran', href: '/pelanggaran-rekap' },
-        ],
-      },
-      {
-        label: 'Jadwal Jaga',
-        href: '#',
-        icon: Shield,
-        items: [
-          { label: 'Input Jaga', href: '/jadwal-jaga' },
-          { label: 'Rekap Jaga', href: '/jadwal-jaga/rekap' },
+          { label: 'Log Pelanggaran', href: '/pelanggaran' },
+          { label: 'Rekap Pelanggaran', href: '/pelanggaran-rekap' },
         ],
       },
     ],
   },
   {
-    label: 'CMS / Blog',
+    label: 'Akademik',
+    items: [
+      { label: 'Data Praktikum', href: '/praktikum', icon: FlaskConical },
+      { label: 'Mata Kuliah', href: '/mata-kuliah', icon: BookOpen },
+      { label: 'Data Praktikan', href: '/data-praktikan', icon: GraduationCap },
+      {
+        label: 'Asprak',
+        icon: Users,
+        items: [
+          { label: 'Daftar Asprak', href: '/asprak?tab=data' },
+          { label: 'Kode Asprak', href: '/asprak?tab=rules' },
+        ],
+      },
+    ],
+  },
+  {
+    label: 'Alat',
+    items: [
+      { label: 'Generator Presensi', href: '/generator/presensi', icon: FileSpreadsheet },
+      { label: 'Generator Font Fingerprint', href: '/generator/font-generator', icon: Fingerprint },
+    ],
+  },
+  {
+    label: 'Konten',
     items: [
       {
-        label: 'Kelola Konten',
-        href: '#',
+        label: 'Blog Lab',
         icon: FileText,
         items: [
           { label: 'Semua Post', href: '/manage-post' },
@@ -152,23 +154,22 @@ const ALL_NAV_GROUPS: NavGroup[] = [
   {
     label: 'Sistem',
     items: [
+      { label: 'Monitoring Lab', href: '/monitoring', icon: Monitor },
       {
         label: 'IWAN Monitoring',
-        href: '#',
         icon: Tv,
         items: [
-          { label: 'Kelola Ruangan & Sesi', href: '/iwan/rooms' },
-          { label: 'Pemetaan MAC & PC', href: '/iwan/devices' },
-          { label: 'Akses Admin Console', href: '/iwan/admin-access' },
+          { label: 'Ruangan & Sesi', href: '/iwan/rooms' },
+          { label: 'Pemetaan PC', href: '/iwan/devices' },
+          { label: 'Akses Admin', href: '/iwan/admin-access' },
         ],
       },
-      { label: 'Monitoring Lab', href: '/monitoring', icon: Monitor },
-      { label: 'Manajemen Akun', href: '/manajemen-akun', icon: Notebook },
+      { label: 'Manajemen Akun', href: '/manajemen-akun', icon: UserCog },
       { label: 'Audit Logs', href: '/audit-logs', icon: Logs },
-      { label: 'Panduan Sistem', href: '/panduan', icon: HelpCircle },
       { label: 'Pengaturan', href: '/pengaturan', icon: Settings },
+      { label: 'Panduan Sistem', href: '/panduan', icon: HelpCircle },
     ],
-  }
+  },
 ];
 
 type AppSidebarProps = React.ComponentProps<typeof Sidebar> & {
@@ -185,7 +186,7 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
 
   const visibleNavGroups = ALL_NAV_GROUPS.map((group) => {
     const visibleItems = group.items.filter((item) => {
-      if (item.items) {
+      if ('items' in item) {
         return item.items.some((sub) => hasAccess(user.role, sub.href));
       }
       return hasAccess(user.role, item.href);
@@ -231,91 +232,90 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
               <SidebarMenu>
                 {group.items.map((item) => {
                   const Icon = item.icon;
-                  const isActive =
-                    pathname === item.href ||
-                    item.items?.some((sub) => pathname.startsWith(sub.href.split('?')[0]));
-                const hasSubmenu = item.items && item.items.length > 0;
 
-                if (hasSubmenu) {
-                  const visibleSubItems = item.items!.filter((sub) =>
-                    hasAccess(user.role, sub.href)
-                  );
+                  if ('items' in item) {
+                    const isActive = item.items.some((sub) =>
+                      pathname.startsWith(sub.href.split('?')[0])
+                    );
+                    const visibleSubItems = item.items.filter((sub) =>
+                      hasAccess(user.role, sub.href)
+                    );
+
+                    return (
+                      <Collapsible
+                        key={item.label}
+                        defaultOpen={isActive}
+                        className="group/collapsible"
+                        asChild
+                      >
+                        <SidebarMenuItem>
+                          <CollapsibleTrigger asChild>
+                            <SidebarMenuButton tooltip={item.label} isActive={isActive}>
+                              <Icon />
+                              <span>{item.label}</span>
+                              <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+                            </SidebarMenuButton>
+                          </CollapsibleTrigger>
+                          <CollapsibleContent>
+                            <SidebarMenuSub>
+                              {visibleSubItems.map((subItem) => {
+                                const [basePath, query] = subItem.href.split('?');
+
+                                const isBaseActive = pathname === basePath;
+                                const isPrefixActive = pathname.startsWith(basePath + '/');
+                                const queryMatches =
+                                  !query || searchParams?.toString().includes(query);
+
+                                const hasMoreSpecificMatch =
+                                  (isBaseActive || isPrefixActive) &&
+                                  visibleSubItems.some((other) => {
+                                    const [otherPath] = other.href.split('?');
+                                    return (
+                                      otherPath.length > basePath.length &&
+                                      pathname.startsWith(otherPath)
+                                    );
+                                  });
+
+                                const isSubActive =
+                                  (isBaseActive || isPrefixActive) &&
+                                  queryMatches &&
+                                  !hasMoreSpecificMatch;
+
+                                return (
+                                  <SidebarMenuSubItem key={subItem.href}>
+                                    <SidebarMenuSubButton asChild isActive={isSubActive}>
+                                      <Link prefetch={false} href={subItem.href}>
+                                        <span>{subItem.label}</span>
+                                      </Link>
+                                    </SidebarMenuSubButton>
+                                  </SidebarMenuSubItem>
+                                );
+                              })}
+                            </SidebarMenuSub>
+                          </CollapsibleContent>
+                        </SidebarMenuItem>
+                      </Collapsible>
+                    );
+                  }
+
                   return (
-                    <Collapsible
-                      key={item.label}
-                      defaultOpen={isActive}
-                      className="group/collapsible"
-                      asChild
-                    >
-                      <SidebarMenuItem>
-                        <CollapsibleTrigger asChild>
-                          <SidebarMenuButton tooltip={item.label} isActive={isActive}>
-                            <Icon />
-                            <span>{item.label}</span>
-                            <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
-                          </SidebarMenuButton>
-                        </CollapsibleTrigger>
-                        <CollapsibleContent>
-                          <SidebarMenuSub>
-                            {visibleSubItems.map((subItem) => {
-                              const [basePath, query] = subItem.href.split('?');
-
-                              const isBaseActive = pathname === basePath;
-                              const isPrefixActive = pathname.startsWith(basePath + '/');
-                              const queryMatches =
-                                !query || searchParams?.toString().includes(query);
-
-                              const hasMoreSpecificMatch =
-                                (isBaseActive || isPrefixActive) &&
-                                visibleSubItems.some((other) => {
-                                  const [otherPath] = other.href.split('?');
-                                  return (
-                                    otherPath.length > basePath.length &&
-                                    pathname.startsWith(otherPath)
-                                  );
-                                });
-
-                              const isSubActive =
-                                (isBaseActive || isPrefixActive) &&
-                                queryMatches &&
-                                !hasMoreSpecificMatch;
-
-                              return (
-                                <SidebarMenuSubItem key={subItem.href}>
-                                  <SidebarMenuSubButton asChild isActive={isSubActive}>
-                                    <Link prefetch={false} href={subItem.href}>
-                                      <span>{subItem.label}</span>
-                                    </Link>
-                                  </SidebarMenuSubButton>
-                                </SidebarMenuSubItem>
-                              );
-                            })}
-                          </SidebarMenuSub>
-                        </CollapsibleContent>
-                      </SidebarMenuItem>
-                    </Collapsible>
+                    <SidebarMenuItem key={item.href}>
+                      <SidebarMenuButton
+                        asChild
+                        isActive={pathname === item.href || pathname.startsWith(item.href + '/')}
+                        tooltip={item.label}
+                      >
+                        <Link prefetch={false} href={item.href}>
+                          <Icon />
+                          <span>{item.label}</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
                   );
-                }
-
-                return (
-                  <SidebarMenuItem key={item.href}>
-                    <SidebarMenuButton
-                      asChild
-                      isActive={pathname === item.href || pathname.startsWith(item.href + '/')}
-                      tooltip={item.label}
-                      className={item.isPrimary ? 'bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground data-[active=true]:bg-primary data-[active=true]:text-primary-foreground font-semibold shadow-sm' : ''}
-                    >
-                      <Link prefetch={false} href={item.href}>
-                        <Icon />
-                        <span>{item.label}</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                );
-              })}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+                })}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
         ))}
       </SidebarContent>
 
