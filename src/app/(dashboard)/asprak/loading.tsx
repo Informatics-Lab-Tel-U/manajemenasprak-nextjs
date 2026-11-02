@@ -21,10 +21,9 @@ export default function AsprakLoading() {
           <div className="h-8 w-24 bg-muted animate-pulse rounded-sm" />
         </div>
 
-        <div className="card glass p-6 space-y-6 border border-border/50">
-          <div className="flex flex-col sm:flex-row gap-4 items-center">
-            <div className="h-10 flex-1 w-full bg-muted animate-pulse rounded-md" />
-            <div className="h-10 w-full sm:w-[180px] bg-muted animate-pulse rounded-md" />
+        <div className="space-y-4">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <div className="h-9 w-full sm:max-w-sm bg-muted animate-pulse rounded-md" />
           </div>
           <TableSkeleton columnCount={5} rowCount={10} />
         </div>

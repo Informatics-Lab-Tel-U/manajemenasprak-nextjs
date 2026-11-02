@@ -45,6 +45,10 @@ function getAslabTerm(angkatan?: number): string {
 }
 
 
+// Lebih lega dari px-2 default di sisi tepi tabel, supaya kolom pertama dan terakhir tidak menempel ke border.
+const TABLE_EDGE_PADDING =
+  '[&_th:first-child]:pl-4 [&_td:first-child]:pl-4 [&_th:last-child]:pr-4 [&_td:last-child]:pr-4';
+
 export default function AsprakTable({ data, loading, onViewDetails }: AsprakTableProps) {
   const columns = useMemo<ColumnDef<Asprak>[]>(
     () => [
@@ -67,16 +71,17 @@ export default function AsprakTable({ data, loading, onViewDetails }: AsprakTabl
               <Badge
                 title={`Asisten Laboratorium periode ${term}`}
                 aria-label={`Asisten Laboratorium periode ${term}`}
-                className="bg-slate-900 text-white hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200 font-bold px-2 py-0.5"
+                variant="default"
+                className="bg-foreground px-1.5 text-background"
               >
                 ASLAB {!HIDE_ASLAB_YEAR && term}
               </Badge>
             );
           }
           return (
-            <span className="text-muted-foreground font-medium text-xs border border-border px-2 py-1 rounded bg-muted/20">
+            <Badge variant="outline" className="px-1.5 text-muted-foreground">
               {role || 'ASPRAK'}
-            </span>
+            </Badge>
           );
         },
       },
@@ -84,7 +89,7 @@ export default function AsprakTable({ data, loading, onViewDetails }: AsprakTabl
         accessorKey: 'kode',
         header: 'Kode',
         cell: ({ row }) => (
-          <Badge variant="default" className="font-mono">
+          <Badge variant="outline" className="px-1.5">
             {row.original.kode}
           </Badge>
         ),
@@ -97,9 +102,16 @@ export default function AsprakTable({ data, loading, onViewDetails }: AsprakTabl
         id: 'actions',
         header: 'Aksi',
         cell: ({ row }) => (
-          <Button variant="ghost" size="sm" onClick={() => onViewDetails(row.original)}>
-            Lihat <ArrowUpRight className="ml-1" size={14} />
-          </Button>
+          <div className="flex justify-end">
+            <Button
+              variant="outline"
+              size="sm"
+              className="border-muted-foreground/40 dark:border-muted-foreground/40"
+              onClick={() => onViewDetails(row.original)}
+            >
+              Lihat <ArrowUpRight className="ml-1" size={14} />
+            </Button>
+          </div>
         ),
       },
     ],
@@ -124,13 +136,16 @@ export default function AsprakTable({ data, loading, onViewDetails }: AsprakTabl
 
   return (
     <div className="space-y-4">
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
+      <div className="overflow-hidden rounded-md border">
+        <Table className={TABLE_EDGE_PADDING}>
+          <TableHeader className="bg-muted">
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
                 {headerGroup.headers.map((header) => (
-                  <TableHead key={header.id}>
+                  <TableHead
+                    key={header.id}
+                    className={header.column.id === 'actions' ? 'text-right' : undefined}
+                  >
                     {header.isPlaceholder
                       ? null
                       : flexRender(header.column.columnDef.header, header.getContext())}
@@ -171,7 +186,7 @@ export default function AsprakTable({ data, loading, onViewDetails }: AsprakTabl
               table.setPageSize(Number(value));
             }}
           >
-            <SelectTrigger className="h-8 w-full sm:w-[70px]">
+            <SelectTrigger size="sm" className="w-full sm:w-[70px]">
               <SelectValue placeholder={table.getState().pagination.pageSize} />
             </SelectTrigger>
             <SelectContent side="top">

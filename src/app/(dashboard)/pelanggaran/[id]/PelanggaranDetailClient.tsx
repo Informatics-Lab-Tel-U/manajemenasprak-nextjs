@@ -8,6 +8,8 @@ import {
   ArrowLeft,
   ArrowUpDown,
   CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
   Download,
   Lock,
   Plus,
@@ -65,6 +67,10 @@ import type { Role } from '@/config/rbac';
 import { usePelanggaranDetail } from '@/hooks/usePelanggaran';
 import { useTermStore } from '@/store/useTermStore';
 
+// Lebih lega dari px-2 default di sisi tepi tabel, supaya kolom pertama dan terakhir tidak menempel ke border.
+const TABLE_EDGE_PADDING =
+  '[&_th:first-child]:pl-4 [&_td:first-child]:pl-4 [&_th:last-child]:pr-4 [&_td:last-child]:pr-4';
+
 interface Props {
   praktikum?: Praktikum;
   initialViolations?: Pelanggaran[];
@@ -99,9 +105,8 @@ function SortHeader({ column, label }: { column: any; label: string }) {
   return (
     <Button
       variant="ghost"
-      size="sm"
       onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-      className="-ml-3 h-8 gap-1 px-3"
+      className="-ml-3 gap-1 px-3"
     >
       {label}
       <ArrowUpDown className="h-3 w-3" />
@@ -231,7 +236,7 @@ export default function PelanggaranDetailClient({
         accessorKey: 'jenis',
         header: ({ column }) => <SortHeader column={column} label="Jenis" />,
         cell: ({ row }) => (
-          <Badge variant="outline" className="text-xs font-normal whitespace-nowrap">
+          <Badge variant="outline" className="px-1.5 text-muted-foreground">
             {row.original.jenis}
           </Badge>
         ),
@@ -240,16 +245,16 @@ export default function PelanggaranDetailClient({
         id: 'actions',
         header: 'Aksi',
         cell: ({ row: { original: v } }) => (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center justify-end gap-2">
             {isFinalized ? (
-              <Badge className="gap-1 bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
-                <CheckCircle2 className="h-3 w-3" /> Final
+              <Badge variant="outline" className="gap-1 px-1.5 text-muted-foreground">
+                <CheckCircle2 className="text-green-600 dark:text-green-400" /> Final
               </Badge>
             ) : (
               <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                variant="outline"
+                size="icon-sm"
+                className="border-muted-foreground/40 text-destructive hover:bg-destructive/10 hover:text-destructive dark:border-muted-foreground/40 dark:hover:bg-destructive/20"
                 onClick={() => setViolationToDelete(v.id)}
               >
                 <Trash2 className="h-4 w-4" />
@@ -372,7 +377,7 @@ export default function PelanggaranDetailClient({
             <Skeleton className="h-9 w-32" />
           </div>
         </div>
-        <div className="card glass p-4 mb-6 space-y-4">
+        <div className="space-y-4">
           <Skeleton className="h-4 w-32" />
           <Skeleton className="h-[300px] w-full" />
         </div>
@@ -424,8 +429,8 @@ export default function PelanggaranDetailClient({
                 {praktikum?.nama ?? 'Detail Praktikum'}
               </h1>
               {isFinalized && (
-                <Badge className="bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/10 border-emerald-200/50 gap-1.5 py-0.5 px-2">
-                  <CheckCircle2 className="h-3.5 w-3.5" />
+                <Badge variant="outline" className="gap-1 px-1.5 text-muted-foreground">
+                  <CheckCircle2 className="text-green-600 dark:text-green-400" />
                   Finalized
                 </Badge>
               )}
@@ -437,7 +442,7 @@ export default function PelanggaranDetailClient({
         <div className="flex flex-wrap gap-2 items-center w-full md:w-auto">
           {/* Module Selector */}
           <Select value={selectedModul} onValueChange={setSelectedModul}>
-            <SelectTrigger className="w-full sm:w-[180px] h-9 bg-background/50 backdrop-blur-sm border-white/20">
+            <SelectTrigger className="w-full sm:w-[180px]">
               <SelectValue placeholder="Pilih Modul" />
             </SelectTrigger>
             <SelectContent>
@@ -515,14 +520,14 @@ export default function PelanggaranDetailClient({
       </div>
 
       {/* Search filter */}
-      <div className="mb-4 flex items-center justify-between">
-        <div className="relative w-full max-w-xs">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+      <div className="flex items-center justify-between">
+        <div className="relative w-full sm:max-w-sm">
+          <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Cari nama / kode asprak..."
             value={(table.getColumn('asprak')?.getFilterValue() as string) ?? ''}
             onChange={(e) => table.getColumn('asprak')?.setFilterValue(e.target.value)}
-            className="pl-9 h-8 text-sm"
+            className="pl-8"
           />
         </div>
         <div className="flex items-center gap-2">
@@ -533,19 +538,22 @@ export default function PelanggaranDetailClient({
       </div>
 
       {/* Dual table layout */}
-      <div className="">
+      <div className="space-y-6">
         {/* === Violation Log Table === */}
-        <div className="card glass p-4 mb-6">
+        <div>
           <h2 className="text-sm 2xl:text-base font-semibold mb-3 text-muted-foreground uppercase tracking-wide">
             Log Pelanggaran
           </h2>
-          <div className="rounded-md border overflow-x-auto">
-            <Table className="2xl:text-base">
-              <TableHeader>
+          <div className="overflow-hidden rounded-md border">
+            <Table className={`2xl:text-base ${TABLE_EDGE_PADDING}`}>
+              <TableHeader className="bg-muted">
                 {table.getHeaderGroups().map((hg) => (
                   <TableRow key={hg.id}>
                     {hg.headers.map((h) => (
-                      <TableHead key={h.id}>
+                      <TableHead
+                        key={h.id}
+                        className={h.column.id === 'actions' ? 'text-right' : undefined}
+                      >
                         {h.isPlaceholder
                           ? null
                           : flexRender(h.column.columnDef.header, h.getContext())}
@@ -609,17 +617,19 @@ export default function PelanggaranDetailClient({
           </div>
 
           {/* Pagination */}
-          <div className="flex items-center justify-end gap-2 mt-3">
-            <span className="text-sm text-muted-foreground">
-              Hal {table.getState().pagination.pageIndex + 1}/{Math.max(1, table.getPageCount())}
-            </span>
+          <div className="flex items-center justify-end space-x-2 py-4">
+            <div className="text-sm font-medium">
+              Halaman {table.getState().pagination.pageIndex + 1} dari{' '}
+              {Math.max(1, table.getPageCount())}
+            </div>
             <Button
               variant="outline"
               size="sm"
               onClick={() => table.previousPage()}
               disabled={!table.getCanPreviousPage()}
             >
-              ‹ Prev
+              <ChevronLeft className="h-4 w-4" />
+              <span className="hidden sm:inline">Sebelumnya</span>
             </Button>
             <Button
               variant="outline"
@@ -627,42 +637,47 @@ export default function PelanggaranDetailClient({
               onClick={() => table.nextPage()}
               disabled={!table.getCanNextPage()}
             >
-              Next ›
+              <span className="hidden sm:inline">Berikutnya</span>
+              <ChevronRight className="h-4 w-4" />
             </Button>
           </div>
         </div>
 
         {/* === Recap Table === */}
-        <div className="card glass p-4">
+        <div>
           <h2 className="text-sm 2xl:text-base font-semibold mb-3 text-muted-foreground uppercase tracking-wide">
             Rekap per Asprak
           </h2>
-          <div className="rounded-md border overflow-x-auto">
-            <Table className="2xl:text-base">
-              <TableHeader>
+          <div className="overflow-hidden rounded-md border">
+            <Table className={`2xl:text-base ${TABLE_EDGE_PADDING}`}>
+              <TableHeader className="bg-muted">
                 <TableRow>
                   <TableHead>Kode</TableHead>
                   <TableHead>Nama</TableHead>
                   {activeJenis.map((j) => (
-                    <TableHead key={j} className="text-center text-xs whitespace-nowrap">
+                    <TableHead key={j} className="whitespace-nowrap text-right">
                       {j}
                     </TableHead>
                   ))}
-                  <TableHead className="text-center font-bold">Total</TableHead>
+                  <TableHead className="text-right">Total</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {recap.length ? (
                   recap.map((r) => (
                     <TableRow key={r.kode}>
-                      <TableCell className="font-mono text-xs">{r.kode}</TableCell>
-                      <TableCell className="text-sm">{r.nama}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="px-1.5">
+                          {r.kode}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>{r.nama}</TableCell>
                       {activeJenis.map((j) => (
-                        <TableCell key={j} className="text-center text-sm">
+                        <TableCell key={j} className="text-right">
                           {r.counts[j] ?? 0}
                         </TableCell>
                       ))}
-                      <TableCell className="text-center font-bold">{r.total}</TableCell>
+                      <TableCell className="text-right font-medium">{r.total}</TableCell>
                     </TableRow>
                   ))
                 ) : loading ? (
@@ -675,10 +690,10 @@ export default function PelanggaranDetailClient({
                         <Skeleton className="h-4 w-32" />
                       </TableCell>
                       <TableCell>
-                        <Skeleton className="h-4 w-8 mx-auto" />
+                        <Skeleton className="ml-auto h-4 w-8" />
                       </TableCell>
                       <TableCell>
-                        <Skeleton className="h-4 w-8 mx-auto" />
+                        <Skeleton className="ml-auto h-4 w-8" />
                       </TableCell>
                     </TableRow>
                   ))
@@ -686,7 +701,7 @@ export default function PelanggaranDetailClient({
                   <TableRow>
                     <TableCell
                       colSpan={3 + activeJenis.length}
-                      className="h-16 text-center text-muted-foreground text-sm"
+                      className="h-16 text-center text-muted-foreground"
                     >
                       Tidak ada data.
                     </TableCell>

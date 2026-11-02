@@ -18,7 +18,7 @@ export default function PelanggaranLoading() {
           <span className="text-sm font-medium text-muted-foreground hidden sm:block">
             Tahun Ajaran:
           </span>
-          <Skeleton className="h-10 w-full sm:w-[180px] rounded-md" />
+          <Skeleton className="h-9 w-full sm:w-[180px] rounded-md" />
         </div>
       </div>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 min-[2000px]:grid-cols-5">

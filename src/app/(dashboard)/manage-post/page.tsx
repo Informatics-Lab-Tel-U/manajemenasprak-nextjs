@@ -2,6 +2,15 @@ import * as blogService from '@/services/blogService';
 import Link from 'next/link';
 import { Pencil } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { DeletePostButton } from '@/components/blog/DeletePostButton';
@@ -12,6 +21,15 @@ export const dynamic = 'force-dynamic';
 
 export const metadata = {
   title: 'Kelola Post Lab',
+};
+
+// Lebih lega dari px-2 default di sisi tepi tabel, supaya kolom pertama dan terakhir tidak menempel ke border.
+const TABLE_EDGE_PADDING =
+  '[&_th:first-child]:pl-4 [&_td:first-child]:pl-4 [&_th:last-child]:pr-4 [&_td:last-child]:pr-4';
+
+const STATUS_LABEL: Record<string, string> = {
+  published: 'Terbit',
+  draft: 'Draf',
 };
 
 export default async function ManagePostPage() {
@@ -36,61 +54,59 @@ export default async function ManagePostPage() {
         </div>
       </div>
 
-      <div className="w-full">
-        <div className="card glass p-6 flex flex-col gap-6 border border-border/50">
-          <div className="rounded-md border bg-card overflow-x-auto">
-            <table className="w-full text-sm text-left">
-          <thead className="text-xs text-muted-foreground bg-muted/50 border-b">
-            <tr>
-              <th className="px-4 py-3 font-medium">Judul</th>
-              <th className="px-4 py-3 font-medium">Status</th>
-              <th className="px-4 py-3 font-medium">Kategori</th>
-              <th className="px-4 py-3 font-medium">Penulis</th>
-              <th className="px-4 py-3 font-medium">Tgl Publish</th>
-              <th className="px-4 py-3 font-medium text-right">Aksi</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y">
+      <div className="overflow-hidden rounded-md border">
+        <Table className={TABLE_EDGE_PADDING}>
+          <TableHeader className="bg-muted">
+            <TableRow>
+              <TableHead>Judul</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Kategori</TableHead>
+              <TableHead>Penulis</TableHead>
+              <TableHead>Tgl Publish</TableHead>
+              <TableHead className="text-right">Aksi</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {posts?.map((post: any) => (
-              <tr key={post.id} className="hover:bg-muted/50">
-                <td className="px-4 py-3 font-medium">{post.title}</td>
-                <td className="px-4 py-3">
-                  <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ring-1 ring-inset ${
-                    post.status === 'published' ? 'bg-green-50 text-green-700 ring-green-600/20' : 
-                    post.status === 'draft' ? 'bg-yellow-50 text-yellow-800 ring-yellow-600/20' : 
-                    'bg-gray-50 text-gray-600 ring-gray-500/10'
-                  }`}>
-                    {post.status}
-                  </span>
-                </td>
-                <td className="px-4 py-3">{post.blog_categories?.name || '-'}</td>
-                <td className="px-4 py-3">{post.pengguna?.nama_lengkap || '-'}</td>
-                <td className="px-4 py-3">
+              <TableRow key={post.id}>
+                <TableCell className="font-medium">{post.title}</TableCell>
+                <TableCell>
+                  <Badge variant="outline" className="px-1.5 text-muted-foreground">
+                    {STATUS_LABEL[post.status] ?? post.status}
+                  </Badge>
+                </TableCell>
+                <TableCell>{post.blog_categories?.name || '-'}</TableCell>
+                <TableCell>{post.pengguna?.nama_lengkap || '-'}</TableCell>
+                <TableCell className="text-muted-foreground">
                   {post.published_at ? format(new Date(post.published_at), 'dd MMM yyyy', { locale: id }) : '-'}
-                </td>
-                <td className="px-4 py-3 text-right">
-                  <div className="flex items-center justify-end gap-2">
-                    <Button variant="ghost" size="icon" asChild>
+                </TableCell>
+                <TableCell className="text-right">
+                  <div className="flex items-center justify-end gap-1">
+                    <Button
+                      variant="outline"
+                      size="icon-sm"
+                      className="border-muted-foreground/40 dark:border-muted-foreground/40"
+                      asChild
+                    >
                       <Link prefetch={false} href={`/manage-post/${post.id}/edit`}>
                         <Pencil className="h-4 w-4" />
+                        <span className="sr-only">Edit post</span>
                       </Link>
                     </Button>
                     <DeletePostButton id={post.id} title={post.title} />
                   </div>
-                </td>
-              </tr>
+                </TableCell>
+              </TableRow>
             ))}
             {(!posts || posts.length === 0) && (
-              <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">
+              <TableRow>
+                <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
                   Belum ada post yang dibuat.
-                </td>
-              </tr>
+                </TableCell>
+              </TableRow>
             )}
-          </tbody>
-        </table>
-      </div>
-        </div>
+          </TableBody>
+        </Table>
       </div>
     </div>
   );

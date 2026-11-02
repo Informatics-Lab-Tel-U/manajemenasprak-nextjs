@@ -14,20 +14,17 @@ export default function AsprakFilters({
 }: AsprakFiltersProps) {
   return (
     <div
-      className={`flex flex-col sm:flex-row gap-4 border-border items-center ${hideSearch ? 'justify-end' : ''}`}
+      className={`flex flex-col gap-2 sm:flex-row sm:items-center ${hideSearch ? 'justify-end' : ''}`}
     >
       {!hideSearch && (
-        <div className="relative flex-1 w-full">
-          <Search
-            size={18}
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-          />
+        <div className="relative w-full sm:max-w-sm">
+          <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             type="text"
             placeholder="Cari..."
             value={searchQuery || ''}
             onChange={(e) => onSearchChange?.(e.target.value)}
-            className="pl-10"
+            className="pl-8"
           />
         </div>
       )}

@@ -17,11 +17,13 @@ function PraktikanLoading() {
           <Skeleton className="h-10 w-28" />
         </div>
       </div>
-      <div className="card glass p-6 space-y-6 border border-border/50">
-        <div className="flex gap-4">
-          <Skeleton className="h-10 flex-1" />
-          <Skeleton className="h-10 w-48" />
-          <Skeleton className="h-10 w-48" />
+      <div className="space-y-4">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <Skeleton className="h-9 w-full sm:max-w-sm" />
+          <div className="flex flex-col gap-2 sm:ml-auto sm:flex-row">
+            <Skeleton className="h-9 w-full sm:w-[200px]" />
+            <Skeleton className="h-9 w-full sm:w-[200px]" />
+          </div>
         </div>
         <div className="space-y-2">
           {Array.from({ length: 8 }).map((_, i) => (

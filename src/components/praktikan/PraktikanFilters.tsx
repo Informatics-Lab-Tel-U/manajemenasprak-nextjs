@@ -34,61 +34,55 @@ export default function PraktikanFilters({
   onKelasFilterChange,
 }: PraktikanFiltersProps) {
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex flex-col xl:flex-row gap-4">
-        {/* Search */}
-        <div className="relative flex-1">
-          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-muted-foreground">
-            <Search size={18} />
-          </div>
-          <Input
-            value={searchQuery}
-            onChange={(e) => onSearchChange(e.target.value)}
-            placeholder="Cari nama, kelas, mata kuliah, atau kode asprak..."
-            className="pl-10 h-10 w-full bg-background"
-          />
-        </div>
+    <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+      <div className="relative w-full sm:max-w-sm">
+        <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          value={searchQuery}
+          onChange={(e) => onSearchChange(e.target.value)}
+          placeholder="Cari nama, kelas, mata kuliah, atau kode asprak..."
+          className="pl-8"
+        />
+      </div>
 
-        {/* Filters */}
-        <div className="flex flex-col sm:flex-row gap-4">
-          <Select
-            value={mataKuliahFilter || ALL_MATA_KULIAH_VALUE}
-            onValueChange={(value) =>
-              onMataKuliahFilterChange(value === ALL_MATA_KULIAH_VALUE ? '' : value)
-            }
-          >
-            <SelectTrigger className="h-10 bg-background sm:w-[200px]">
-              <SelectValue placeholder="Semua Mata Kuliah" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={ALL_MATA_KULIAH_VALUE}>Semua Mata Kuliah</SelectItem>
-              {options.mata_kuliah.map((mk) => (
-                <SelectItem key={mk} value={mk}>
-                  {mk}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+      <div className="flex flex-col gap-2 sm:ml-auto sm:flex-row">
+        <Select
+          value={mataKuliahFilter || ALL_MATA_KULIAH_VALUE}
+          onValueChange={(value) =>
+            onMataKuliahFilterChange(value === ALL_MATA_KULIAH_VALUE ? '' : value)
+          }
+        >
+          <SelectTrigger className="w-full sm:w-[200px]">
+            <SelectValue placeholder="Semua Mata Kuliah" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={ALL_MATA_KULIAH_VALUE}>Semua Mata Kuliah</SelectItem>
+            {options.mata_kuliah.map((mk) => (
+              <SelectItem key={mk} value={mk}>
+                {mk}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
 
-          <Select
-            value={kelasFilter || ALL_KELAS_VALUE}
-            onValueChange={(value) =>
-              onKelasFilterChange(value === ALL_KELAS_VALUE ? '' : value)
-            }
-          >
-            <SelectTrigger className="h-10 bg-background sm:w-[200px]">
-              <SelectValue placeholder="Semua Kelas" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={ALL_KELAS_VALUE}>Semua Kelas</SelectItem>
-              {options.kelas.map((kelas) => (
-                <SelectItem key={kelas} value={kelas}>
-                  {kelas}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+        <Select
+          value={kelasFilter || ALL_KELAS_VALUE}
+          onValueChange={(value) =>
+            onKelasFilterChange(value === ALL_KELAS_VALUE ? '' : value)
+          }
+        >
+          <SelectTrigger className="w-full sm:w-[200px]">
+            <SelectValue placeholder="Semua Kelas" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={ALL_KELAS_VALUE}>Semua Kelas</SelectItem>
+            {options.kelas.map((kelas) => (
+              <SelectItem key={kelas} value={kelas}>
+                {kelas}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
     </div>
   );

@@ -87,6 +87,10 @@ function isSsoUser(user: { provider?: string; email?: string }): boolean {
   );
 }
 
+// Lebih lega dari px-2 default di sisi tepi tabel, supaya kolom pertama dan terakhir tidak menempel ke border.
+const TABLE_EDGE_PADDING =
+  '[&_th:first-child]:pl-4 [&_td:first-child]:pl-4 [&_th:last-child]:pr-4 [&_td:last-child]:pr-4';
+
 export function ManajemenAkunClientPage({
   users,
   requests = [],
@@ -122,7 +126,7 @@ export function ManajemenAkunClientPage({
         accessorKey: 'email',
         header: 'Email',
         cell: ({ row }) => (
-          <span className="text-muted-foreground font-mono text-xs">{row.original.email}</span>
+          <span className="text-muted-foreground text-xs">{row.original.email}</span>
         ),
       },
       {
@@ -174,14 +178,14 @@ export function ManajemenAkunClientPage({
                   <Badge
                     key={app.app_slug}
                     variant="secondary"
-                    className="font-normal text-xs"
+                    className="px-1.5"
                   >
                     {appTitle} · {roleTitle}
                   </Badge>
                 );
               })}
               {remainingCount > 0 && (
-                <Badge variant="outline" className="font-normal text-xs text-muted-foreground">
+                <Badge variant="outline" className="px-1.5 text-muted-foreground">
                   +{remainingCount} lainnya
                 </Badge>
               )}
@@ -204,36 +208,37 @@ export function ManajemenAkunClientPage({
       },
       {
         id: 'actions',
-        header: () => <div className="text-center">Aksi</div>,
+        header: 'Aksi',
         cell: ({ row }) => {
           const isSso = isSsoUser(row.original);
           return (
-            <div className="flex justify-center gap-1">
+            <div className="flex justify-end gap-1">
               {!isSso && (
                 <Button
-                  variant="ghost"
-                  size="icon"
+                  variant="outline"
+                  size="icon-sm"
                   onClick={() => setPasswordTarget(row.original)}
                   title="Ubah Kata Sandi"
-                  className="text-primary hover:text-primary"
+                  className="border-muted-foreground/40 text-primary hover:text-primary dark:border-muted-foreground/40"
                 >
                   <Key className="h-4 w-4" />
                 </Button>
               )}
               <Button
-                variant="ghost"
-                size="icon"
+                variant="outline"
+                size="icon-sm"
                 onClick={() => setEditTarget(row.original)}
+                className="border-muted-foreground/40 dark:border-muted-foreground/40"
                 title="Edit"
               >
                 <Pencil className="h-4 w-4" />
               </Button>
               <Button
-                variant="ghost"
-                size="icon"
+                variant="outline"
+                size="icon-sm"
                 onClick={() => setDeleteTarget(row.original)}
                 title="Hapus"
-                className="text-destructive hover:text-destructive"
+                className="border-muted-foreground/40 text-destructive hover:bg-destructive/10 hover:text-destructive dark:border-muted-foreground/40 dark:hover:bg-destructive/20"
               >
                 <Trash2 className="h-4 w-4" />
               </Button>
@@ -267,7 +272,7 @@ export function ManajemenAkunClientPage({
       {
         accessorKey: 'email',
         header: 'Email SSO Kampus',
-        cell: ({ row }) => <span className="text-muted-foreground font-mono text-xs">{row.original.email}</span>,
+        cell: ({ row }) => <span className="text-muted-foreground text-xs">{row.original.email}</span>,
       },
       {
         accessorKey: 'status',
@@ -312,9 +317,9 @@ export function ManajemenAkunClientPage({
       },
       {
         id: 'request_actions',
-        header: () => <div className="text-center">Aksi</div>,
+        header: 'Aksi',
         cell: ({ row }) => (
-          <div className="flex justify-center gap-1.5">
+          <div className="flex justify-end gap-1.5">
             <Button
               size="sm"
               onClick={() => setApproveTarget(row.original)}
@@ -348,7 +353,7 @@ export function ManajemenAkunClientPage({
         accessorKey: 'email',
         header: 'Email',
         cell: ({ row }) => (
-          <span className="text-muted-foreground font-mono text-xs">{row.original.email}</span>
+          <span className="text-muted-foreground text-xs">{row.original.email}</span>
         ),
       },
       {
@@ -386,9 +391,9 @@ export function ManajemenAkunClientPage({
       },
       {
         id: 'archived_actions',
-        header: () => <div className="text-center">Aksi</div>,
+        header: 'Aksi',
         cell: ({ row }) => (
-          <div className="flex justify-center gap-1.5">
+          <div className="flex justify-end gap-1.5">
             <Button
               size="sm"
               onClick={() => setRestoreTarget(row.original)}
@@ -482,7 +487,7 @@ export function ManajemenAkunClientPage({
 
       <Tabs defaultValue="users" className="space-y-6">
         <div className="w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
-          <TabsList className="glass border border-border/50 p-1 h-auto sm:h-9 inline-flex w-full sm:w-auto">
+          <TabsList className="h-auto sm:h-9 inline-flex w-full sm:w-auto">
             <TabsTrigger value="users" className="gap-1.5 sm:gap-2 text-xs sm:text-sm px-2.5 sm:px-3 py-1.5 sm:py-1 flex-1 sm:flex-initial">
               <Users className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />
               <span>
@@ -527,14 +532,14 @@ export function ManajemenAkunClientPage({
 
         {/* Tab 1: Active Users */}
         <TabsContent value="users" className="space-y-4">
-          <div className="card glass p-6 border border-border/50">
-            <div className="rounded-md border mb-4 overflow-hidden">
-              <Table className="2xl:text-base">
-                <TableHeader className="bg-muted/40">
+          <div className="space-y-4">
+            <div className="overflow-hidden rounded-md border">
+              <Table className={`2xl:text-base ${TABLE_EDGE_PADDING}`}>
+                <TableHeader className="bg-muted">
                   {usersTable.getHeaderGroups().map((headerGroup) => (
                     <TableRow key={headerGroup.id}>
                       {headerGroup.headers.map((header) => (
-                        <TableHead key={header.id}>
+                        <TableHead key={header.id} className={header.column.id.endsWith('actions') ? 'text-right' : undefined}>
                           {header.isPlaceholder
                             ? null
                             : flexRender(header.column.columnDef.header, header.getContext())}
@@ -576,7 +581,7 @@ export function ManajemenAkunClientPage({
                   value={`${usersTable.getState().pagination.pageSize}`}
                   onValueChange={(value) => usersTable.setPageSize(Number(value))}
                 >
-                  <SelectTrigger className="h-8 w-full sm:w-[70px]">
+                  <SelectTrigger size="sm" className="w-full sm:w-[70px]">
                     <SelectValue placeholder={usersTable.getState().pagination.pageSize} />
                   </SelectTrigger>
                   <SelectContent side="top">
@@ -592,14 +597,15 @@ export function ManajemenAkunClientPage({
               </div>
 
               <div className="flex flex-col gap-3 sm:gap-0 sm:flex-row sm:items-center sm:justify-end">
-                <div className="flex w-full sm:w-auto sm:min-w-[120px] items-center justify-center text-sm font-medium">
+                <div className="flex w-full sm:w-auto sm:min-w-[120px] items-center justify-center text-sm font-medium order-3 sm:order-none">
                   Halaman {usersTable.getState().pagination.pageIndex + 1} dari {Math.max(1, usersTable.getPageCount())}
                 </div>
-                <div className="flex gap-2 justify-between sm:justify-end sm:ml-4">
+                <div className="flex gap-2 justify-between sm:justify-end sm:gap-2 order-2 sm:order-none sm:ml-4">
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => usersTable.previousPage()}
+                    className="flex-1 sm:flex-none"
                     disabled={!usersTable.getCanPreviousPage()}
                   >
                     <ChevronLeft className="h-4 w-4" />
@@ -609,6 +615,7 @@ export function ManajemenAkunClientPage({
                     variant="outline"
                     size="sm"
                     onClick={() => usersTable.nextPage()}
+                    className="flex-1 sm:flex-none"
                     disabled={!usersTable.getCanNextPage()}
                   >
                     <span className="hidden sm:inline">Berikutnya</span>
@@ -622,14 +629,14 @@ export function ManajemenAkunClientPage({
 
         {/* Tab 2: Access Requests */}
         <TabsContent value="requests" className="space-y-4">
-          <div className="card glass p-6 border border-border/50">
-            <div className="rounded-md border mb-4 overflow-hidden">
-              <Table className="2xl:text-base">
-                <TableHeader className="bg-muted/40">
+          <div className="space-y-4">
+            <div className="overflow-hidden rounded-md border">
+              <Table className={`2xl:text-base ${TABLE_EDGE_PADDING}`}>
+                <TableHeader className="bg-muted">
                   {requestsTable.getHeaderGroups().map((headerGroup) => (
                     <TableRow key={headerGroup.id}>
                       {headerGroup.headers.map((header) => (
-                        <TableHead key={header.id}>
+                        <TableHead key={header.id} className={header.column.id.endsWith('actions') ? 'text-right' : undefined}>
                           {header.isPlaceholder
                             ? null
                             : flexRender(header.column.columnDef.header, header.getContext())}
@@ -671,7 +678,7 @@ export function ManajemenAkunClientPage({
                   value={`${requestsTable.getState().pagination.pageSize}`}
                   onValueChange={(value) => requestsTable.setPageSize(Number(value))}
                 >
-                  <SelectTrigger className="h-8 w-full sm:w-[70px]">
+                  <SelectTrigger size="sm" className="w-full sm:w-[70px]">
                     <SelectValue placeholder={requestsTable.getState().pagination.pageSize} />
                   </SelectTrigger>
                   <SelectContent side="top">
@@ -687,14 +694,15 @@ export function ManajemenAkunClientPage({
               </div>
 
               <div className="flex flex-col gap-3 sm:gap-0 sm:flex-row sm:items-center sm:justify-end">
-                <div className="flex w-full sm:w-auto sm:min-w-[120px] items-center justify-center text-sm font-medium">
+                <div className="flex w-full sm:w-auto sm:min-w-[120px] items-center justify-center text-sm font-medium order-3 sm:order-none">
                   Halaman {requestsTable.getState().pagination.pageIndex + 1} dari {Math.max(1, requestsTable.getPageCount())}
                 </div>
-                <div className="flex gap-2 justify-between sm:justify-end sm:ml-4">
+                <div className="flex gap-2 justify-between sm:justify-end sm:gap-2 order-2 sm:order-none sm:ml-4">
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => requestsTable.previousPage()}
+                    className="flex-1 sm:flex-none"
                     disabled={!requestsTable.getCanPreviousPage()}
                   >
                     <ChevronLeft className="h-4 w-4" />
@@ -704,6 +712,7 @@ export function ManajemenAkunClientPage({
                     variant="outline"
                     size="sm"
                     onClick={() => requestsTable.nextPage()}
+                    className="flex-1 sm:flex-none"
                     disabled={!requestsTable.getCanNextPage()}
                   >
                     <span className="hidden sm:inline">Berikutnya</span>
@@ -717,14 +726,14 @@ export function ManajemenAkunClientPage({
 
         {/* Tab 3: Archived Users */}
         <TabsContent value="archived" className="space-y-4">
-          <div className="card glass p-6 border border-border/50">
-            <div className="rounded-md border mb-4 overflow-hidden">
-              <Table className="2xl:text-base">
-                <TableHeader className="bg-muted/40">
+          <div className="space-y-4">
+            <div className="overflow-hidden rounded-md border">
+              <Table className={`2xl:text-base ${TABLE_EDGE_PADDING}`}>
+                <TableHeader className="bg-muted">
                   {archivedTable.getHeaderGroups().map((headerGroup) => (
                     <TableRow key={headerGroup.id}>
                       {headerGroup.headers.map((header) => (
-                        <TableHead key={header.id}>
+                        <TableHead key={header.id} className={header.column.id.endsWith('actions') ? 'text-right' : undefined}>
                           {header.isPlaceholder
                             ? null
                             : flexRender(header.column.columnDef.header, header.getContext())}
@@ -766,7 +775,7 @@ export function ManajemenAkunClientPage({
                   value={`${archivedTable.getState().pagination.pageSize}`}
                   onValueChange={(value) => archivedTable.setPageSize(Number(value))}
                 >
-                  <SelectTrigger className="h-8 w-full sm:w-[70px]">
+                  <SelectTrigger size="sm" className="w-full sm:w-[70px]">
                     <SelectValue placeholder={archivedTable.getState().pagination.pageSize} />
                   </SelectTrigger>
                   <SelectContent side="top">
@@ -782,14 +791,15 @@ export function ManajemenAkunClientPage({
               </div>
 
               <div className="flex flex-col gap-3 sm:gap-0 sm:flex-row sm:items-center sm:justify-end">
-                <div className="flex w-full sm:w-auto sm:min-w-[120px] items-center justify-center text-sm font-medium">
+                <div className="flex w-full sm:w-auto sm:min-w-[120px] items-center justify-center text-sm font-medium order-3 sm:order-none">
                   Halaman {archivedTable.getState().pagination.pageIndex + 1} dari {Math.max(1, archivedTable.getPageCount())}
                 </div>
-                <div className="flex gap-2 justify-between sm:justify-end sm:ml-4">
+                <div className="flex gap-2 justify-between sm:justify-end sm:gap-2 order-2 sm:order-none sm:ml-4">
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => archivedTable.previousPage()}
+                    className="flex-1 sm:flex-none"
                     disabled={!archivedTable.getCanPreviousPage()}
                   >
                     <ChevronLeft className="h-4 w-4" />
@@ -799,6 +809,7 @@ export function ManajemenAkunClientPage({
                     variant="outline"
                     size="sm"
                     onClick={() => archivedTable.nextPage()}
+                    className="flex-1 sm:flex-none"
                     disabled={!archivedTable.getCanNextPage()}
                   >
                     <span className="hidden sm:inline">Berikutnya</span>

@@ -43,6 +43,10 @@ import {
 import { toast } from 'sonner';
 import { RefreshCw, Search, Copy, Edit2, Trash2, Check } from 'lucide-react';
 
+// Lebih lega dari px-2 default di sisi tepi tabel, supaya kolom pertama dan terakhir tidak menempel ke border.
+const TABLE_EDGE_PADDING =
+  '[&_th:first-child]:pl-4 [&_td:first-child]:pl-4 [&_th:last-child]:pr-4 [&_td:last-child]:pr-4';
+
 interface DeviceItem {
   id: string;
   roomId: string;
@@ -240,138 +244,143 @@ export default function IwanDevicesPage() {
           <Card key={s.label} className="gap-1 py-4">
             <CardContent className="px-4">
               <p className="text-xs text-muted-foreground">{s.label}</p>
-              <p className={`text-2xl font-bold font-mono mt-1 tabular-nums ${s.color}`}>{s.value}</p>
+              <p className={`text-2xl font-semibold mt-1 tabular-nums ${s.color}`}>{s.value}</p>
             </CardContent>
           </Card>
         ))}
       </div>
 
       {/* Filter Bar */}
-      <div className="flex flex-col sm:flex-row items-center gap-3 mb-4">
-        <div className="relative flex-1 w-full">
-          <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+      <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center">
+        <div className="relative w-full sm:max-w-sm">
+          <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Cari label, MAC address, IP, hostname..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9"
+            className="pl-8"
           />
         </div>
-        <Select value={selectedRoomFilter} onValueChange={setSelectedRoomFilter}>
-          <SelectTrigger className="w-full sm:w-52">
-            <SelectValue placeholder="Pilih Ruangan" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="ALL">Semua Ruangan</SelectItem>
-            {rooms.map((r) => (
-              <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="sm:ml-auto">
+          <Select value={selectedRoomFilter} onValueChange={setSelectedRoomFilter}>
+            <SelectTrigger className="w-full sm:w-[200px]">
+              <SelectValue placeholder="Pilih Ruangan" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">Semua Ruangan</SelectItem>
+              {rooms.map((r) => (
+                <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       {/* Table */}
-      <Card className="overflow-hidden py-0">
-        <div className="overflow-x-auto">
-          <Table className="2xl:text-base">
-            <TableHeader className="bg-muted/40">
+      <div className="overflow-hidden rounded-md border">
+        <Table className={`2xl:text-base ${TABLE_EDGE_PADDING}`}>
+          <TableHeader className="bg-muted">
+            <TableRow>
+              <TableHead>No.</TableHead>
+              <TableHead>Label PC</TableHead>
+              <TableHead>Ruangan</TableHead>
+              <TableHead>MAC Address</TableHead>
+              <TableHead>IP LAN Terkini</TableHead>
+              <TableHead>Hostname Windows</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Detak Terakhir</TableHead>
+              <TableHead className="text-right">Aksi</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {filteredDevices.length === 0 ? (
               <TableRow>
-                <TableHead>No.</TableHead>
-                <TableHead>Label PC</TableHead>
-                <TableHead>Ruangan</TableHead>
-                <TableHead>MAC Address</TableHead>
-                <TableHead>IP LAN Terkini</TableHead>
-                <TableHead>Hostname Windows</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Detak Terakhir</TableHead>
-                <TableHead className="text-center">Aksi</TableHead>
+                <TableCell colSpan={9} className="h-32 text-center text-muted-foreground">
+                  {isLoading ? 'Memuat data perangkat...' : 'Tidak ada perangkat yang sesuai.'}
+                </TableCell>
               </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredDevices.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={9} className="h-32 text-center text-muted-foreground py-12">
-                    {isLoading ? 'Memuat data perangkat...' : 'Tidak ada perangkat yang sesuai.'}
-                  </TableCell>
-                </TableRow>
-              ) : (
-                filteredDevices.map((dev) => {
-                  const isOnline = dev.computedStatus !== 'offline';
-                  const isStreaming = dev.computedStatus === 'streaming';
-                  return (
-                    <TableRow key={dev.id}>
-                      <TableCell className="font-mono font-bold text-xs">#{dev.seatNumber}</TableCell>
-                      <TableCell className="font-semibold">{dev.label}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className="text-xs">{dev.roomName}</Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1.5 font-mono text-xs bg-muted/60 px-2 py-0.5 rounded border max-w-fit">
-                          {dev.macAddress}
-                          <button
-                            onClick={() => handleCopy(dev.macAddress)}
-                            className="text-muted-foreground hover:text-foreground transition-colors"
-                          >
-                            {copiedMac === dev.macAddress
-                              ? <Check className="h-3.5 w-3.5 text-emerald-500" />
-                              : <Copy className="h-3.5 w-3.5" />}
-                          </button>
-                        </div>
-                      </TableCell>
-                      <TableCell className="font-mono text-xs">{dev.localIp}:{dev.port}</TableCell>
-                      <TableCell className="text-xs text-muted-foreground font-mono">
-                        {dev.hostnameRaw || '-'}
-                      </TableCell>
-                      <TableCell>
-                        {isStreaming ? (
-                          <Badge className="bg-blue-500/10 text-blue-600 border-blue-500/20 text-[11px] gap-1">
-                            <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />Streaming
-                          </Badge>
-                        ) : isOnline ? (
-                          <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 text-[11px] gap-1">
-                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />Online
-                          </Badge>
-                        ) : (
-                          <Badge variant="secondary" className="text-[11px] text-muted-foreground gap-1">
-                            <span className="w-1.5 h-1.5 rounded-full bg-zinc-400" />Offline
-                          </Badge>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-xs text-muted-foreground">
-                        {formatRelativeTime(dev.lastSeen)}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex justify-center gap-1">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => {
-                              setEditingDevice(dev);
-                              setEditLabel(dev.label);
-                              setEditSeatNumber(dev.seatNumber);
-                              setEditRoomId(dev.roomId);
-                            }}
-                          >
-                            <Edit2 className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => setDeletingDevice(dev)}
-                            className="text-destructive hover:text-destructive"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })
-              )}
-            </TableBody>
-          </Table>
-        </div>
-      </Card>
+            ) : (
+              filteredDevices.map((dev) => {
+                const isOnline = dev.computedStatus !== 'offline';
+                const isStreaming = dev.computedStatus === 'streaming';
+                return (
+                  <TableRow key={dev.id}>
+                    <TableCell className="font-medium tabular-nums">#{dev.seatNumber}</TableCell>
+                    <TableCell className="font-medium">{dev.label}</TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className="px-1.5 text-muted-foreground">{dev.roomName}</Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className="gap-1.5 px-1.5 font-mono">
+                        {dev.macAddress}
+                        <button
+                          type="button"
+                          onClick={() => handleCopy(dev.macAddress)}
+                          className="text-muted-foreground hover:text-foreground transition-colors"
+                          aria-label={`Salin MAC ${dev.macAddress}`}
+                        >
+                          {copiedMac === dev.macAddress
+                            ? <Check className="h-3.5 w-3.5 text-emerald-500" />
+                            : <Copy className="h-3.5 w-3.5" />}
+                        </button>
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="font-mono text-xs">{dev.localIp}:{dev.port}</TableCell>
+                    <TableCell className="font-mono text-xs text-muted-foreground">
+                      {dev.hostnameRaw || '-'}
+                    </TableCell>
+                    <TableCell>
+                      {isStreaming ? (
+                        <Badge variant="outline" className="gap-1.5 px-1.5 text-muted-foreground">
+                          <span className="h-1.5 w-1.5 rounded-full bg-blue-500 motion-safe:animate-pulse" />Streaming
+                        </Badge>
+                      ) : isOnline ? (
+                        <Badge variant="outline" className="gap-1.5 px-1.5 text-muted-foreground">
+                          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />Online
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="gap-1.5 px-1.5 text-muted-foreground">
+                          <span className="h-1.5 w-1.5 rounded-full bg-zinc-400" />Offline
+                        </Badge>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {formatRelativeTime(dev.lastSeen)}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-1">
+                        <Button
+                          variant="outline"
+                          size="icon-sm"
+                          className="border-muted-foreground/40 dark:border-muted-foreground/40"
+                          aria-label={`Edit ${dev.label}`}
+                          onClick={() => {
+                            setEditingDevice(dev);
+                            setEditLabel(dev.label);
+                            setEditSeatNumber(dev.seatNumber);
+                            setEditRoomId(dev.roomId);
+                          }}
+                        >
+                          <Edit2 className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="icon-sm"
+                          aria-label={`Hapus ${dev.label}`}
+                          onClick={() => setDeletingDevice(dev)}
+                          className="border-muted-foreground/40 text-destructive hover:bg-destructive/10 hover:text-destructive dark:border-muted-foreground/40 dark:hover:bg-destructive/20"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })
+            )}
+          </TableBody>
+        </Table>
+      </div>
 
       {/* Edit Dialog */}
       <Dialog open={Boolean(editingDevice)} onOpenChange={(open) => !open && setEditingDevice(null)}>
@@ -399,7 +408,7 @@ export default function IwanDevicesPage() {
             <div className="space-y-1.5">
               <Label htmlFor="edit-room">Ruangan Lab</Label>
               <Select value={editRoomId} onValueChange={setEditRoomId}>
-                <SelectTrigger id="edit-room"><SelectValue /></SelectTrigger>
+                <SelectTrigger id="edit-room" className="w-full"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {rooms.map((r) => (
                     <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>
@@ -407,7 +416,7 @@ export default function IwanDevicesPage() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="text-xs text-muted-foreground bg-muted/40 p-2.5 rounded border font-mono">
+            <div className="rounded-md border bg-muted/40 p-2.5 font-mono text-xs text-muted-foreground">
               MAC terikat: {editingDevice?.macAddress}
             </div>
             <DialogFooter>

@@ -15,6 +15,10 @@ interface TableSkeletonProps {
   hasActions?: boolean;
 }
 
+// Sama dengan padding tepi di tabel data (kolom pertama dan terakhir).
+const TABLE_EDGE_PADDING =
+  '[&_th:first-child]:pl-4 [&_td:first-child]:pl-4 [&_th:last-child]:pr-4 [&_td:last-child]:pr-4';
+
 export function TableSkeleton({
   columnCount,
   rowCount = 10,
@@ -22,9 +26,9 @@ export function TableSkeleton({
   hasActions = true,
 }: TableSkeletonProps) {
   return (
-    <div className="rounded-md border">
-      <Table>
-        <TableHeader>
+    <div className="overflow-hidden rounded-md border">
+      <Table className={TABLE_EDGE_PADDING}>
+        <TableHeader className="bg-muted">
           <TableRow>
             {Array.from({ length: columnCount }).map((_, i) => (
               <TableHead key={i} style={{ width: columnWidths[i] }}>

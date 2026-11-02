@@ -41,10 +41,11 @@ export function DeletePostButton({ id, title }: DeletePostButtonProps) {
   return (
     <>
       <Button
-        variant="ghost"
-        size="icon"
-        className="text-destructive hover:text-destructive"
+        variant="outline"
+        size="icon-sm"
+        className="border-muted-foreground/40 text-destructive hover:bg-destructive/10 hover:text-destructive dark:border-muted-foreground/40 dark:hover:bg-destructive/20"
         onClick={() => setIsOpen(true)}
+        aria-label={`Hapus post ${title}`}
       >
         <Trash2 className="h-4 w-4" />
       </Button>

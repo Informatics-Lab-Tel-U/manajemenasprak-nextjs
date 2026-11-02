@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import {
   Dialog,
   DialogContent,
@@ -379,18 +379,25 @@ export default function IwanRoomsPage() {
         ) : rooms.length === 0 ? (
           <span className="text-sm text-muted-foreground">Belum ada ruangan.</span>
         ) : (
-          <Tabs value={selectedRoomId} onValueChange={setSelectedRoomId} className="min-w-0">
-            <TabsList className="h-auto flex-wrap justify-start">
-              {rooms.map((room) => (
-                <TabsTrigger key={room.id} value={room.id} className="gap-2">
-                  {room.name}
-                  <Badge variant="secondary" className="px-1.5 py-0 text-[10px] font-semibold tabular-nums">
-                    {room.onlineDevices}/{room.totalDevices}
-                  </Badge>
-                </TabsTrigger>
-              ))}
-            </TabsList>
-          </Tabs>
+          <ToggleGroup
+            type="single"
+            value={selectedRoomId}
+            onValueChange={(value) => {
+              if (value) setSelectedRoomId(value);
+            }}
+            variant="outline"
+            aria-label="Pilih ruangan"
+            className="max-w-full flex-wrap justify-start *:data-[slot=toggle-group-item]:px-4!"
+          >
+            {rooms.map((room) => (
+              <ToggleGroupItem key={room.id} value={room.id} className="gap-2">
+                {room.name}
+                <Badge variant="secondary" className="px-1.5 py-0 text-[10px] font-semibold tabular-nums">
+                  {room.onlineDevices}/{room.totalDevices}
+                </Badge>
+              </ToggleGroupItem>
+            ))}
+          </ToggleGroup>
         )}
 
         {selectedRoom && (

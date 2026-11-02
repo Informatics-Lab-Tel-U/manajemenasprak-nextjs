@@ -378,25 +378,23 @@ export default function PraktikanClientPage() {
         </div>
       </div>
 
-      <div className="w-full">
-        <div className="card glass p-6 flex flex-col gap-6 border border-border/50">
-          <PraktikanFilters
-            searchQuery={searchQuery}
-            onSearchChange={setSearchQuery}
-            options={options}
-            mataKuliahFilter={mataKuliahFilter}
-            onMataKuliahFilterChange={setMataKuliahFilter}
-            kelasFilter={kelasFilter}
-            onKelasFilterChange={setKelasFilter}
-          />
+      <div className="flex flex-col gap-4">
+        <PraktikanFilters
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          options={options}
+          mataKuliahFilter={mataKuliahFilter}
+          onMataKuliahFilterChange={setMataKuliahFilter}
+          kelasFilter={kelasFilter}
+          onKelasFilterChange={setKelasFilter}
+        />
 
-          <PraktikanTable
-            data={filteredRows}
-            loading={loading}
-            onEdit={setEditTarget}
-            onDelete={setDeleteTarget}
-          />
-        </div>
+        <PraktikanTable
+          data={filteredRows}
+          loading={loading}
+          onEdit={setEditTarget}
+          onDelete={setDeleteTarget}
+        />
       </div>
 
       {/* Modals */}

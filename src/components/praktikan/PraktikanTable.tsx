@@ -37,18 +37,22 @@ interface PraktikanTableProps {
   onDelete: (row: PraktikanRecord) => void;
 }
 
+// Lebih lega dari px-2 default di sisi tepi tabel, supaya kolom pertama dan terakhir tidak menempel ke border.
+const TABLE_EDGE_PADDING =
+  '[&_th:first-child]:pl-4 [&_td:first-child]:pl-4 [&_th:last-child]:pr-4 [&_td:last-child]:pr-4';
+
 function PraktikanTableSkeleton() {
   return (
     <div className="space-y-4">
-      <div className="rounded-md border border-indigo-200/50 dark:border-indigo-500/20">
-        <Table>
-          <TableHeader>
+      <div className="overflow-hidden rounded-md border">
+        <Table className={TABLE_EDGE_PADDING}>
+          <TableHeader className="bg-muted">
             <TableRow>
               <TableHead>Nama</TableHead>
               <TableHead>Kelas</TableHead>
               <TableHead>Mata Kuliah</TableHead>
               <TableHead>Kode Asprak</TableHead>
-              <TableHead className="w-28">Aksi</TableHead>
+              <TableHead className="w-28 text-right">Aksi</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -67,7 +71,7 @@ function PraktikanTableSkeleton() {
                   <Skeleton className="h-4 w-12" />
                 </TableCell>
                 <TableCell>
-                  <div className="flex gap-1">
+                  <div className="flex justify-end gap-1">
                     <Skeleton className="h-8 w-8 rounded-md" />
                     <Skeleton className="h-8 w-8 rounded-md" />
                   </div>
@@ -118,14 +122,19 @@ export default function PraktikanTable({ data, loading, onEdit, onDelete }: Prak
         id: 'actions',
         header: 'Aksi',
         cell: ({ row }) => (
-          <div className="flex items-center gap-1">
-            <Button variant="ghost" size="icon" onClick={() => onEdit(row.original)}>
+          <div className="flex items-center justify-end gap-1">
+            <Button
+              variant="outline"
+              size="icon-sm"
+              className="border-muted-foreground/40 dark:border-muted-foreground/40"
+              onClick={() => onEdit(row.original)}
+            >
               <Pencil size={16} />
             </Button>
             <Button
-              variant="ghost"
-              size="icon"
-              className="text-destructive hover:bg-destructive/10 hover:text-destructive dark:hover:bg-destructive/20"
+              variant="outline"
+              size="icon-sm"
+              className="border-muted-foreground/40 text-destructive hover:bg-destructive/10 hover:text-destructive dark:border-muted-foreground/40 dark:hover:bg-destructive/20"
               onClick={() => onDelete(row.original)}
             >
               <Trash2 size={16} />
@@ -155,13 +164,13 @@ export default function PraktikanTable({ data, loading, onEdit, onDelete }: Prak
 
   return (
     <div className="space-y-4">
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
+      <div className="overflow-hidden rounded-md border">
+        <Table className={TABLE_EDGE_PADDING}>
+          <TableHeader className="bg-muted">
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
                 {headerGroup.headers.map((header) => (
-                  <TableHead key={header.id}>
+                  <TableHead key={header.id} className={header.column.id === 'actions' ? 'text-right' : undefined}>
                     {header.isPlaceholder
                       ? null
                       : flexRender(header.column.columnDef.header, header.getContext())}
@@ -202,7 +211,7 @@ export default function PraktikanTable({ data, loading, onEdit, onDelete }: Prak
               table.setPageSize(Number(value));
             }}
           >
-            <SelectTrigger className="h-8 w-full sm:w-[70px]">
+            <SelectTrigger size="sm" className="w-full sm:w-[70px]">
               <SelectValue placeholder={table.getState().pagination.pageSize} />
             </SelectTrigger>
             <SelectContent side="top">

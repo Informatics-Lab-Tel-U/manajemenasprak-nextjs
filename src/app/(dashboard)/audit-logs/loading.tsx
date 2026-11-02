@@ -11,6 +11,10 @@ import {
   TableRow,
 } from '@/components/ui/table';
 
+// Sama dengan padding tepi di tabel data (kolom pertama dan terakhir).
+const TABLE_EDGE_PADDING =
+  '[&_th:first-child]:pl-4 [&_td:first-child]:pl-4 [&_th:last-child]:pr-4 [&_td:last-child]:pr-4';
+
 export default function AuditLogsLoading() {
   return (
     <div className="container mx-auto max-w-[2000px] 2xl:px-8 relative space-y-8">
@@ -24,17 +28,17 @@ export default function AuditLogsLoading() {
         </div>
       </div>
 
-      <div className="card glass p-6 border border-border/50">
-        <div className="flex justify-between items-center mb-6">
-          <div className="relative w-full md:w-72">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input placeholder="Cari tabel, operasi, atau user..." className="pl-9" disabled />
+      <div className="space-y-4">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <div className="relative w-full sm:max-w-sm">
+            <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input placeholder="Cari tabel, operasi, atau user..." className="pl-8" disabled />
           </div>
         </div>
 
-        <div className="rounded-md border mb-4">
-          <Table className="2xl:text-base">
-            <TableHeader>
+        <div className="overflow-hidden rounded-md border">
+          <Table className={`2xl:text-base ${TABLE_EDGE_PADDING}`}>
+            <TableHeader className="bg-muted">
               <TableRow>
                 <TableHead>Waktu</TableHead>
                 <TableHead>User</TableHead>
@@ -56,10 +60,10 @@ export default function AuditLogsLoading() {
                     </div>
                   </TableCell>
                   <TableCell>
-                    <Skeleton className="h-6 w-20 rounded" />
+                    <Skeleton className="h-5 w-20 rounded-full" />
                   </TableCell>
                   <TableCell>
-                    <Skeleton className="h-6 w-16 rounded-full" />
+                    <Skeleton className="h-5 w-16 rounded-full" />
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end">
@@ -73,7 +77,7 @@ export default function AuditLogsLoading() {
         </div>
 
         {/* Pagination Controls Skeleton */}
-        <div className="flex flex-col gap-4 md:gap-0 md:flex-row md:items-center md:justify-between font-medium">
+        <div className="flex flex-col gap-4 md:gap-0 md:flex-row md:items-center md:justify-between">
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
             <Skeleton className="h-4 w-32" />
             <Skeleton className="h-8 w-16" />
@@ -85,12 +89,12 @@ export default function AuditLogsLoading() {
             </div>
             <div className="flex gap-2 justify-between sm:justify-end sm:gap-2 order-2 sm:order-none sm:ml-4">
               <Button variant="outline" size="sm" disabled>
-                <ChevronLeft className="h-4 w-4 mr-1" />
-                Sebelumnya
+                <ChevronLeft className="h-4 w-4" />
+                <span className="hidden sm:inline ml-1">Sebelumnya</span>
               </Button>
               <Button variant="outline" size="sm" disabled>
-                Berikutnya
-                <ChevronRight className="h-4 w-4 ml-1" />
+                <span className="hidden sm:inline">Berikutnya</span>
+                <ChevronRight className="h-4 w-4 sm:ml-1" />
               </Button>
             </div>
           </div>

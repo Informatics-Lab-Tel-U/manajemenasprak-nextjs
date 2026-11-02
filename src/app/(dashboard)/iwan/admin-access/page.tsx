@@ -8,7 +8,6 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Card } from '@/components/ui/card';
 import {
   Table,
   TableBody,
@@ -37,6 +36,10 @@ import {
 } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
 import { Plus, RefreshCw, Copy, Trash2, Check, Laptop } from 'lucide-react';
+
+// Lebih lega dari px-2 default di sisi tepi tabel, supaya kolom pertama dan terakhir tidak menempel ke border.
+const TABLE_EDGE_PADDING =
+  '[&_th:first-child]:pl-4 [&_td:first-child]:pl-4 [&_th:last-child]:pr-4 [&_td:last-child]:pr-4';
 
 interface AdminToken {
   id: string;
@@ -283,122 +286,125 @@ export default function IwanAdminAccessPage() {
       </Dialog>
 
       {/* Table */}
-      <Card className="overflow-hidden py-0">
-        <div className="overflow-x-auto">
-          <Table className="2xl:text-base">
-            <TableHeader className="bg-muted/40">
+      <div className="overflow-hidden rounded-md border">
+        <Table className={`2xl:text-base ${TABLE_EDGE_PADDING}`}>
+          <TableHeader className="bg-muted">
+            <TableRow>
+              <TableHead>Label Konsol</TableHead>
+              <TableHead>Kode Aktivasi</TableHead>
+              <TableHead>Scope Ruangan</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Perangkat Terikat</TableHead>
+              <TableHead>Terakhir Digunakan</TableHead>
+              <TableHead className="text-right">Aksi</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {tokens.length === 0 ? (
               <TableRow>
-                <TableHead>Label Konsol</TableHead>
-                <TableHead>Kode Aktivasi</TableHead>
-                <TableHead>Scope Ruangan</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Perangkat Terikat</TableHead>
-                <TableHead>Terakhir Digunakan</TableHead>
-                <TableHead className="text-center">Aksi</TableHead>
+                <TableCell colSpan={7} className="h-32 text-center text-muted-foreground">
+                  {isLoading ? 'Memuat token admin...' : 'Belum ada kode aktivasi admin.'}
+                </TableCell>
               </TableRow>
-            </TableHeader>
-            <TableBody>
-              {tokens.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={7} className="h-32 text-center text-muted-foreground py-12">
-                    {isLoading ? 'Memuat token admin...' : 'Belum ada kode aktivasi admin.'}
-                  </TableCell>
-                </TableRow>
-              ) : (
-                tokens.map((tok) => {
-                  const scopeDisplay = tok.scope_all
-                    ? 'Semua Ruangan'
-                    : tok.allowed_room_ids.map((id) => roomMap.get(id) ?? 'Ruangan').join(', ') || '-';
+            ) : (
+              tokens.map((tok) => {
+                const scopeDisplay = tok.scope_all
+                  ? 'Semua Ruangan'
+                  : tok.allowed_room_ids.map((id) => roomMap.get(id) ?? 'Ruangan').join(', ') || '-';
 
-                  return (
-                    <TableRow key={tok.id}>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Laptop className="h-4 w-4 text-muted-foreground shrink-0" />
-                          <span className="font-medium">{tok.label}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1.5 font-mono text-sm font-bold bg-muted/60 px-2 py-0.5 rounded border max-w-fit">
-                          {tok.pair_code}
-                          <button
-                            onClick={() => handleCopy(tok.pair_code)}
-                            className="text-muted-foreground hover:text-foreground transition-colors"
-                          >
-                            {copiedCode === tok.pair_code
-                              ? <Check className="h-3.5 w-3.5 text-emerald-500" />
-                              : <Copy className="h-3.5 w-3.5" />}
-                          </button>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className="text-xs">{scopeDisplay}</Badge>
-                      </TableCell>
-                      <TableCell>
-                        {(() => {
-                          const status = tok.status ?? (tok.is_paired ? 'active' : 'pending');
-                          if (status === 'active') {
-                            return (
-                              <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 text-[11px] gap-1">
-                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />Terhubung
-                              </Badge>
-                            );
-                          }
-                          if (status === 'revoked') {
-                            return (
-                              <Badge variant="secondary" className="text-[11px] text-destructive gap-1">
-                                <span className="w-1.5 h-1.5 rounded-full bg-destructive" />Dicabut
-                              </Badge>
-                            );
-                          }
+                return (
+                  <TableRow key={tok.id}>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <Laptop className="h-4 w-4 text-muted-foreground shrink-0" />
+                        <span className="font-medium">{tok.label}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className="gap-1.5 px-1.5">
+                        {tok.pair_code}
+                        <button
+                          type="button"
+                          onClick={() => handleCopy(tok.pair_code)}
+                          className="text-muted-foreground hover:text-foreground transition-colors"
+                          aria-label={`Salin kode ${tok.pair_code}`}
+                        >
+                          {copiedCode === tok.pair_code
+                            ? <Check className="h-3.5 w-3.5 text-emerald-500" />
+                            : <Copy className="h-3.5 w-3.5" />}
+                        </button>
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className="px-1.5 text-muted-foreground">{scopeDisplay}</Badge>
+                    </TableCell>
+                    <TableCell>
+                      {(() => {
+                        const status = tok.status ?? (tok.is_paired ? 'active' : 'pending');
+                        if (status === 'active') {
                           return (
-                            <Badge variant="secondary" className="text-[11px] text-amber-600 dark:text-amber-400 gap-1">
-                              <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />Menunggu Aktivasi
+                            <Badge variant="outline" className="gap-1.5 px-1.5 text-muted-foreground">
+                              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />Terhubung
                             </Badge>
                           );
-                        })()}
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {tok.bound_mac ? (
-                          <span className="font-mono text-xs">{tok.bound_mac}</span>
-                        ) : (
-                          <span className="text-xs">-</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {tok.last_used_at
-                          ? new Date(tok.last_used_at).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })
-                          : 'Belum pernah'}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex justify-center gap-0.5">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => setReissuingToken(tok)}
-                            title="Terbitkan ulang kode"
-                          >
-                            <RefreshCw className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => setDeletingToken(tok)}
-                            className="text-destructive hover:text-destructive"
-                            title="Cabut akses"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })
-              )}
-            </TableBody>
-          </Table>
-        </div>
-      </Card>
+                        }
+                        if (status === 'revoked') {
+                          return (
+                            <Badge variant="outline" className="gap-1.5 px-1.5 text-muted-foreground">
+                              <span className="h-1.5 w-1.5 rounded-full bg-destructive" />Dicabut
+                            </Badge>
+                          );
+                        }
+                        return (
+                          <Badge variant="outline" className="gap-1.5 px-1.5 text-muted-foreground">
+                            <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />Menunggu Aktivasi
+                          </Badge>
+                        );
+                      })()}
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {tok.bound_mac ? (
+                        <span className="font-mono text-xs">{tok.bound_mac}</span>
+                      ) : (
+                        <span className="text-xs">-</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {tok.last_used_at
+                        ? new Date(tok.last_used_at).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })
+                        : 'Belum pernah'}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-1">
+                        <Button
+                          variant="outline"
+                          size="icon-sm"
+                          className="border-muted-foreground/40 dark:border-muted-foreground/40"
+                          onClick={() => setReissuingToken(tok)}
+                          aria-label="Terbitkan ulang kode"
+                          title="Terbitkan ulang kode"
+                        >
+                          <RefreshCw className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="icon-sm"
+                          className="border-muted-foreground/40 text-destructive hover:bg-destructive/10 hover:text-destructive dark:border-muted-foreground/40 dark:hover:bg-destructive/20"
+                          onClick={() => setDeletingToken(tok)}
+                          aria-label="Cabut akses"
+                          title="Cabut akses"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })
+            )}
+          </TableBody>
+        </Table>
+      </div>
 
       {/* Reissue AlertDialog */}
       <AlertDialog open={Boolean(reissuingToken)} onOpenChange={(open) => !open && setReissuingToken(null)}>

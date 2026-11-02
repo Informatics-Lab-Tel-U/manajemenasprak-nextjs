@@ -466,7 +466,7 @@ export default function AsprakClientPage({
         {activeTab === 'rules' ? (
           <AsprakGenerationRules existingCodes={existingCodes} />
         ) : (
-          <div className="card glass p-6 flex flex-col gap-6 border border-border/50">
+          <div className="flex flex-col gap-4">
             <AsprakFilters
               searchQuery={searchQuery}
               onSearchChange={setSearchQuery}
