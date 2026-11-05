@@ -1,7 +1,5 @@
-import { cache } from 'react';
 import { redirect } from 'next/navigation';
 import { NextResponse } from 'next/server';
-import { headers } from 'next/headers';
 import { createClient } from '@/lib/supabase/server';
 import { logger } from '@/lib/logger';
 import { Role } from '@/config/rbac';
@@ -15,22 +13,7 @@ export type AuthUser = {
   pengguna: Pengguna;
 };
 
-export const getCurrentUser = cache(async (): Promise<AuthUser | null> => {
-  try {
-    const headersList = await headers();
-    const authUserHeader = headersList.get('x-auth-user');
-
-    if (authUserHeader) {
-      const decodedStr = Buffer.from(authUserHeader, 'base64').toString('utf-8');
-      const authUser = JSON.parse(decodedStr) as AuthUser;
-      if (authUser?.id && authUser?.pengguna) {
-        return authUser;
-      }
-    }
-  } catch (error) {
-    logger.warn('Failed to parse x-auth-user header, falling back to DB query', { error });
-  }
-
+export async function getCurrentUser(): Promise<AuthUser | null> {
   const supabase = await createClient();
 
   const {
@@ -45,6 +28,8 @@ export const getCurrentUser = cache(async (): Promise<AuthUser | null> => {
   try {
     const meRes = await fetch(`${process.env.HONO_BACKEND_URL}/api/auth/me?app=manajemenasprak`, {
       headers: { Authorization: `Bearer ${session.access_token}` },
+      cache: 'no-store',
+      signal: AbortSignal.timeout(2500),
     });
 
     if (!meRes.ok) {
@@ -72,7 +57,7 @@ export const getCurrentUser = cache(async (): Promise<AuthUser | null> => {
     logger.error('Failed to fetch profile from Hono in auth.ts', { error });
     return null;
   }
-});
+}
 
 export async function requireAuth(redirectTo = AUTH_CONFIG.paths.login): Promise<AuthUser> {
   const user = await getCurrentUser();

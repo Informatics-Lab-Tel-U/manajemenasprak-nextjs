@@ -4,30 +4,24 @@ import { hasAccess, isPublicPath, ROLE_DEFAULT_REDIRECT, type Role } from '@/con
 import { AUTH_CONFIG, isMfaRequiredForUser } from '@/config/auth';
 import { proxyIwanRequest } from '@/lib/iwanProxy';
 
-let cachedMaintenance: { active: boolean; timestamp: number } | null = null;
-const MAINTENANCE_TTL_MS = 15000; // 15 seconds
-
 async function getMaintenanceStatus(backendUrl?: string): Promise<boolean> {
   if (!backendUrl) return false;
-  const now = Date.now();
-  if (cachedMaintenance && now - cachedMaintenance.timestamp < MAINTENANCE_TTL_MS) {
-    return cachedMaintenance.active;
-  }
+
   try {
     const res = await fetch(`${backendUrl}/api/system/maintenance`, {
       cache: 'no-store',
       signal: AbortSignal.timeout(1500),
     });
+
     if (res.ok) {
       const data = await res.json();
-      const active = !!data.active;
-      cachedMaintenance = { active, timestamp: now };
-      return active;
+      return !!data.active;
     }
   } catch (e) {
     console.error('[Middleware] Maintenance check failed:', e);
   }
-  return cachedMaintenance?.active ?? false;
+
+  return false;
 }
 
 export async function updateSession(request: NextRequest) {
@@ -96,6 +90,7 @@ export async function updateSession(request: NextRequest) {
         {
           headers: { Authorization: `Bearer ${token}` },
           cache: 'no-store',
+          signal: AbortSignal.timeout(2500),
         }
       );
       if (meRes.ok) {

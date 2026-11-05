@@ -1,5 +1,4 @@
 import 'server-only';
-import { cache } from 'react';
 import { getCachedAvailableTerms as getCachedTerms } from './termService';
 import { Jadwal, JadwalPengganti } from '@/types/database';
 import { honoFetch } from '@/lib/honoClient';
@@ -13,11 +12,9 @@ export async function getJadwalByTerm(
   return result.ok && result.data ? result.data : [];
 }
 
-export const getCachedJadwalByTerm = cache(
-  async (term: string): Promise<Jadwal[]> => {
-    return getJadwalByTerm(term);
-  }
-);
+export const getCachedJadwalByTerm = async (term: string): Promise<Jadwal[]> => {
+  return getJadwalByTerm(term);
+};
 
 export async function getScheduleForValidation(term: string) {
   const result = await honoFetch<any[]>(`/api/jadwal?action=validation&term=${encodeURIComponent(term)}`);

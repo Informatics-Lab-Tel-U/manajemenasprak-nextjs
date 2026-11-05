@@ -18,26 +18,33 @@ export interface UseDashboardResult {
 }
 
 export function useDashboard(
-  initialTerms: string[],
-  initialStats: DashboardStats,
-  initialJadwal: Jadwal[],
-  initialPengganti: JadwalPengganti[],
-  activeModul: number
+  initialTerms: string[] = [],
+  initialStats: DashboardStats | null = null,
+  initialJadwal: Jadwal[] = [],
+  initialPengganti: JadwalPengganti[] = [],
+  activeModul = 1
 ): UseDashboardResult {
   const [terms] = useState<string[]>(initialTerms);
   const { activeTerm } = useTermStore();
   const selectedTerm = activeTerm || '';
-  
+  const safeInitialStats: DashboardStats = initialStats ?? {
+    asprakCount: 0,
+    jadwalCount: 0,
+    pelanggaranCount: 0,
+    asprakByAngkatan: [],
+    jadwalByDay: [],
+  };
+
   // Decide whether the selected term matches the SSR fallback term (latestTerm)
   const isInitialTermMatching = !selectedTerm || selectedTerm === initialTerms[0];
 
-  const [rawJadwal, setRawJadwal] = useState<Jadwal[]>(initialJadwal);
-  const [jadwalPengganti, setJadwalPengganti] = useState<JadwalPengganti[]>(initialPengganti);
-  const [stats, setStats] = useState<DashboardStats>(initialStats);
+  const [rawJadwal, setRawJadwal] = useState<Jadwal[]>(initialJadwal ?? []);
+  const [jadwalPengganti, setJadwalPengganti] = useState<JadwalPengganti[]>(initialPengganti ?? []);
+  const [stats, setStats] = useState<DashboardStats>(safeInitialStats);
   const [loading, setLoading] = useState(!isInitialTermMatching);
   const [error, setError] = useState<Error | null>(null);
 
-  const lastFetchedTermRef = useRef<string>(initialTerms[0]);
+  const lastFetchedTermRef = useRef<string>(initialTerms[0] ?? '');
 
   const fetchDashboardData = useCallback(
     async (term: string) => {

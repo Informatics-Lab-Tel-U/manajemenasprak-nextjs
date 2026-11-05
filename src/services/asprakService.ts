@@ -1,5 +1,4 @@
 import 'server-only';
-import { cache } from 'react';
 import { Asprak } from '@/types/database';
 import { getCachedAvailableTerms as getCachedTerms } from './termService';
 import { honoFetch } from '@/lib/honoClient';
@@ -64,17 +63,13 @@ export async function getExistingCodes(): Promise<string[]> {
 
 export const getCachedAvailableTerms = getCachedTerms;
 
-export const getCachedAllAsprak = cache(
-  async (term?: string): Promise<Asprak[]> => {
-    return getAllAsprak(term);
-  }
-);
+export const getCachedAllAsprak = async (term?: string): Promise<Asprak[]> => {
+  return getAllAsprak(term);
+};
 
-export const getCachedAspraksWithAssignments = cache(
-  async (term?: string): Promise<AsprakWithMap[]> => {
-    return getAspraksWithAssignments(term);
-  }
-);
+export const getCachedAspraksWithAssignments = async (term?: string): Promise<AsprakWithMap[]> => {
+  return getAspraksWithAssignments(term);
+};
 
 export async function getAsprakAssignments(
   asprakId: number | string

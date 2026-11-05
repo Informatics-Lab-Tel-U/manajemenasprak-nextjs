@@ -1,5 +1,4 @@
 import 'server-only';
-import { cache } from 'react';
 import { honoFetch } from '@/lib/honoClient';
 
 export async function getAvailableTerms(): Promise<string[]> {
@@ -7,8 +6,6 @@ export async function getAvailableTerms(): Promise<string[]> {
   return result.ok && result.data ? result.data : [];
 }
 
-export const getCachedAvailableTerms = cache(
-  async (): Promise<string[]> => {
-    return getAvailableTerms();
-  }
-);
+export const getCachedAvailableTerms = async (): Promise<string[]> => {
+  return getAvailableTerms();
+};

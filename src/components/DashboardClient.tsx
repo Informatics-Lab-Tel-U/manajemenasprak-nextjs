@@ -17,29 +17,37 @@ import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
 
 interface DashboardClientProps {
-  initialStats: DashboardStats;
-  initialJadwal: Jadwal[];
-  initialPengganti: JadwalPengganti[];
-  initialTerms: string[];
-  activeModul: number;
+  initialStats?: DashboardStats | null;
+  initialJadwal?: Jadwal[] | null;
+  initialPengganti?: JadwalPengganti[] | null;
+  initialTerms?: string[];
+  activeModul?: number;
   userRole?: string;
-  initialMonitoringData: any[];
+  initialMonitoringData?: any[];
 }
 
+const emptyDashboardStats: DashboardStats = {
+  asprakCount: 0,
+  jadwalCount: 0,
+  pelanggaranCount: 0,
+  asprakByAngkatan: [],
+  jadwalByDay: [],
+};
+
 export default function DashboardClient({
-  initialStats,
-  initialJadwal,
-  initialPengganti,
-  initialTerms,
-  activeModul,
+  initialStats = emptyDashboardStats,
+  initialJadwal = [],
+  initialPengganti = [],
+  initialTerms = [],
+  activeModul = 1,
   userRole,
-  initialMonitoringData,
+  initialMonitoringData = [],
 }: DashboardClientProps) {
   const { selectedTerm, stats, rawJadwal, jadwalPengganti, loading, error } = useDashboard(
     initialTerms,
-    initialStats,
-    initialJadwal,
-    initialPengganti,
+    initialStats ?? emptyDashboardStats,
+    initialJadwal ?? [],
+    initialPengganti ?? [],
     activeModul
   );
 
