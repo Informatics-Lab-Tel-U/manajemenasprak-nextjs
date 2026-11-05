@@ -26,7 +26,11 @@ export function useDashboard(
 ): UseDashboardResult {
   const [terms] = useState<string[]>(initialTerms);
   const { activeTerm } = useTermStore();
-  const selectedTerm = activeTerm || '';
+  const selectedTerm =
+    activeTerm && initialTerms.includes(activeTerm)
+      ? activeTerm
+      : initialTerms[0] ?? '';
+
   const safeInitialStats: DashboardStats = initialStats ?? {
     asprakCount: 0,
     jadwalCount: 0,
@@ -35,13 +39,10 @@ export function useDashboard(
     jadwalByDay: [],
   };
 
-  // Decide whether the selected term matches the SSR fallback term (latestTerm)
-  const isInitialTermMatching = !selectedTerm || selectedTerm === initialTerms[0];
-
   const [rawJadwal, setRawJadwal] = useState<Jadwal[]>(initialJadwal ?? []);
   const [jadwalPengganti, setJadwalPengganti] = useState<JadwalPengganti[]>(initialPengganti ?? []);
   const [stats, setStats] = useState<DashboardStats>(safeInitialStats);
-  const [loading, setLoading] = useState(!isInitialTermMatching);
+  const [loading, setLoading] = useState(Boolean(selectedTerm));
   const [error, setError] = useState<Error | null>(null);
 
   const lastFetchedTermRef = useRef<string>(initialTerms[0] ?? '');
@@ -71,7 +72,7 @@ export function useDashboard(
         if (statsJson?.ok && statsJson.data) {
           setStats(statsJson.data as DashboardStats);
         }
-        
+
         lastFetchedTermRef.current = term;
       } catch (err: unknown) {
         if (err instanceof Error) {
@@ -86,18 +87,10 @@ export function useDashboard(
     [activeModul]
   );
 
-  const hasMountedRef = useRef(false);
-
   useEffect(() => {
-    if (!hasMountedRef.current) {
-      hasMountedRef.current = true;
-      if (!isInitialTermMatching && selectedTerm) {
-        fetchDashboardData(selectedTerm);
-      }
-      return;
-    }
+    if (!selectedTerm) return;
     fetchDashboardData(selectedTerm);
-  }, [selectedTerm, fetchDashboardData, isInitialTermMatching]);
+  }, [selectedTerm, fetchDashboardData]);
 
   return {
     terms,

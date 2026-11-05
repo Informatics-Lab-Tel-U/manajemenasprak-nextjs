@@ -18,23 +18,15 @@ interface GlobalTermSelectorProps {
 export function GlobalTermSelector({ availableTerms, disabled = false }: GlobalTermSelectorProps) {
   const { activeTerm, setActiveTerm } = useTermStore();
   const [mounted, setMounted] = React.useState(false);
-  const [prevAvailableTerms, setPrevAvailableTerms] = React.useState(availableTerms);
 
-  if (availableTerms !== prevAvailableTerms) {
-    setPrevAvailableTerms(availableTerms);
-    if ((!activeTerm || !availableTerms.includes(activeTerm)) && availableTerms.length > 0) {
-      setActiveTerm(availableTerms[0]);
-    }
-  }
-
-  // eslint-disable-next-line react-doctor/rendering-hydration-no-flicker
   React.useEffect(() => {
     setMounted(true);
-    if ((!activeTerm || !availableTerms.includes(activeTerm)) && availableTerms.length > 0) {
+    if (availableTerms.length === 0) return;
+
+    if (!activeTerm || !availableTerms.includes(activeTerm)) {
       setActiveTerm(availableTerms[0]);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [activeTerm, availableTerms, setActiveTerm]);
 
   if (!mounted) {
     return (
@@ -44,8 +36,8 @@ export function GlobalTermSelector({ availableTerms, disabled = false }: GlobalT
     );
   }
 
-  const displayValue = activeTerm && availableTerms.includes(activeTerm) 
-    ? activeTerm 
+  const displayValue = activeTerm && availableTerms.includes(activeTerm)
+    ? activeTerm
     : availableTerms[0] || '';
 
   if (!displayValue) return null;
