@@ -42,7 +42,7 @@ export function useDashboard(
   const [rawJadwal, setRawJadwal] = useState<Jadwal[]>(initialJadwal ?? []);
   const [jadwalPengganti, setJadwalPengganti] = useState<JadwalPengganti[]>(initialPengganti ?? []);
   const [stats, setStats] = useState<DashboardStats>(safeInitialStats);
-  const [loading, setLoading] = useState(Boolean(selectedTerm));
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
   const lastFetchedTermRef = useRef<string>(initialTerms[0] ?? '');
@@ -50,7 +50,10 @@ export function useDashboard(
   const fetchDashboardData = useCallback(
     async (term: string) => {
       if (!term) return;
-      if (term === lastFetchedTermRef.current) return;
+      if (term === lastFetchedTermRef.current) {
+        setLoading(false);
+        return;
+      }
 
       setLoading(true);
       try {
@@ -88,8 +91,17 @@ export function useDashboard(
   );
 
   useEffect(() => {
-    if (!selectedTerm) return;
-    fetchDashboardData(selectedTerm);
+    if (!selectedTerm) {
+      setLoading(false);
+      return;
+    }
+
+    if (selectedTerm === lastFetchedTermRef.current) {
+      setLoading(false);
+      return;
+    }
+
+    void fetchDashboardData(selectedTerm);
   }, [selectedTerm, fetchDashboardData]);
 
   return {
