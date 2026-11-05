@@ -1,6 +1,6 @@
 import 'server-only';
 import { logger } from '@/lib/logger';
-import { createClient } from '@/lib/supabase/server';
+import { headers as nextHeaders } from 'next/headers';
 
 const BACKEND_URL = process.env.HONO_BACKEND_URL || 'https://manajemenasprak-backend.iflabdev.workers.dev';
 
@@ -21,13 +21,29 @@ export async function honoFetch<T = any>(
   };
 
   if (!authHeader && !useServiceRole) {
+    // Read x-auth-user set by middleware — avoids a redundant /api/auth/me fetch
     try {
-      const { getCurrentUser } = await import('@/lib/auth');
-      const authUser = await getCurrentUser();
-      if (authUser?.token) {
-        authHeader = `Bearer ${authUser.token}`;
+      const reqHeaders = await nextHeaders();
+      const xAuthUser = reqHeaders.get('x-auth-user');
+      if (xAuthUser) {
+        const decoded = JSON.parse(Buffer.from(xAuthUser, 'base64').toString('utf-8'));
+        if (decoded?.token) {
+          authHeader = `Bearer ${decoded.token}`;
+        }
       }
     } catch {
+      // Not in a request context (e.g. build time) — fall through
+    }
+
+    if (!authHeader) {
+      try {
+        const { getCurrentUser } = await import('@/lib/auth');
+        const authUser = await getCurrentUser();
+        if (authUser?.token) {
+          authHeader = `Bearer ${authUser.token}`;
+        }
+      } catch {
+      }
     }
   }
 

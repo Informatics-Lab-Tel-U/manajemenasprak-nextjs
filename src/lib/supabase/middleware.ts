@@ -4,8 +4,17 @@ import { hasAccess, isPublicPath, ROLE_DEFAULT_REDIRECT, type Role } from '@/con
 import { AUTH_CONFIG, isMfaRequiredForUser } from '@/config/auth';
 import { proxyIwanRequest } from '@/lib/iwanProxy';
 
+// Cache maintenance status for 30 s — avoids one external fetch per request
+let maintenanceCache: { active: boolean; ts: number } | null = null;
+const MAINTENANCE_TTL_MS = 30_000;
+
 async function getMaintenanceStatus(backendUrl?: string): Promise<boolean> {
   if (!backendUrl) return false;
+
+  const now = Date.now();
+  if (maintenanceCache && now - maintenanceCache.ts < MAINTENANCE_TTL_MS) {
+    return maintenanceCache.active;
+  }
 
   try {
     const res = await fetch(`${backendUrl}/api/system/maintenance`, {
@@ -15,12 +24,16 @@ async function getMaintenanceStatus(backendUrl?: string): Promise<boolean> {
 
     if (res.ok) {
       const data = await res.json();
-      return !!data.active;
+      const active = !!data.active;
+      maintenanceCache = { active, ts: now };
+      return active;
     }
   } catch (e) {
     console.error('[Middleware] Maintenance check failed:', e);
   }
 
+  // On error, preserve the last known value if available; default to false
+  if (maintenanceCache) return maintenanceCache.active;
   return false;
 }
 

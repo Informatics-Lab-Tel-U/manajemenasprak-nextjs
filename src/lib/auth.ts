@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { headers as nextHeaders } from 'next/headers';
 import { logger } from '@/lib/logger';
 import { Role } from '@/config/rbac';
 import { AUTH_CONFIG, isMfaRequiredForRole, isMfaRequiredForUser } from '@/config/auth';
@@ -12,6 +13,21 @@ export type AuthUser = {
   token: string;
   pengguna: Pengguna;
 };
+
+/** Read the auth user embedded by middleware — zero network calls. */
+async function getCurrentUserFromHeader(): Promise<AuthUser | null> {
+  try {
+    const reqHeaders = await nextHeaders();
+    const xAuthUser = reqHeaders.get('x-auth-user');
+    if (!xAuthUser) return null;
+    const decoded = JSON.parse(Buffer.from(xAuthUser, 'base64').toString('utf-8'));
+    if (decoded?.id && decoded?.token && decoded?.pengguna) {
+      return decoded as AuthUser;
+    }
+  } catch {
+  }
+  return null;
+}
 
 export async function getCurrentUser(): Promise<AuthUser | null> {
   const supabase = await createClient();
@@ -60,6 +76,11 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
 }
 
 export async function requireAuth(redirectTo = AUTH_CONFIG.paths.login): Promise<AuthUser> {
+  // Fast path: middleware already validated the user and embedded it in the header
+  const headerUser = await getCurrentUserFromHeader();
+  if (headerUser) return headerUser;
+
+  // Slow path: no header (e.g. called outside a middleware-handled request)
   const user = await getCurrentUser();
   if (!user) redirect(redirectTo);
 

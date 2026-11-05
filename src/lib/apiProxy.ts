@@ -23,6 +23,20 @@ export async function forwardToHono(request: NextRequest, customPath?: string) {
     let authHeader = request.headers.get('authorization');
 
     if (!authHeader) {
+      // Read x-auth-user set by middleware — avoids a redundant /api/auth/me fetch
+      const xAuthUser = request.headers.get('x-auth-user');
+      if (xAuthUser) {
+        try {
+          const decoded = JSON.parse(Buffer.from(xAuthUser, 'base64').toString('utf-8'));
+          if (decoded?.token) {
+            authHeader = `Bearer ${decoded.token}`;
+          }
+        } catch {
+        }
+      }
+    }
+
+    if (!authHeader) {
       try {
         const { getCurrentUser } = await import('@/lib/auth');
         const authUser = await getCurrentUser();
@@ -62,23 +76,21 @@ export async function forwardToHono(request: NextRequest, customPath?: string) {
     };
 
     const res = await fetch(targetUrl.toString(), init);
-    const resContentType = res.headers.get('content-type') || '';
+    const forwardHeaders = new Headers();
 
-    if (resContentType.includes('application/json')) {
-      const data = await res.json().catch(() => ({}));
-      return NextResponse.json(data, { status: res.status });
-    }
+    const resContentType = res.headers.get('content-type');
+    if (resContentType) forwardHeaders.set('content-type', resContentType);
 
-    // Handle binary / non-JSON responses (Excel exports, downloads, plain text)
-    const arrayBuffer = await res.arrayBuffer();
-    const resHeaders: Record<string, string> = {};
-    if (resContentType) resHeaders['content-type'] = resContentType;
     const disposition = res.headers.get('content-disposition');
-    if (disposition) resHeaders['content-disposition'] = disposition;
+    if (disposition) forwardHeaders.set('content-disposition', disposition);
 
-    return new NextResponse(arrayBuffer, {
+    const cacheControl = res.headers.get('cache-control');
+    if (cacheControl) forwardHeaders.set('cache-control', cacheControl);
+
+    // Stream upstream body directly — avoid JSON.parse and JSON.stringify CPU overhead in Worker
+    return new Response(res.body, {
       status: res.status,
-      headers: resHeaders,
+      headers: forwardHeaders,
     });
   } catch (err: any) {
     return NextResponse.json({ ok: false, error: err.message || 'Proxy Error' }, { status: 500 });

@@ -1,6 +1,6 @@
 import { Suspense } from 'react';
 import { requireAuth } from '@/lib/auth';
-import { getAvailableTerms } from '@/services/termService';
+import { getCachedAvailableTerms } from '@/services/termService';
 import { getPraktikumByTerm } from '@/services/praktikumService';
 import PraktikumClientPage from './PraktikumClientPage';
 import PraktikumLoading from './loading';
@@ -14,7 +14,7 @@ export default async function PraktikumPage() {
   let initialPraktikumList: any[] = [];
 
   try {
-    const termsRes = await getAvailableTerms();
+    const termsRes = await getCachedAvailableTerms();
     terms = termsRes || [];
 
     const prakRes = await getPraktikumByTerm(terms[0] || '');
