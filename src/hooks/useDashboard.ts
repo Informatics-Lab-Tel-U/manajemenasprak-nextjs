@@ -42,10 +42,10 @@ export function useDashboard(
   const [rawJadwal, setRawJadwal] = useState<Jadwal[]>(initialJadwal ?? []);
   const [jadwalPengganti, setJadwalPengganti] = useState<JadwalPengganti[]>(initialPengganti ?? []);
   const [stats, setStats] = useState<DashboardStats>(safeInitialStats);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(Boolean(selectedTerm));
   const [error, setError] = useState<Error | null>(null);
 
-  const lastFetchedTermRef = useRef<string>(initialTerms[0] ?? '');
+  const lastFetchedTermRef = useRef<string>('');
 
   const fetchDashboardData = useCallback(
     async (term: string) => {
