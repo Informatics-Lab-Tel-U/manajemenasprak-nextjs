@@ -1,0 +1,11 @@
+/* ORGANIZATION */
+Owner: Informatics Laboratory, Telkom University
+Location: Bandung, Indonesia
+
+/* DEVELOPMENT TEAM & CONTRIBUTORS */
+Core Maintainer: Muhammad Abiyyu Al-Ghifari (https://github.com/abiyyufahri)
+Contributors:
+- Athila Ramdani Saputra (https://github.com/athilaramdani)
+- Febry T (https://github.com/Febry3)
+- Muhammad Hendika Putra
+- Arief Rahman (https://github.com/ariefrahmanna)

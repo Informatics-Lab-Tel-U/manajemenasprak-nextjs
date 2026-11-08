@@ -3,6 +3,28 @@
   "version": "1.9.0",
   "private": true,
   "license": "PROPRIETARY",
+  "author": "Informatics Laboratory, Telkom University",
+  "contributors": [
+    {
+      "name": "Muhammad Abiyyu Al-Ghifari",
+      "url": "https://github.com/abiyyufahri"
+    },
+    {
+      "name": "Athila Ramdani Saputra",
+      "url": "https://github.com/athilaramdani"
+    },
+    {
+      "name": "Febry T",
+      "url": "https://github.com/Febry3"
+    },
+    {
+      "name": "Muhammad Hendika Putra"
+    },
+    {
+      "name": "Arief Rahman",
+      "url": "https://github.com/ariefrahmanna"
+    }
+  ],
   "scripts": {
     "dev": "next dev",
     "build": "next build",

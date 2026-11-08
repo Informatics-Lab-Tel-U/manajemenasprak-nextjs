@@ -10,7 +10,9 @@ const nextConfig: NextConfig = {
   // Produces a self-contained Node.js server when building for Docker.
   // Not set for CF Workers (opennextjs-cloudflare) builds.
   ...(isDockerBuild && { output: 'standalone' }),
-  turbopack: {},
+  turbopack: {
+    root: process.cwd(),
+  },
   webpack: (config, { isServer, webpack }) => {
     if (isServer) {
       config.plugins.push(

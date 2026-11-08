@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import Link from 'next/link';
 import { useIwanPolling } from '@/hooks/useIwanPolling';
 import { fetchIwanData } from '@/lib/iwanPolling';
 import { Button } from '@/components/ui/button';
@@ -80,14 +81,30 @@ interface RoomDevice {
   lastSeen: string;
 }
 
+interface EvidenceLogItem {
+  id: string;
+  deviceId: string;
+  roomId: string;
+  deviceLabel: string;
+  seatNumber: number;
+  roomName: string;
+  windowTitle: string;
+  screenshotUrl: string;
+  screenshotStoragePath: string;
+  detectedAt: string;
+}
+
 const DEVICE_STATUS_LABEL: Record<RoomDevice['computedStatus'], string> = {
   online: 'Online',
   offline: 'Offline',
   streaming: 'Streaming',
 };
 
-function seatTone(dev: RoomDevice | undefined) {
+function seatTone(dev: RoomDevice | undefined, hasAlert = false) {
   if (!dev) return 'border-dashed text-muted-foreground';
+  if (hasAlert) {
+    return 'border-destructive/60 bg-destructive/10 text-destructive cursor-pointer';
+  }
   if (dev.computedStatus === 'streaming') {
     return 'border-blue-500/40 bg-blue-500/10 text-blue-600 dark:text-blue-400';
   }
@@ -102,6 +119,9 @@ export default function IwanRoomsPage() {
   const [selectedRoomId, setSelectedRoomId] = React.useState<string>('');
   const [activeSession, setActiveSession] = React.useState<PairSession | null>(null);
   const [devices, setDevices] = React.useState<RoomDevice[]>([]);
+  const [evidenceLogs, setEvidenceLogs] = React.useState<EvidenceLogItem[]>([]);
+  const [selectedEvidence, setSelectedEvidence] = React.useState<EvidenceLogItem | null>(null);
+  const [deletingEvidenceId, setDeletingEvidenceId] = React.useState<string | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
   const [isSessionLoading, setIsSessionLoading] = React.useState(false);
   const [autoRefresh, setAutoRefresh] = React.useState(false);
@@ -144,12 +164,15 @@ export default function IwanRoomsPage() {
     detailsRequest.current = controller;
     const requestSignal = signal ? AbortSignal.any([signal, controller.signal]) : controller.signal;
     try {
-      const data = await fetchIwanData<{ session: PairSession | null; devices: RoomDevice[] }>(
-        `/api/iwan/rooms/${roomId}/snapshot`, requestSignal,
-      );
+      const data = await fetchIwanData<{
+        session: PairSession | null;
+        devices: RoomDevice[];
+        evidenceLogs?: EvidenceLogItem[];
+      }>(`/api/iwan/rooms/${roomId}/snapshot`, requestSignal);
       if (!requestSignal.aborted) {
         setActiveSession(data.session);
         setDevices(data.devices);
+        setEvidenceLogs(data.evidenceLogs ?? []);
       }
     } catch (error) {
       if (!requestSignal.aborted) throw error;
@@ -318,9 +341,38 @@ export default function IwanRoomsPage() {
     toast.success('Kode pairing disalin');
   }
 
+  async function handleDeleteEvidence(evidenceId: string) {
+    setDeletingEvidenceId(evidenceId);
+    try {
+      const res = await fetch(`/api/iwan/evidence/${evidenceId}`, {
+        method: 'DELETE',
+      });
+      const json = await res.json();
+      if (json.ok) {
+        toast.success('Catatan bukti insiden dihapus');
+        setEvidenceLogs((prev) => prev.filter((item) => item.id !== evidenceId));
+        if (selectedEvidence?.id === evidenceId) {
+          setSelectedEvidence(null);
+        }
+      } else {
+        toast.error(json.error || 'Gagal menghapus catatan insiden');
+      }
+    } catch {
+      toast.error('Gagal menghapus catatan insiden');
+    } finally {
+      setDeletingEvidenceId(null);
+    }
+  }
+
   const capacity = selectedRoom?.capacity || 40;
   const claimedDeviceMap = new Map<number, RoomDevice>();
   devices.forEach((d) => claimedDeviceMap.set(d.seatNumber, d));
+  const latestEvidenceBySeat = new Map<number, EvidenceLogItem>();
+  evidenceLogs.forEach((log) => {
+    if (!latestEvidenceBySeat.has(log.seatNumber)) {
+      latestEvidenceBySeat.set(log.seatNumber, log);
+    }
+  });
   const onlineDeviceCount = devices.filter((d) => d.computedStatus !== 'offline').length;
 
   return (
@@ -571,6 +623,20 @@ export default function IwanRoomsPage() {
                           {onlineDeviceCount}
                         </dd>
                       </div>
+                      <div className="flex items-center justify-between py-2">
+                        <dt className="text-muted-foreground">Log kecurangan</dt>
+                        <dd className="flex items-center gap-2">
+                          <span className={`font-medium tabular-nums ${evidenceLogs.length > 0 ? 'text-destructive' : ''}`}>
+                            {evidenceLogs.length}
+                          </span>
+                          <Link
+                            href={`/iwan/evidence?roomId=${encodeURIComponent(selectedRoom.id)}`}
+                            className="text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+                          >
+                            Lihat log
+                          </Link>
+                        </dd>
+                      </div>
                     </dl>
                   </CardContent>
                 </Card>
@@ -584,10 +650,14 @@ export default function IwanRoomsPage() {
                     {selectedRoom.name} · {capacity} kursi
                   </CardDescription>
                   <CardAction>
-                    <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                    <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
                       <span className="flex items-center gap-1.5">
                         <span className="size-2 rounded-full bg-emerald-500" />
                         Online
+                      </span>
+                      <span className="flex items-center gap-1.5">
+                        <span className="size-2 rounded-full bg-destructive" />
+                        Insiden GPT
                       </span>
                       <span className="flex items-center gap-1.5">
                         <span className="size-2 rounded-full bg-zinc-400" />
@@ -604,9 +674,13 @@ export default function IwanRoomsPage() {
                   <div className="grid grid-cols-4 gap-2 sm:grid-cols-6 md:grid-cols-8 xl:grid-cols-10">
                     {Array.from({ length: capacity }, (_, i) => i + 1).map((seatNum) => {
                       const dev = claimedDeviceMap.get(seatNum);
+                      const seatEvidence = latestEvidenceBySeat.get(seatNum);
                       const tile = (
                         <div
-                          className={`flex min-w-0 flex-col items-center gap-0.5 rounded-md border px-1.5 py-2 text-center ${seatTone(dev)}`}
+                          onClick={() => {
+                            if (seatEvidence) setSelectedEvidence(seatEvidence);
+                          }}
+                          className={`flex min-w-0 flex-col items-center gap-0.5 rounded-md border px-1.5 py-2 text-center ${seatTone(dev, Boolean(seatEvidence))}`}
                         >
                           <span className="text-xs font-medium tabular-nums">
                             {String(seatNum).padStart(2, '0')}
@@ -622,6 +696,7 @@ export default function IwanRoomsPage() {
                           <TooltipTrigger asChild>{tile}</TooltipTrigger>
                           <TooltipContent>
                             {dev.label} · {DEVICE_STATUS_LABEL[dev.computedStatus]} · {dev.macAddress} · {dev.localIp}
+                            {seatEvidence ? ` · Terdeteksi: ${seatEvidence.windowTitle} (Klik untuk bukti)` : ''}
                           </TooltipContent>
                         </Tooltip>
                       );
@@ -703,6 +778,60 @@ export default function IwanRoomsPage() {
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog Preview Bukti Screenshot Insiden GPT */}
+      <Dialog
+        open={Boolean(selectedEvidence)}
+        onOpenChange={(open) => {
+          if (!open) setSelectedEvidence(null);
+        }}
+      >
+        <DialogContent className="max-w-4xl">
+          <DialogHeader>
+            <DialogTitle>
+              Bukti Kecurangan · {selectedEvidence?.roomName} (Kursi{' '}
+              {selectedEvidence ? String(selectedEvidence.seatNumber).padStart(2, '0') : ''} ·{' '}
+              {selectedEvidence?.deviceLabel})
+            </DialogTitle>
+          </DialogHeader>
+          {selectedEvidence && (
+            <div className="space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border bg-muted/40 px-3 py-2 text-sm">
+                <span className="font-medium">{selectedEvidence.windowTitle}</span>
+                <span className="text-xs text-muted-foreground tabular-nums">
+                  {new Date(selectedEvidence.detectedAt).toLocaleString('id-ID', {
+                    dateStyle: 'medium',
+                    timeStyle: 'medium',
+                  })}
+                </span>
+              </div>
+              <div className="overflow-hidden rounded-md border bg-black/5">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={selectedEvidence.screenshotUrl}
+                  alt={`Bukti layar ${selectedEvidence.deviceLabel}`}
+                  className="max-h-[70vh] w-full object-contain"
+                />
+              </div>
+              <DialogFooter className="gap-2">
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="sm"
+                  disabled={deletingEvidenceId === selectedEvidence.id}
+                  onClick={() => handleDeleteEvidence(selectedEvidence.id)}
+                >
+                  <Trash2 className="size-4" />
+                  Hapus Bukti
+                </Button>
+                <Button type="button" variant="outline" size="sm" onClick={() => setSelectedEvidence(null)}>
+                  Tutup
+                </Button>
+              </DialogFooter>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>

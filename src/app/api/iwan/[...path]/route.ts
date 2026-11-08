@@ -13,6 +13,11 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   return forwardToHono(request, `/api/iwan/${path.join('/')}`);
 }
 
+export async function PUT(request: NextRequest, { params }: { params: Promise<{ path: string[] }> }) {
+  const { path } = await params;
+  return forwardToHono(request, `/api/iwan/${path.join('/')}`);
+}
+
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ path: string[] }> }) {
   const { path } = await params;
   return forwardToHono(request, `/api/iwan/${path.join('/')}`);

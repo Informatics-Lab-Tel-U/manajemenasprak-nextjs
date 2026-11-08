@@ -161,6 +161,7 @@ const ALL_NAV_GROUPS: NavGroup[] = [
         items: [
           { label: 'Ruangan & Sesi', href: '/iwan/rooms' },
           { label: 'Pemetaan PC', href: '/iwan/devices' },
+          { label: 'Log Kecurangan', href: '/iwan/evidence' },
           { label: 'Akses Admin', href: '/iwan/admin-access' },
         ],
       },
