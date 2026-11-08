@@ -667,7 +667,7 @@ function IwanEvidenceContent() {
           <DialogHeader>
             <DialogTitle>Kata Kunci Kecurangan</DialogTitle>
           </DialogHeader>
-          <div className="space-y-2 py-1">
+          <div className="min-w-0 space-y-2 py-1">
             <Label htmlFor="forbidden-patterns-textarea" className="text-xs text-muted-foreground">
               Satu kata kunci atau domain per baris (pisahkan dengan Enter)
             </Label>
@@ -677,7 +677,7 @@ function IwanEvidenceContent() {
               value={draftPatternsText}
               onChange={(e) => setDraftPatternsText(e.target.value)}
               placeholder={'chatgpt\nchat.openai.com\nclaude.ai\ngemini.google.com'}
-              className="min-h-[180px]"
+              className="h-48 max-h-48 w-full resize-none overflow-x-hidden overflow-y-auto break-all [field-sizing:fixed]"
             />
           </div>
           <DialogFooter className="flex-wrap justify-between gap-2 sm:justify-between">
