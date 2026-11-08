@@ -715,7 +715,7 @@ export default function IwanRoomsPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Hapus ruangan {selectedRoom?.name}?</AlertDialogTitle>
             <AlertDialogDescription>
-              Tindakan ini tidak dapat dibatalkan. Seluruh pemetaan PC ({devices.length} perangkat) dan riwayat sesi pairing di ruangan ini ikut dihapus.
+              Tindakan ini tidak dapat dibatalkan. Seluruh pemetaan PC ({devices.length} perangkat), riwayat sesi, dan seluruh berkas bukti kecurangan di ruangan ini akan dihapus secara permanen.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
