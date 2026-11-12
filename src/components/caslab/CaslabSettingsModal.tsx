@@ -21,7 +21,7 @@ import {
 } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
-import { AlertCircle, SlidersHorizontal, Check } from 'lucide-react';
+import { AlertCircle } from 'lucide-react';
 import type { CaslabRoomConfig, SeatingMode } from '@/types/caslab';
 
 interface CaslabSettingsModalProps {
@@ -78,14 +78,11 @@ export function CaslabSettingsModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <SlidersHorizontal className="h-5 w-5" />
-            Pengaturan Ruangan & Pola Kursi
-          </DialogTitle>
+          <DialogTitle>Pengaturan Plotting</DialogTitle>
           <DialogDescription>
-            Konfigurasikan jumlah laboratorium ujian, daya tampung PC, dan pola penempatan kursi.
+            Atur jumlah ruangan, kapasitas PC, dan pola kursi.
           </DialogDescription>
         </DialogHeader>
 
@@ -101,15 +98,15 @@ export function CaslabSettingsModal({
                 <SelectValue placeholder="Pilih jumlah ruangan" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="1">1 Ruangan (Satu Lab)</SelectItem>
-                <SelectItem value="2">2 Ruangan (Dua Lab - Rotasi Seimbang)</SelectItem>
+                <SelectItem value="1">1 Ruangan</SelectItem>
+                <SelectItem value="2">2 Ruangan</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
           {/* Pola Penempatan Kursi */}
           <div className="space-y-1.5">
-            <Label htmlFor="seating-mode">Pola Penempatan Kursi</Label>
+            <Label htmlFor="seating-mode">Pola Kursi</Label>
             <Select
               value={seatingMode}
               onValueChange={(val) => setSeatingMode(val as SeatingMode)}
@@ -118,28 +115,24 @@ export function CaslabSettingsModal({
                 <SelectValue placeholder="Pilih pola kursi" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="spaced">
-                  Mode Berselang (Jeda 1 Kursi / Anti-Contek)
-                </SelectItem>
-                <SelectItem value="dense">
-                  Mode Sebelahan (Rapat Berurutan / Kapasitas Penuh)
-                </SelectItem>
+                <SelectItem value="spaced">Mode Berselang (Jeda 1 PC)</SelectItem>
+                <SelectItem value="dense">Mode Sebelahan</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
-          {/* Konfigurasi Ruang 1 */}
+          {/* Ruangan 1 */}
           <div className="rounded-md border p-3 space-y-3 bg-muted/20">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold">Ruangan 1</span>
+              <span className="text-xs font-medium">Ruangan 1</span>
               <Badge variant="outline" className="text-[10px]">
-                {room1.capacity - room1.disabledSeats.length} Kursi Aktif
+                {room1.capacity - room1.disabledSeats.length} Kursi
               </Badge>
             </div>
             <div className="grid grid-cols-3 gap-2">
               <div className="col-span-2 space-y-1">
                 <Label htmlFor="r1-name" className="text-xs text-muted-foreground">
-                  Nama Ruangan
+                  Nama
                 </Label>
                 <Input
                   id="r1-name"
@@ -162,25 +155,25 @@ export function CaslabSettingsModal({
                   onChange={(e) =>
                     setRoom1({ ...room1, capacity: Math.max(1, parseInt(e.target.value) || 1) })
                   }
-                  className="h-8 text-xs"
+                  className="h-8 text-xs font-mono"
                 />
               </div>
             </div>
           </div>
 
-          {/* Konfigurasi Ruang 2 (Jika 2 Ruangan) */}
+          {/* Ruangan 2 */}
           {numRooms === 2 && (
             <div className="rounded-md border p-3 space-y-3 bg-muted/20">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold">Ruangan 2</span>
+                <span className="text-xs font-medium">Ruangan 2</span>
                 <Badge variant="outline" className="text-[10px]">
-                  {room2.capacity - room2.disabledSeats.length} Kursi Aktif
+                  {room2.capacity - room2.disabledSeats.length} Kursi
                 </Badge>
               </div>
               <div className="grid grid-cols-3 gap-2">
                 <div className="col-span-2 space-y-1">
                   <Label htmlFor="r2-name" className="text-xs text-muted-foreground">
-                    Nama Ruangan
+                    Nama
                   </Label>
                   <Input
                     id="r2-name"
@@ -203,33 +196,33 @@ export function CaslabSettingsModal({
                     onChange={(e) =>
                       setRoom2({ ...room2, capacity: Math.max(1, parseInt(e.target.value) || 1) })
                     }
-                    className="h-8 text-xs"
+                    className="h-8 text-xs font-mono"
                   />
                 </div>
               </div>
             </div>
           )}
 
-          {/* Kapasitas Feedback */}
+          {/* Kapasitas Indicator */}
           {candidateCount > 0 && (
-            <div className="space-y-2 pt-1">
+            <div className="pt-1">
               {isOverDense ? (
                 <Alert variant="destructive" className="py-2 text-xs">
                   <AlertCircle className="h-4 w-4" />
                   <AlertDescription>
-                    Total peserta ({candidateCount}) melebihi daya tampung fisik ({totalPhysical} PC). Tambahkan ruangan atau tambah kapasitas.
+                    Peserta ({candidateCount}) melebihi kapasitas total ({totalPhysical}).
                   </AlertDescription>
                 </Alert>
               ) : isOverSpaced ? (
-                <Alert className="py-2 text-xs border-amber-500/50 text-amber-800 dark:text-amber-300">
+                <Alert className="py-2 text-xs border-amber-500/40 text-amber-900 dark:text-amber-300">
                   <AlertCircle className="h-4 w-4" />
                   <AlertDescription>
-                    Mode Berselang hanya menyediakan {totalSpaced} kursi untuk {candidateCount} peserta. Sebagian peserta akan dialokasikan ke kursi berdekatan.
+                    Kapasitas berselang ({totalSpaced}) kurang untuk {candidateCount} peserta.
                   </AlertDescription>
                 </Alert>
               ) : (
                 <p className="text-xs text-muted-foreground">
-                  Daya tampung: {totalPhysical} kursi fisik ({totalSpaced} kursi berselang) untuk {candidateCount} peserta.
+                  Kapasitas: {totalPhysical} kursi ({totalSpaced} berselang) untuk {candidateCount} peserta.
                 </p>
               )}
             </div>
@@ -241,11 +234,10 @@ export function CaslabSettingsModal({
             Batal
           </Button>
           <Button onClick={handleSave}>
-            Simpan & Terapkan
+            Simpan
           </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
   );
 }
-

@@ -3,10 +3,8 @@
 import React, { useState } from 'react';
 import {
   Wrench,
-  Ban,
   ArrowLeftRight,
   Monitor,
-  X,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -50,7 +48,7 @@ export function CaslabRoomSeatGrid({
     }
 
     if (seat.isDisabled) {
-      toast.info(`Meja ${seat.seatNumber} berstatus PC Rusak/Nonaktif.`);
+      toast.info(`Meja #${seat.seatNumber} berstatus rusak.`);
       return;
     }
 
@@ -62,13 +60,13 @@ export function CaslabRoomSeatGrid({
           candidateName: seat.candidate.nama_lengkap,
         });
         toast.info(
-          `Memilih Meja #${seat.seatNumber} (${seat.candidate.kode}). Klik kursi tujuan untuk menukar posisi.`
+          `Pilih kursi tujuan untuk menukar Meja #${seat.seatNumber}.`
         );
       }
     } else {
       if (selectedSeat.roomId === roomId && selectedSeat.seatNumber === seat.seatNumber) {
         setSelectedSeat(null);
-        toast.info('Pemilihan kursi dibatalkan.');
+        toast.info('Batal menukar posisi.');
       } else {
         onSwapSeats(
           selectedSeat.roomId,
@@ -77,7 +75,7 @@ export function CaslabRoomSeatGrid({
           seat.seatNumber
         );
         toast.success(
-          `Posisi ditukar: Meja #${selectedSeat.seatNumber} ⇄ Meja #${seat.seatNumber}`
+          `Posisi ditukar (Meja #${selectedSeat.seatNumber} ⇄ #${seat.seatNumber}).`
         );
         setSelectedSeat(null);
       }
@@ -92,7 +90,7 @@ export function CaslabRoomSeatGrid({
           <div className="flex items-center gap-2">
             <ArrowLeftRight className="h-4 w-4 text-primary" />
             <span>
-              Menukar posisi dari <strong>Meja #{selectedSeat.seatNumber} ({selectedSeat.candidateName})</strong>. Klik kursi lain untuk menukar.
+              Tukar Meja #{selectedSeat.seatNumber} ({selectedSeat.candidateName}) — pilih kursi tujuan.
             </span>
           </div>
           <Button
@@ -117,13 +115,13 @@ export function CaslabRoomSeatGrid({
                   value={alloc.room.id}
                   className="text-xs"
                 >
-                  {alloc.room.name} ({alloc.assignedCandidates.length} Peserta)
+                  {alloc.room.name} ({alloc.assignedCandidates.length})
                 </TabsTrigger>
               ))}
             </TabsList>
 
             <span className="text-xs text-muted-foreground">
-              Total 2 Ruangan: {allocations.reduce((acc, a) => acc + a.assignedCandidates.length, 0)} Peserta
+              Total: {allocations.reduce((acc, a) => acc + a.assignedCandidates.length, 0)} Peserta
             </span>
           </div>
         )}
@@ -133,7 +131,7 @@ export function CaslabRoomSeatGrid({
             {/* Front of Room */}
             <div className="w-full py-2 bg-muted/60 border rounded-md text-center text-xs font-semibold tracking-wider text-muted-foreground uppercase flex items-center justify-center gap-2">
               <Monitor className="h-4 w-4" />
-              DEPAN / PAPAN TULIS — {alloc.room.name}
+              DEPAN — {alloc.room.name}
             </div>
 
             {/* Seat Grid */}
@@ -299,7 +297,7 @@ export function CaslabRoomSeatGrid({
               </div>
 
               <span>
-                Kapasitas Lab: <strong>{alloc.room.capacity} Kursi</strong>
+                Kapasitas: {alloc.room.capacity} Kursi
               </span>
             </div>
           </TabsContent>

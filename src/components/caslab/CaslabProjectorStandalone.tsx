@@ -12,6 +12,7 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import type { CaslabRoomAllocation } from '@/types/caslab';
 
@@ -60,45 +61,43 @@ export function CaslabProjectorStandalone() {
   const cleanSearch = search.trim().toLowerCase();
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col p-4 md:p-6 select-none font-sans">
+    <div className="min-h-screen bg-background text-foreground flex flex-col p-4 md:p-6 select-none font-sans">
       {/* Top Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-slate-800 bg-slate-900/90 rounded-2xl p-4 shadow-xl mb-6">
+      <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-border mb-6">
         <div className="flex items-center gap-3">
           <Link href="/generator/caslab">
             <Button
               variant="outline"
               size="icon"
-              className="h-9 w-9 bg-slate-800 border-slate-700 text-slate-300 hover:text-white"
+              className="h-9 w-9"
               title="Kembali ke Dashboard"
             >
               <ArrowLeft className="w-4 h-4" />
             </Button>
           </Link>
-          <div className="w-9 h-9 rounded-xl bg-blue-600/20 border border-blue-500/30 flex items-center justify-center text-blue-400">
-            <Tv className="w-5 h-5" />
-          </div>
+          <Tv className="w-5 h-5 text-muted-foreground" />
           <div>
-            <h1 className="text-base font-extrabold text-white tracking-wide">
-              DENAH KURSI SELEKSI CASLAB
+            <h1 className="text-base font-semibold text-foreground">
+              Denah Proyektor Caslab
             </h1>
-            <p className="text-xs text-slate-400">
-              Informatics Laboratory Telkom University
+            <p className="text-xs text-muted-foreground">
+              {currentAlloc?.room?.name || 'Ruangan'}
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-3 flex-wrap">
+        <div className="flex items-center gap-2 flex-wrap">
           {/* Room Selector */}
           {allocations.length > 1 && (
-            <div className="flex items-center bg-slate-800 rounded-xl p-1 border border-slate-700">
+            <div className="flex items-center bg-muted rounded-md p-0.5 border border-border">
               {allocations.map((alloc, idx) => (
                 <button
                   key={alloc.room.id}
                   onClick={() => setSelectedRoomIdx(idx)}
-                  className={`px-4 py-1.5 text-xs font-bold rounded-lg transition-all ${
+                  className={`px-3 py-1.5 text-xs font-medium rounded-sm transition-all ${
                     selectedRoomIdx === idx
-                      ? 'bg-blue-600 text-white shadow-md'
-                      : 'text-slate-400 hover:text-white'
+                      ? 'bg-background text-foreground shadow-xs'
+                      : 'text-muted-foreground hover:text-foreground'
                   }`}
                 >
                   {alloc.room.name} ({alloc.assignedCandidates.length})
@@ -108,13 +107,13 @@ export function CaslabProjectorStandalone() {
           )}
 
           {/* Search box */}
-          <div className="relative w-56">
-            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <div className="relative w-48">
+            <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <Input
-              placeholder="Cari Meja / NIM / Kode..."
+              placeholder="Cari meja, NIM, kode..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="h-9 pl-9 text-xs bg-slate-900 border-slate-700 text-white placeholder:text-slate-500 rounded-xl"
+              className="h-9 pl-8 text-xs"
             />
           </div>
 
@@ -122,7 +121,7 @@ export function CaslabProjectorStandalone() {
             variant="outline"
             size="icon"
             onClick={loadData}
-            className="h-9 w-9 bg-slate-800 border-slate-700 text-slate-300 hover:text-white"
+            className="h-9 w-9"
             title="Refresh Data"
           >
             <RefreshCw className="w-4 h-4" />
@@ -132,8 +131,8 @@ export function CaslabProjectorStandalone() {
             variant="outline"
             size="icon"
             onClick={toggleFullscreen}
-            className="h-9 w-9 bg-slate-800 border-slate-700 text-slate-300 hover:text-white"
-            title="Fullscreen"
+            className="h-9 w-9"
+            title="Layar Penuh"
           >
             {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
           </Button>
@@ -142,39 +141,39 @@ export function CaslabProjectorStandalone() {
 
       {/* Main Grid or Empty State */}
       {!currentAlloc || currentAlloc.seats.length === 0 ? (
-        <div className="flex-1 flex flex-col items-center justify-center text-center p-12 border-2 border-dashed border-slate-800 rounded-2xl bg-slate-900/30">
-          <Monitor className="w-12 h-12 text-slate-600 mb-3" />
-          <h2 className="text-lg font-bold text-slate-300">Belum Ada Data Plotting Aktif</h2>
-          <p className="text-xs text-slate-500 mt-1 max-w-md">
-            Silakan buka halaman generator di dashboard panitia, upload data peserta Caslab, dan tekan tombol "Acak Plotting Kursi".
+        <div className="flex-1 flex flex-col items-center justify-center text-center p-12 border rounded-md bg-card">
+          <Monitor className="w-10 h-10 text-muted-foreground mb-3" />
+          <h2 className="text-sm font-medium text-foreground">Belum ada data plotting</h2>
+          <p className="text-xs text-muted-foreground mt-1 max-w-sm">
+            Silakan import data peserta dan acak kursi di halaman generator.
           </p>
           <Link href="/generator/caslab" className="mt-4">
-            <Button size="sm" className="bg-blue-600 text-white text-xs">
-              Buka Pengaturan Plotting
+            <Button size="sm" variant="outline" className="text-xs">
+              Buka Generator
             </Button>
           </Link>
         </div>
       ) : (
         <div className="flex-1 space-y-4">
           {/* Front Banner */}
-          <div className="w-full py-3 bg-slate-900 border border-slate-800 rounded-xl text-center text-xs font-bold tracking-widest uppercase text-slate-400 flex items-center justify-center gap-2 shadow-md">
-            <Monitor className="w-4 h-4 text-blue-400" />
-            DEPAN / PAPAN TULIS ({currentAlloc.room.name})
+          <div className="w-full py-2 bg-muted/60 border border-border rounded-md text-center text-xs font-semibold tracking-wider text-muted-foreground uppercase flex items-center justify-center gap-2">
+            <Monitor className="w-4 h-4" />
+            DEPAN — {currentAlloc.room.name}
           </div>
 
           {/* Seat Grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-8 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-8 gap-2.5">
             {currentAlloc.seats.map((seat) => {
               if (seat.isDisabled) {
                 return (
                   <div
                     key={seat.seatNumber}
-                    className="rounded-xl border border-rose-950 bg-rose-950/20 p-3 min-h-[115px] flex flex-col justify-between opacity-40"
+                    className="rounded-md border border-destructive/30 bg-destructive/5 p-2.5 min-h-[96px] flex flex-col justify-between opacity-60"
                   >
-                    <span className="font-mono text-xs font-bold text-rose-400">
+                    <span className="font-mono text-[11px] font-semibold text-destructive">
                       #{String(seat.seatNumber).padStart(2, '0')}
                     </span>
-                    <span className="text-[11px] font-medium text-rose-400 text-center">
+                    <span className="text-[10px] text-destructive text-center">
                       PC Rusak
                     </span>
                   </div>
@@ -185,13 +184,13 @@ export function CaslabProjectorStandalone() {
                 return (
                   <div
                     key={seat.seatNumber}
-                    className="rounded-xl border border-dashed border-slate-800 bg-slate-900/30 p-3 min-h-[115px] flex flex-col justify-between opacity-30"
+                    className="rounded-md border border-dashed border-border p-2.5 min-h-[96px] flex flex-col justify-between opacity-40"
                   >
-                    <span className="font-mono text-xs text-slate-600">
+                    <span className="font-mono text-[11px] text-muted-foreground">
                       #{String(seat.seatNumber).padStart(2, '0')}
                     </span>
-                    <span className="text-[10px] text-slate-600 text-center italic">
-                      [ Jeda ]
+                    <span className="text-[10px] text-muted-foreground text-center italic">
+                      Jeda
                     </span>
                   </div>
                 );
@@ -201,12 +200,12 @@ export function CaslabProjectorStandalone() {
                 return (
                   <div
                     key={seat.seatNumber}
-                    className="rounded-xl border border-slate-800/60 bg-slate-900/20 p-3 min-h-[115px] flex flex-col justify-between opacity-30"
+                    className="rounded-md border border-border/50 p-2.5 min-h-[96px] flex flex-col justify-between opacity-40"
                   >
-                    <span className="font-mono text-xs text-slate-600">
+                    <span className="font-mono text-[11px] text-muted-foreground">
                       #{String(seat.seatNumber).padStart(2, '0')}
                     </span>
-                    <span className="text-[10px] text-slate-600 text-center">
+                    <span className="text-[10px] text-muted-foreground text-center">
                       Kosong
                     </span>
                   </div>
@@ -224,33 +223,35 @@ export function CaslabProjectorStandalone() {
               return (
                 <div
                   key={seat.seatNumber}
-                  className={`rounded-xl p-3 min-h-[115px] flex flex-col justify-between transition-all duration-300 ${
+                  className={`rounded-md p-2.5 min-h-[96px] flex flex-col justify-between transition-all border ${
                     matchesSearch
-                      ? 'border-2 border-amber-400 bg-amber-500/25 ring-4 ring-amber-400/40 scale-105 z-10'
-                      : 'border border-slate-800 bg-slate-900/90 shadow-md'
+                      ? 'border-primary ring-2 ring-primary/20 bg-primary/5'
+                      : 'border-border bg-card'
                   }`}
                 >
                   <div className="flex items-center justify-between">
-                    <span className="font-mono text-xs font-bold text-slate-400">
-                      Meja #{String(seat.seatNumber).padStart(2, '0')}
+                    <span className="font-mono text-[11px] font-semibold text-muted-foreground">
+                      #{String(seat.seatNumber).padStart(2, '0')}
                     </span>
                   </div>
 
-                  {/* Kode Aslab Huge Badge */}
-                  <div className="text-center my-1.5">
-                    <span className="inline-block font-mono font-black text-sm tracking-widest px-3 py-1 rounded-md bg-blue-600 text-white shadow-md">
+                  <div className="text-center my-1">
+                    <Badge
+                      variant="secondary"
+                      className="font-mono font-bold text-xs px-2 py-0.5"
+                    >
                       {c.kode}
-                    </span>
+                    </Badge>
                   </div>
 
                   <div className="space-y-0.5 text-center">
                     <p
-                      className="text-xs font-semibold text-white truncate leading-tight"
+                      className="text-xs font-medium text-foreground truncate leading-tight"
                       title={c.nama_lengkap}
                     >
                       {c.nama_lengkap}
                     </p>
-                    <p className="text-[11px] font-mono text-slate-400">
+                    <p className="text-[10px] font-mono text-muted-foreground">
                       {c.nim}
                     </p>
                   </div>
@@ -263,4 +264,3 @@ export function CaslabProjectorStandalone() {
     </div>
   );
 }
-

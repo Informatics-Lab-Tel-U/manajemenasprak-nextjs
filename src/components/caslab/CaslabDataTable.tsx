@@ -16,7 +16,6 @@ import {
   Trash2,
   Check,
   X,
-  Sparkles,
 } from 'lucide-react';
 import {
   Table,
@@ -68,7 +67,6 @@ export function CaslabDataTable({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editKode, setEditKode] = useState('');
 
-  // Map each candidate to their current assigned seat and room
   const fullRows = useMemo<CaslabRowData[]>(() => {
     const candidateMap = new Map<string, { seatNumber: number; roomName: string }>();
 
@@ -93,7 +91,6 @@ export function CaslabDataTable({
     });
   }, [candidates, allocations]);
 
-  // Filter rows by search and room
   const filteredRows = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
     return fullRows.filter((row) => {
@@ -114,7 +111,6 @@ export function CaslabDataTable({
     });
   }, [fullRows, searchQuery, roomFilter]);
 
-  // Unique room names for filter dropdown
   const availableRooms = useMemo(() => {
     return Array.from(new Set(allocations.map((a) => a.room.name)));
   }, [allocations]);
@@ -127,12 +123,12 @@ export function CaslabDataTable({
   const handleSaveEdit = (id: string) => {
     const clean = editKode.trim().toUpperCase();
     if (!/^[A-Z]{3}$/.test(clean)) {
-      toast.error('Kode aslab harus 3 huruf kapital (contoh: MAB)');
+      toast.error('Kode aslab harus 3 huruf kapital.');
       return;
     }
     onUpdateCandidate(id, { kode: clean, codeSource: 'manual' });
     setEditingId(null);
-    toast.success('Kode aslab berhasil diperbarui');
+    toast.success('Kode diperbarui.');
   };
 
   const columns = useMemo<ColumnDef<CaslabRowData>[]>(
@@ -148,15 +144,15 @@ export function CaslabDataTable({
       },
       {
         accessorKey: 'seatNumber',
-        header: 'Nomor Meja',
+        header: 'Meja',
         cell: ({ row }) => {
           const seat = row.original.seatNumber;
           return seat ? (
-            <Badge variant="outline" className="font-mono font-medium">
-              Meja #{String(seat).padStart(2, '0')}
+            <Badge variant="outline" className="font-mono text-xs">
+              #{String(seat).padStart(2, '0')}
             </Badge>
           ) : (
-            <span className="text-muted-foreground text-xs italic">Belum di-plot</span>
+            <span className="text-muted-foreground text-xs">-</span>
           );
         },
       },
@@ -166,7 +162,7 @@ export function CaslabDataTable({
         cell: ({ row }) => {
           const room = row.original.roomName;
           return room ? (
-            <span className="font-medium text-xs">{room}</span>
+            <span className="text-xs">{room}</span>
           ) : (
             <span className="text-muted-foreground text-xs">-</span>
           );
@@ -174,7 +170,7 @@ export function CaslabDataTable({
       },
       {
         accessorKey: 'kode',
-        header: 'Kode Aslab',
+        header: 'Kode',
         cell: ({ row }) => {
           const c = row.original;
           const isEditing = editingId === c.id;
@@ -210,16 +206,9 @@ export function CaslabDataTable({
           }
 
           return (
-            <div className="flex items-center gap-1.5">
-              <Badge variant="secondary" className="font-mono font-bold tracking-wider">
-                {c.kode}
-              </Badge>
-              {c.codeSource === 'generated' && (
-                <span title="Dibuat otomatis dari inisial nama">
-                  <Sparkles className="h-3 w-3 text-amber-500" />
-                </span>
-              )}
-            </div>
+            <Badge variant="secondary" className="font-mono font-bold tracking-wider text-xs">
+              {c.kode}
+            </Badge>
           );
         },
       },
@@ -232,7 +221,7 @@ export function CaslabDataTable({
       },
       {
         accessorKey: 'nama_lengkap',
-        header: 'Nama Lengkap',
+        header: 'Nama',
         cell: ({ row }) => (
           <span className="font-medium text-xs">{row.original.nama_lengkap}</span>
         ),
@@ -252,7 +241,7 @@ export function CaslabDataTable({
                   variant="ghost"
                   className="h-8 w-8 text-muted-foreground hover:text-foreground"
                   onClick={() => handleStartEdit(c)}
-                  title="Edit Kode Aslab"
+                  title="Edit Kode"
                 >
                   <Pencil className="h-3.5 w-3.5" />
                 </Button>
@@ -262,7 +251,7 @@ export function CaslabDataTable({
                 variant="ghost"
                 className="h-8 w-8 text-muted-foreground hover:text-destructive"
                 onClick={() => onRemoveCandidate(c.id)}
-                title="Hapus Peserta"
+                title="Hapus"
               >
                 <Trash2 className="h-3.5 w-3.5" />
               </Button>
@@ -295,7 +284,7 @@ export function CaslabDataTable({
           <Input
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Cari nama, NIM, kode aslab, atau meja..."
+            placeholder="Cari nama, NIM, atau kode..."
             className="pl-8"
           />
         </div>
@@ -322,7 +311,7 @@ export function CaslabDataTable({
         )}
       </div>
 
-      {/* Table (Matching PraktikanTable) */}
+      {/* Table */}
       <div className="overflow-hidden rounded-md border">
         <Table className={TABLE_EDGE_PADDING}>
           <TableHeader className="bg-muted">
@@ -354,7 +343,7 @@ export function CaslabDataTable({
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={columns.length} className="h-24 text-center">
+                <TableCell colSpan={columns.length} className="h-24 text-center text-xs text-muted-foreground">
                   Data tidak ditemukan
                 </TableCell>
               </TableRow>
@@ -363,7 +352,7 @@ export function CaslabDataTable({
         </Table>
       </div>
 
-      {/* Pagination Controls (Matching PraktikanTable) */}
+      {/* Pagination Controls */}
       <div className="flex flex-col gap-4 md:gap-0 md:flex-row md:items-center md:justify-between">
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
           <p className="text-sm font-medium whitespace-nowrap">Baris per halaman</p>
@@ -419,4 +408,3 @@ export function CaslabDataTable({
     </div>
   );
 }
-

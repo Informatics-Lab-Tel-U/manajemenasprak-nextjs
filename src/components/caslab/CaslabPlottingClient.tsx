@@ -6,7 +6,6 @@ import {
   SlidersHorizontal,
   Tv,
   Shuffle,
-  Users,
   LayoutGrid,
   FileSpreadsheet,
 } from 'lucide-react';
@@ -105,7 +104,7 @@ export function CaslabPlottingClient() {
       const newAllocations = performUnifiedShuffle(newCandidates, numRooms, rooms, seatingMode);
       setAllocations(newAllocations);
       setHistoryVersion((v) => v + 1);
-      toast.success(`${newCandidates.length} data calon aslab berhasil dimuat & diacak!`);
+      toast.success(`${newCandidates.length} data peserta berhasil di-import.`);
     },
     [numRooms, rooms, seatingMode]
   );
@@ -113,13 +112,13 @@ export function CaslabPlottingClient() {
   // Handle Shuffle
   const handleShuffle = useCallback(() => {
     if (candidates.length === 0) {
-      toast.error('Belum ada data calon aslab. Silakan import file terlebih dahulu.');
+      toast.error('Belum ada data peserta. Silakan import file terlebih dahulu.');
       return;
     }
     const newAllocations = performUnifiedShuffle(candidates, numRooms, rooms, seatingMode);
     setAllocations(newAllocations);
     setHistoryVersion((v) => v + 1);
-    toast.success(`Plotting kursi berhasil diacak! (Kocokan #${historyVersion + 1})`);
+    toast.success(`Kursi berhasil diacak (Acakan #${historyVersion + 1}).`);
   }, [candidates, numRooms, rooms, seatingMode, historyVersion]);
 
   // Handle Settings Save
@@ -298,7 +297,7 @@ export function CaslabPlottingClient() {
             Plotting Kursi Caslab
           </h1>
           <p className="text-sm 2xl:text-base text-muted-foreground mt-1">
-            Kelola alokasi dan pengacakan kursi ujian calon asisten laboratorium
+            Plotting dan penataan kursi ujian calon asisten laboratorium.
           </p>
         </div>
 
@@ -353,19 +352,19 @@ export function CaslabPlottingClient() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b pb-2">
           <TabsList>
             <TabsTrigger value="table" className="text-xs">
-              Daftar Tabel Peserta ({candidates.length})
+              Peserta ({candidates.length})
             </TabsTrigger>
             <TabsTrigger value="layout" className="text-xs">
-              Denah Layout Kursi
+              Denah Kursi
             </TabsTrigger>
           </TabsList>
 
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <Badge variant="outline" className="font-normal text-[11px]">
-              {numRooms} Ruangan ({rooms.slice(0, numRooms).map((r) => r.name).join(' & ')})
+              {numRooms} Ruangan
             </Badge>
-            <Badge variant="secondary" className="font-normal text-[11px]">
-              Mode {seatingMode === 'spaced' ? 'Berselang' : 'Sebelahan'}
+            <Badge variant="outline" className="font-normal text-[11px]">
+              {seatingMode === 'spaced' ? 'Berselang' : 'Sebelahan'}
             </Badge>
           </div>
         </div>
@@ -373,11 +372,11 @@ export function CaslabPlottingClient() {
         {/* Tab 1: DataTable (Mirip /data-praktikan) */}
         <TabsContent value="table" className="mt-0">
           {candidates.length === 0 ? (
-            <div className="flex flex-col items-center justify-center p-12 border rounded-md text-center bg-muted/10">
-              <FileSpreadsheet className="h-10 w-10 text-muted-foreground mb-3" />
-              <h3 className="text-base font-semibold text-foreground">Belum Ada Data Calon Aslab</h3>
-              <p className="text-xs text-muted-foreground mt-1 max-w-md">
-                Silakan import data calon aslab menggunakan format file Excel (.xlsx) atau CSV untuk memulai pengacakan kursi.
+            <div className="flex flex-col items-center justify-center p-12 border rounded-md text-center bg-card">
+              <FileSpreadsheet className="h-9 w-9 text-muted-foreground mb-3" />
+              <h3 className="text-sm font-medium text-foreground">Belum ada data peserta</h3>
+              <p className="text-xs text-muted-foreground mt-1 max-w-sm">
+                Import file Excel atau CSV untuk memulai plotting kursi.
               </p>
               <Button
                 size="sm"
@@ -386,7 +385,7 @@ export function CaslabPlottingClient() {
                 className="mt-4 text-xs gap-1.5"
               >
                 <ArrowUpDown className="h-3.5 w-3.5" />
-                Import / Export Data Caslab
+                Import / Export
               </Button>
             </div>
           ) : (
@@ -402,11 +401,13 @@ export function CaslabPlottingClient() {
         {/* Tab 2: Denah Kursi */}
         <TabsContent value="layout" className="mt-0">
           {!isShuffled ? (
-            <div className="flex flex-col items-center justify-center p-12 border rounded-md text-center bg-muted/10">
-              <LayoutGrid className="h-10 w-10 text-muted-foreground mb-3" />
-              <h3 className="text-base font-semibold text-foreground">Kursi Belum Diacak</h3>
-              <p className="text-xs text-muted-foreground mt-1 max-w-md">
-                Data calon aslab telah siap ({candidates.length} orang). Tekan tombol <strong>"Acak Kursi"</strong> di pojok kanan atas untuk menata layout kursi ruangan lab.
+            <div className="flex flex-col items-center justify-center p-12 border rounded-md text-center bg-card">
+              <LayoutGrid className="h-9 w-9 text-muted-foreground mb-3" />
+              <h3 className="text-sm font-medium text-foreground">Kursi belum diacak</h3>
+              <p className="text-xs text-muted-foreground mt-1 max-w-sm">
+                {candidates.length > 0
+                  ? `${candidates.length} peserta siap di-plot.`
+                  : 'Import peserta terlebih dahulu untuk mengacak kursi.'}
               </p>
               <Button
                 size="sm"
@@ -415,7 +416,7 @@ export function CaslabPlottingClient() {
                 className="mt-4 text-xs gap-1.5"
               >
                 <Shuffle className="h-3.5 w-3.5" />
-                Acak Plotting Kursi Sekarang
+                Acak Kursi
               </Button>
             </div>
           ) : (

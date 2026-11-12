@@ -341,3 +341,159 @@ export function swapCaslabSeats(
   return nextAllocations;
 }
 
+/**
+ * Robust extractor for spreadsheet rows parsed from /api/util/parse or local parser.
+ * Handles both 2D matrix (string[][]) and object array (Record<string, any>[]).
+ */
+export function extractCaslabCandidatesFromParsed(
+  rawRows: any[]
+): Array<{ nim: string; nama_lengkap: string; kode?: string }> {
+  if (!Array.isArray(rawRows) || rawRows.length === 0) {
+    return [];
+  }
+
+  // 1. Matrix: Array of Arrays (Returned by /api/util/parse or Excel sheet_to_json with header: 1)
+  if (Array.isArray(rawRows[0])) {
+    const matrix = rawRows as any[][];
+    if (matrix.length === 0) return [];
+
+    let headerRowIdx = -1;
+    let nimColIdx = -1;
+    let namaColIdx = -1;
+    let kodeColIdx = -1;
+
+    // Scan up to first 10 rows for header row
+    for (let r = 0; r < Math.min(matrix.length, 10); r++) {
+      const row = matrix[r];
+      if (!Array.isArray(row)) continue;
+
+      let foundNim = -1;
+      let foundNama = -1;
+      let foundKode = -1;
+
+      row.forEach((cell, idx) => {
+        const text = String(cell ?? '').trim().toLowerCase();
+        if (!text) return;
+
+        if (
+          text === 'nim' ||
+          text.includes('induk') ||
+          text.includes('student') ||
+          text === 'npm' ||
+          text.endsWith('nim')
+        ) {
+          foundNim = idx;
+        } else if (
+          text.includes('kode') ||
+          text.includes('code') ||
+          text.includes('inisial')
+        ) {
+          foundKode = idx;
+        } else if (
+          text.includes('nama') ||
+          text.includes('name') ||
+          text.includes('peserta') ||
+          text.includes('calon')
+        ) {
+          foundNama = idx;
+        }
+      });
+
+      // If at least NIM or Nama is found, this is the header row
+      if (foundNim !== -1 || foundNama !== -1) {
+        headerRowIdx = r;
+        nimColIdx = foundNim;
+        namaColIdx = foundNama;
+        kodeColIdx = foundKode;
+        break;
+      }
+    }
+
+    // Fallback: If no header row found by keyword, check if row 0 has data directly
+    if (headerRowIdx === -1) {
+      if (matrix[0].length >= 2) {
+        const c0 = String(matrix[0][0] ?? '').trim();
+        const c1 = String(matrix[0][1] ?? '').trim();
+        if (/^\d{6,}$/.test(c0)) {
+          nimColIdx = 0;
+          namaColIdx = 1;
+          kodeColIdx = matrix[0].length > 2 ? 2 : -1;
+          headerRowIdx = -1;
+        } else if (/^\d{6,}$/.test(c1)) {
+          nimColIdx = 1;
+          namaColIdx = 0;
+          kodeColIdx = matrix[0].length > 2 ? 2 : -1;
+          headerRowIdx = -1;
+        } else {
+          headerRowIdx = 0;
+          nimColIdx = 0;
+          namaColIdx = 1;
+          kodeColIdx = matrix[0].length > 2 ? 2 : -1;
+        }
+      }
+    }
+
+    const dataRows = headerRowIdx === -1 ? matrix : matrix.slice(headerRowIdx + 1);
+    const result: Array<{ nim: string; nama_lengkap: string; kode?: string }> = [];
+
+    dataRows.forEach((row) => {
+      if (!Array.isArray(row) || !row.some(Boolean)) return;
+
+      const nim = nimColIdx !== -1 ? String(row[nimColIdx] ?? '').trim() : '';
+      const nama = namaColIdx !== -1 ? String(row[namaColIdx] ?? '').trim() : '';
+      const kode = kodeColIdx !== -1 ? String(row[kodeColIdx] ?? '').trim() : '';
+
+      // Skip row if it looks like a repeating header or completely empty
+      if (nim.toLowerCase() === 'nim' || nama.toLowerCase() === 'nama') return;
+      if (!nim && !nama) return;
+
+      result.push({
+        nim: nim || `CASLAB-${result.length + 1}`,
+        nama_lengkap: nama || `Peserta ${result.length + 1}`,
+        kode: kode ? kode.toUpperCase() : undefined,
+      });
+    });
+
+    return result;
+  }
+
+  // 2. Object array (e.g. [ { NIM: '...', 'Nama Lengkap': '...' } ])
+  const result: Array<{ nim: string; nama_lengkap: string; kode?: string }> = [];
+  rawRows.forEach((row) => {
+    if (!row || typeof row !== 'object') return;
+    let nim = '';
+    let nama = '';
+    let kode = '';
+
+    Object.entries(row).forEach(([key, val]) => {
+      const cleanKey = key.trim().toLowerCase();
+      const strVal = String(val ?? '').trim();
+
+      if (
+        cleanKey === 'nim' ||
+        cleanKey.includes('induk') ||
+        cleanKey.includes('student') ||
+        cleanKey === 'npm' ||
+        cleanKey.endsWith('nim')
+      ) {
+        nim = strVal;
+      } else if (cleanKey.includes('kode') || cleanKey.includes('code') || cleanKey.includes('inisial')) {
+        kode = strVal;
+      } else if (cleanKey.includes('nama') || cleanKey.includes('name') || cleanKey.includes('peserta')) {
+        nama = strVal;
+      }
+    });
+
+    if (nim || nama) {
+      result.push({
+        nim: nim || `CASLAB-${result.length + 1}`,
+        nama_lengkap: nama || `Peserta ${result.length + 1}`,
+        kode: kode ? kode.toUpperCase() : undefined,
+      });
+    }
+  });
+
+  return result;
+}
+
+
