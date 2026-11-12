@@ -2,22 +2,33 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-  FileSpreadsheet,
-  Printer,
-  FileText,
-  DoorOpen,
-  Tv,
+  Upload,
+  SlidersHorizontal,
   Download,
-  RotateCcw,
-  Sparkles,
+  Printer,
+  DoorOpen,
+  FileText,
+  Tv,
+  Shuffle,
+  Users,
+  LayoutGrid,
+  FileSpreadsheet,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
 import { exportSpreadsheet } from '@/lib/spreadsheet';
-import { CaslabUploadDropzone } from './CaslabUploadDropzone';
-import { CaslabCandidateTable } from './CaslabCandidateTable';
-import { CaslabControlPanel } from './CaslabControlPanel';
+import { CaslabDataTable } from './CaslabDataTable';
 import { CaslabRoomSeatGrid } from './CaslabRoomSeatGrid';
+import { CaslabSettingsModal } from './CaslabSettingsModal';
+import { CaslabImportModal } from './CaslabImportModal';
 import { CaslabPrintViews } from './CaslabPrintViews';
 import { CaslabProjectorModal } from './CaslabProjectorModal';
 import {
@@ -56,12 +67,14 @@ export function CaslabPlottingClient() {
   const [allocations, setAllocations] = useState<CaslabRoomAllocation[]>([]);
   const [historyVersion, setHistoryVersion] = useState<number>(0);
 
-  // Dialogs
-  const [printModalOpen, setPrintModalOpen] = useState(false);
+  // Modals
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [showPrintModal, setShowPrintModal] = useState(false);
   const [printType, setPrintType] = useState<'door' | 'attendance'>('door');
-  const [projectorModalOpen, setProjectorModalOpen] = useState(false);
+  const [showProjector, setShowProjector] = useState(false);
 
-  // 1. Load state from localStorage on mount
+  // Load from localStorage
   useEffect(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
@@ -79,7 +92,7 @@ export function CaslabPlottingClient() {
     }
   }, []);
 
-  // 2. Persist state to localStorage on changes
+  // Save to localStorage
   useEffect(() => {
     try {
       localStorage.setItem(
@@ -98,14 +111,14 @@ export function CaslabPlottingClient() {
     }
   }, [candidates, numRooms, seatingMode, rooms, allocations, historyVersion]);
 
-  // Handle Candidates Loaded
-  const handleCandidatesLoaded = useCallback(
+  // Handle Import
+  const handleImportComplete = useCallback(
     (newCandidates: CaslabCandidate[]) => {
       setCandidates(newCandidates);
-      // Auto run initial shuffle
       const newAllocations = performUnifiedShuffle(newCandidates, numRooms, rooms, seatingMode);
       setAllocations(newAllocations);
       setHistoryVersion((v) => v + 1);
+      toast.success(`${newCandidates.length} data calon aslab berhasil dimuat & diacak!`);
     },
     [numRooms, rooms, seatingMode]
   );
@@ -113,32 +126,44 @@ export function CaslabPlottingClient() {
   // Handle Shuffle
   const handleShuffle = useCallback(() => {
     if (candidates.length === 0) {
-      toast.error('Belum ada data calon aslab. Silakan upload file terlebih dahulu.');
+      toast.error('Belum ada data calon aslab. Silakan import file terlebih dahulu.');
       return;
     }
     const newAllocations = performUnifiedShuffle(candidates, numRooms, rooms, seatingMode);
     setAllocations(newAllocations);
     setHistoryVersion((v) => v + 1);
-    toast.success(`Plotting kursi berhasil diacak! (Versi #${historyVersion + 1})`);
+    toast.success(`Plotting kursi berhasil diacak! (Kocokan #${historyVersion + 1})`);
   }, [candidates, numRooms, rooms, seatingMode, historyVersion]);
 
-  // Handle Re-Shuffle (Kocok Ulang)
-  const handleReShuffle = useCallback(() => {
-    if (candidates.length === 0) return;
-    const newAllocations = performUnifiedShuffle(candidates, numRooms, rooms, seatingMode);
-    setAllocations(newAllocations);
-    setHistoryVersion((v) => v + 1);
-    toast.success(
-      `Kocok Ulang Selesai! Peserta telah diacak dan berotasi antar ruangan. (Versi #${historyVersion + 1})`
-    );
-  }, [candidates, numRooms, rooms, seatingMode, historyVersion]);
+  // Handle Settings Save
+  const handleSettingsSave = useCallback(
+    (
+      newNumRooms: 1 | 2,
+      newSeatingMode: SeatingMode,
+      newRooms: [CaslabRoomConfig, CaslabRoomConfig]
+    ) => {
+      setNumRooms(newNumRooms);
+      setSeatingMode(newSeatingMode);
+      setRooms(newRooms);
 
-  // Handle Update Candidate (e.g. edit Kode)
+      // Re-apply shuffle with new settings if candidates exist
+      if (candidates.length > 0) {
+        const newAllocations = performUnifiedShuffle(candidates, newNumRooms, newRooms, newSeatingMode);
+        setAllocations(newAllocations);
+        setHistoryVersion((v) => v + 1);
+        toast.success('Pengaturan disimpan dan denah kursi diperbarui.');
+      } else {
+        toast.success('Pengaturan berhasil disimpan.');
+      }
+    },
+    [candidates]
+  );
+
+  // Handle Candidate Update (e.g. edit Kode Aslab)
   const handleUpdateCandidate = useCallback((id: string, updated: Partial<CaslabCandidate>) => {
     setCandidates((prev) =>
       prev.map((c) => (c.id === id ? { ...c, ...updated } : c))
     );
-    // Also update allocations if candidate is seated
     setAllocations((prev) =>
       prev.map((alloc) => ({
         ...alloc,
@@ -154,10 +179,9 @@ export function CaslabPlottingClient() {
     );
   }, []);
 
-  // Handle Remove Candidate
+  // Handle Candidate Removal
   const handleRemoveCandidate = useCallback((id: string) => {
     setCandidates((prev) => prev.filter((c) => c.id !== id));
-    // Remove from allocations
     setAllocations((prev) =>
       prev.map((alloc) => ({
         ...alloc,
@@ -169,29 +193,6 @@ export function CaslabPlottingClient() {
     );
     toast.success('Peserta dihapus dari daftar.');
   }, []);
-
-  // Handle Clear All
-  const handleClearAll = useCallback(() => {
-    if (confirm('Apakah Anda yakin ingin menghapus seluruh data peserta Caslab?')) {
-      setCandidates([]);
-      setAllocations([]);
-      setHistoryVersion(0);
-      localStorage.removeItem(STORAGE_KEY);
-      toast.success('Seluruh data berhasil dibersihkan.');
-    }
-  }, []);
-
-  // Handle Room Config Change
-  const handleRoomChange = useCallback(
-    (index: 0 | 1, updated: Partial<CaslabRoomConfig>) => {
-      setRooms((prev) => {
-        const next: [CaslabRoomConfig, CaslabRoomConfig] = [{ ...prev[0] }, { ...prev[1] }];
-        next[index] = { ...next[index], ...updated };
-        return next;
-      });
-    },
-    []
-  );
 
   // Handle Toggle Disabled Seat (PC Rusak)
   const handleToggleDisabledSeat = useCallback(
@@ -207,13 +208,12 @@ export function CaslabPlottingClient() {
           toast.success(`Meja #${seatNumber} diaktifkan kembali.`);
         } else {
           currentDisabled.add(seatNumber);
-          toast.warning(`Meja #${seatNumber} ditandai sebagai PC Rusak / Nonaktif.`);
+          toast.warning(`Meja #${seatNumber} ditandai sebagai PC Rusak.`);
         }
         next[rIdx].disabledSeats = Array.from(currentDisabled);
         return next;
       });
 
-      // Update in active allocations
       setAllocations((prev) =>
         prev.map((alloc) => {
           if (alloc.room.id !== roomId) return alloc;
@@ -231,7 +231,6 @@ export function CaslabPlottingClient() {
               return {
                 ...seat,
                 isDisabled: willBeDisabled,
-                // if disabled, remove candidate
                 candidate: willBeDisabled ? null : seat.candidate,
               };
             }),
@@ -257,15 +256,7 @@ export function CaslabPlottingClient() {
     []
   );
 
-  // Reset Plotting
-  const handleResetPlotting = useCallback(() => {
-    if (confirm('Reset seluruh kursi ujian? Peserta akan dikembalikan ke status belum di-plot.')) {
-      setAllocations([]);
-      toast.info('Layout kursi di-reset.');
-    }
-  }, []);
-
-  // Export to Excel
+  // Export Excel
   const handleExportExcel = async () => {
     if (allocations.length === 0) {
       toast.error('Belum ada data alokasi kursi untuk diekspor.');
@@ -278,8 +269,8 @@ export function CaslabPlottingClient() {
         alloc.seats.forEach((seat) => {
           if (seat.candidate) {
             exportRows.push({
-              'Ruangan': alloc.room.name,
               'No Meja': seat.seatNumber,
+              'Ruangan': alloc.room.name,
               'Kode Aslab': seat.candidate.kode,
               'NIM': seat.candidate.nim,
               'Nama Lengkap': seat.candidate.nama_lengkap,
@@ -299,127 +290,226 @@ export function CaslabPlottingClient() {
         'Plotting Caslab',
         'xlsx'
       );
-      toast.success('File hasil plotting Excel berhasil diunduh!');
+      toast.success('Data plotting berhasil diekspor.');
     } catch {
-      toast.error('Gagal mengekspor file Excel.');
+      toast.error('Gagal mengekspor data Excel.');
     }
   };
 
   const isShuffled = allocations.length > 0 && allocations.some((a) => a.assignedCandidates.length > 0);
 
   return (
-    <div className="w-full space-y-6">
-      {/* Top Action Bar */}
-      {isShuffled && (
-        <div className="flex flex-wrap items-center justify-between gap-3 p-4 bg-muted/40 border border-border/80 rounded-xl">
-          <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-            <span className="text-xs font-semibold text-foreground">
-              Plotting Aktif: {candidates.length} Calon Aslab terbagi dalam {numRooms} Ruangan
+    <div className="container mx-auto max-w-[2000px] 2xl:px-8 relative space-y-6">
+      {/* Header — Exactly matching PraktikanClientPage */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+        <div>
+          <h1 className="text-2xl 2xl:text-3xl font-bold tracking-tight">
+            Plotting Kursi Caslab
+          </h1>
+          <p className="text-sm 2xl:text-base text-muted-foreground mt-1">
+            Kelola alokasi dan pengacakan kursi ujian calon asisten laboratorium
+          </p>
+        </div>
+
+        <div className="flex flex-wrap gap-2 md:gap-3 items-center w-full md:w-auto">
+          {/* Import Data */}
+          <Button
+            variant="outline"
+            onClick={() => setShowImportModal(true)}
+            className="flex-1 md:flex-none min-w-0 md:whitespace-nowrap"
+          >
+            <Upload size={18} className="flex-shrink-0" />
+            <span className="hidden sm:inline ml-1">Import Data</span>
+          </Button>
+
+          {/* Pengaturan Ruangan Modal */}
+          <Button
+            variant="outline"
+            onClick={() => setShowSettingsModal(true)}
+            className="flex-1 md:flex-none min-w-0 md:whitespace-nowrap"
+          >
+            <SlidersHorizontal size={18} className="flex-shrink-0" />
+            <span className="hidden sm:inline ml-1">Pengaturan</span>
+          </Button>
+
+          {/* Export Excel */}
+          <Button
+            variant="outline"
+            onClick={handleExportExcel}
+            disabled={!isShuffled}
+            className="flex-1 md:flex-none min-w-0 md:whitespace-nowrap"
+          >
+            <Download size={18} className="flex-shrink-0" />
+            <span className="hidden sm:inline ml-1">Export Excel</span>
+          </Button>
+
+          {/* Cetak Dokumen Dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                disabled={!isShuffled}
+                className="flex-1 md:flex-none min-w-0 md:whitespace-nowrap"
+              >
+                <Printer size={18} className="flex-shrink-0" />
+                <span className="hidden sm:inline ml-1">Cetak Dokumen</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                onClick={() => {
+                  setPrintType('door');
+                  setShowPrintModal(true);
+                }}
+              >
+                <DoorOpen className="h-4 w-4 mr-2" />
+                Lembar Pintu Masuk
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => {
+                  setPrintType('attendance');
+                  setShowPrintModal(true);
+                }}
+              >
+                <FileText className="h-4 w-4 mr-2" />
+                Berita Acara & Presensi Pengawas
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {/* Proyektor */}
+          <Button
+            variant="outline"
+            onClick={() => setShowProjector(true)}
+            disabled={!isShuffled}
+            className="flex-1 md:flex-none min-w-0 md:whitespace-nowrap"
+          >
+            <Tv size={18} className="flex-shrink-0" />
+            <span className="hidden sm:inline ml-1">Layar Proyektor</span>
+          </Button>
+
+          {/* Acak Plotting Kursi */}
+          <Button
+            onClick={handleShuffle}
+            disabled={candidates.length === 0}
+            className="flex-1 md:flex-none min-w-0 md:whitespace-nowrap"
+          >
+            <Shuffle size={18} className="flex-shrink-0" />
+            <span className="hidden sm:inline ml-1">
+              {isShuffled ? 'Kocok Ulang' : 'Acak Kursi'}
             </span>
-          </div>
+          </Button>
+        </div>
+      </div>
 
-          <div className="flex items-center gap-2 flex-wrap">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleExportExcel}
-              className="text-xs h-8 gap-1.5"
-            >
-              <Download className="w-3.5 h-3.5" />
-              Ekspor Excel
-            </Button>
+      {/* Main Tabs (DataTable vs Layout Denah) */}
+      <Tabs defaultValue="table" className="space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b pb-2">
+          <TabsList>
+            <TabsTrigger value="table" className="text-xs">
+              Daftar Tabel Peserta ({candidates.length})
+            </TabsTrigger>
+            <TabsTrigger value="layout" className="text-xs">
+              Denah Layout Kursi
+            </TabsTrigger>
+          </TabsList>
 
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                setPrintType('door');
-                setPrintModalOpen(true);
-              }}
-              className="text-xs h-8 gap-1.5"
-            >
-              <DoorOpen className="w-3.5 h-3.5" />
-              Cetak Lembar Pintu
-            </Button>
-
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                setPrintType('attendance');
-                setPrintModalOpen(true);
-              }}
-              className="text-xs h-8 gap-1.5"
-            >
-              <FileText className="w-3.5 h-3.5" />
-              Cetak Presensi Pengawas
-            </Button>
-
-            <Button
-              size="sm"
-              onClick={() => setProjectorModalOpen(true)}
-              className="text-xs h-8 gap-1.5 bg-primary text-primary-foreground font-semibold"
-            >
-              <Tv className="w-3.5 h-3.5" />
-              Mode Proyektor
-            </Button>
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <Badge variant="outline" className="font-normal text-[11px]">
+              {numRooms} Ruangan ({rooms.slice(0, numRooms).map((r) => r.name).join(' & ')})
+            </Badge>
+            <Badge variant="secondary" className="font-normal text-[11px]">
+              Mode {seatingMode === 'spaced' ? 'Berselang' : 'Sebelahan'}
+            </Badge>
           </div>
         </div>
-      )}
 
-      {/* 1. Upload Dropzone */}
-      <CaslabUploadDropzone
-        onCandidatesLoaded={handleCandidatesLoaded}
-        candidateCount={candidates.length}
-      />
+        {/* Tab 1: DataTable (Mirip /data-praktikan) */}
+        <TabsContent value="table" className="mt-0">
+          {candidates.length === 0 ? (
+            <div className="flex flex-col items-center justify-center p-12 border rounded-md text-center bg-muted/10">
+              <FileSpreadsheet className="h-10 w-10 text-muted-foreground mb-3" />
+              <h3 className="text-base font-semibold text-foreground">Belum Ada Data Calon Aslab</h3>
+              <p className="text-xs text-muted-foreground mt-1 max-w-md">
+                Silakan import data calon aslab menggunakan format file Excel (.xlsx) atau CSV untuk memulai pengacakan kursi.
+              </p>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setShowImportModal(true)}
+                className="mt-4 text-xs gap-1.5"
+              >
+                <Upload className="h-3.5 w-3.5" />
+                Import File Caslab
+              </Button>
+            </div>
+          ) : (
+            <CaslabDataTable
+              candidates={candidates}
+              allocations={allocations}
+              onUpdateCandidate={handleUpdateCandidate}
+              onRemoveCandidate={handleRemoveCandidate}
+            />
+          )}
+        </TabsContent>
 
-      {/* Candidate Table Preview */}
-      <CaslabCandidateTable
-        candidates={candidates}
-        onUpdateCandidate={handleUpdateCandidate}
-        onRemoveCandidate={handleRemoveCandidate}
-        onClearAll={handleClearAll}
-      />
+        {/* Tab 2: Denah Kursi */}
+        <TabsContent value="layout" className="mt-0">
+          {!isShuffled ? (
+            <div className="flex flex-col items-center justify-center p-12 border rounded-md text-center bg-muted/10">
+              <LayoutGrid className="h-10 w-10 text-muted-foreground mb-3" />
+              <h3 className="text-base font-semibold text-foreground">Kursi Belum Diacak</h3>
+              <p className="text-xs text-muted-foreground mt-1 max-w-md">
+                Data calon aslab telah siap ({candidates.length} orang). Tekan tombol <strong>"Acak Kursi"</strong> di pojok kanan atas untuk menata layout kursi ruangan lab.
+              </p>
+              <Button
+                size="sm"
+                onClick={handleShuffle}
+                disabled={candidates.length === 0}
+                className="mt-4 text-xs gap-1.5"
+              >
+                <Shuffle className="h-3.5 w-3.5" />
+                Acak Plotting Kursi Sekarang
+              </Button>
+            </div>
+          ) : (
+            <CaslabRoomSeatGrid
+              allocations={allocations}
+              onToggleDisabledSeat={handleToggleDisabledSeat}
+              onSwapSeats={handleSwapSeats}
+            />
+          )}
+        </TabsContent>
+      </Tabs>
 
-      {/* 2. Control Panel */}
-      <CaslabControlPanel
-        candidateCount={candidates.length}
+      {/* Modals */}
+      <CaslabSettingsModal
+        open={showSettingsModal}
+        onOpenChange={setShowSettingsModal}
         numRooms={numRooms}
-        onNumRoomsChange={setNumRooms}
         seatingMode={seatingMode}
-        onSeatingModeChange={setSeatingMode}
         rooms={rooms}
-        onRoomChange={handleRoomChange}
-        onShuffle={handleShuffle}
-        onReShuffle={handleReShuffle}
-        onResetPlotting={handleResetPlotting}
-        isShuffled={isShuffled}
-        historyVersion={historyVersion}
+        candidateCount={candidates.length}
+        onSave={handleSettingsSave}
       />
 
-      {/* 3. Seat Grid Layout */}
-      {isShuffled && (
-        <CaslabRoomSeatGrid
-          allocations={allocations}
-          onToggleDisabledSeat={handleToggleDisabledSeat}
-          onSwapSeats={handleSwapSeats}
-        />
-      )}
+      <CaslabImportModal
+        open={showImportModal}
+        onOpenChange={setShowImportModal}
+        onImportComplete={handleImportComplete}
+      />
 
-      {/* Print Modal Dialog */}
       <CaslabPrintViews
         allocations={allocations}
-        open={printModalOpen}
-        onOpenChange={setPrintModalOpen}
+        open={showPrintModal}
+        onOpenChange={setShowPrintModal}
         type={printType}
       />
 
-      {/* Projector Fullscreen Modal */}
       <CaslabProjectorModal
         allocations={allocations}
-        open={projectorModalOpen}
-        onOpenChange={setProjectorModalOpen}
+        open={showProjector}
+        onOpenChange={setShowProjector}
       />
     </div>
   );
