@@ -169,3 +169,169 @@
   }
 }
 
+/* Kursi Generator Seat Grid & Columns (Generator Kursi Style) */
+.seat-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+
+.seat-column {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--card);
+}
+
+.seat-column-header {
+  display: grid;
+  grid-template-columns: 36px 1fr 84px;
+  background: var(--muted);
+  color: var(--muted-foreground);
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: capitalize;
+  letter-spacing: 0.06em;
+}
+
+.seat-column-header > span {
+  padding: 8px;
+}
+
+.col-no {
+  text-align: center;
+}
+
+.col-asprak {
+  text-align: center;
+}
+
+.seat-row {
+  display: grid;
+  grid-template-columns: 36px 1fr 84px;
+  border-bottom: 1px solid var(--border);
+  font-size: 14px;
+  min-height: 56px;
+  box-sizing: border-box;
+  align-items: center;
+  cursor: default;
+}
+
+.seat-row:last-child {
+  border-bottom: none;
+}
+
+.seat-row:nth-child(even) {
+  background: oklch(0 0 0 / 2%);
+}
+
+.dark .seat-row:nth-child(even) {
+  background: oklch(1 0 0 / 3%);
+}
+
+.seat-row:hover:not(.disabled) {
+  background: oklch(0 0 0 / 4%);
+}
+
+.dark .seat-row:hover:not(.disabled) {
+  background: oklch(1 0 0 / 5%);
+}
+
+.seat-row.highlighted {
+  background: oklch(0.488 0.243 264.376 / 15%) !important;
+  box-shadow: inset 0 0 0 2px var(--primary);
+}
+
+.seat-row.disabled {
+  background: repeating-linear-gradient(
+    -45deg,
+    transparent,
+    transparent 4px,
+    rgba(0, 0, 0, 0.05) 4px,
+    rgba(0, 0, 0, 0.05) 8px
+  ) !important;
+  opacity: 0.55;
+}
+
+.dark .seat-row.disabled {
+  background: repeating-linear-gradient(
+    -45deg,
+    transparent,
+    transparent 4px,
+    rgba(255, 255, 255, 0.06) 4px,
+    rgba(255, 255, 255, 0.06) 8px
+  ) !important;
+  opacity: 0.55;
+}
+
+.seat-row.disabled .cell-no {
+  color: var(--muted-foreground);
+  opacity: 0.5;
+}
+
+.cell-no {
+  text-align: center;
+  font-weight: 700;
+  color: var(--muted-foreground);
+  padding: 8px 4px;
+  font-size: 14px;
+}
+
+.seat-row.occupied .cell-no {
+  color: var(--primary);
+}
+
+.cell-nim {
+  padding: 8px;
+  font-weight: 500;
+  color: var(--foreground);
+  white-space: normal;
+  font-size: 14px;
+  line-height: 1.3;
+  word-break: break-word;
+}
+
+.cell-asprak {
+  text-align: center;
+  font-weight: 600;
+  padding: 6px;
+  font-size: 13px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.asprak-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 1.25;
+  min-width: 44px;
+  text-align: center;
+  box-sizing: border-box;
+}
+
+.asprak-badge-blue { background: #ebf5ff; color: #1e40af; border: 1px solid #bfdbfe; }
+.asprak-badge-green { background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; }
+.asprak-badge-amber { background: #fffbeb; color: #92400e; border: 1px solid #fde68a; }
+.asprak-badge-purple { background: #faf5ff; color: #6b21a8; border: 1px solid #e9d5ff; }
+.asprak-badge-rose { background: #fff1f2; color: #9f1239; border: 1px solid #fecdd3; }
+.asprak-badge-cyan { background: #ecfeff; color: #155e75; border: 1px solid #a5f3fc; }
+.asprak-badge-indigo { background: #eef2ff; color: #3730a3; border: 1px solid #c7d2fe; }
+.asprak-badge-teal { background: #f0fdfa; color: #115e59; border: 1px solid #99f6e4; }
+
+.dark .asprak-badge-blue { background: rgba(30, 64, 175, 0.25); color: #93c5fd; border: 1px solid rgba(147, 197, 253, 0.3); }
+.dark .asprak-badge-green { background: rgba(22, 101, 52, 0.25); color: #86efac; border: 1px solid rgba(134, 239, 172, 0.3); }
+.dark .asprak-badge-amber { background: rgba(146, 64, 14, 0.25); color: #fde68a; border: 1px solid rgba(253, 230, 138, 0.3); }
+.dark .asprak-badge-purple { background: rgba(107, 33, 168, 0.25); color: #d8b4fe; border: 1px solid rgba(216, 180, 254, 0.3); }
+.dark .asprak-badge-rose { background: rgba(159, 18, 57, 0.25); color: #fda4af; border: 1px solid rgba(253, 164, 175, 0.3); }
+.dark .asprak-badge-cyan { background: rgba(21, 94, 117, 0.25); color: #67e8f9; border: 1px solid rgba(103, 232, 249, 0.3); }
+.dark .asprak-badge-indigo { background: rgba(55, 48, 163, 0.25); color: #a5b4fc; border: 1px solid rgba(165, 180, 252, 0.3); }
+.dark .asprak-badge-teal { background: rgba(17, 94, 89, 0.25); color: #5eead4; border: 1px solid rgba(94, 234, 212, 0.3); }
+
+
