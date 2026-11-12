@@ -168,3 +168,27 @@
     stroke-dashoffset: -100;
   }
 }
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #caslab-print-area,
+  #caslab-print-area * {
+    visibility: visible;
+  }
+  #caslab-print-area {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    margin: 0;
+    padding: 1.5rem !important;
+    background: white !important;
+    color: black !important;
+  }
+  .break-before-page {
+    page-break-before: always;
+    break-before: page;
+  }
+}

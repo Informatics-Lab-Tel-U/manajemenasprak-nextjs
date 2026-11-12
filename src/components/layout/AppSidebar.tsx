@@ -16,6 +16,7 @@ import {
   GraduationCap,
   HelpCircle,
   Home,
+  LayoutGrid,
   Logs,
   Monitor,
   PlusCircle,
@@ -133,6 +134,7 @@ const ALL_NAV_GROUPS: NavGroup[] = [
   {
     label: 'Alat',
     items: [
+      { label: 'Plotting Kursi Caslab', href: '/generator/caslab', icon: LayoutGrid },
       { label: 'Generator Presensi', href: '/generator/presensi', icon: FileSpreadsheet },
       { label: 'Generator Font Fingerprint', href: '/generator/font-generator', icon: Fingerprint },
     ],
