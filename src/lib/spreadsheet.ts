@@ -29,21 +29,105 @@ export async function exportSpreadsheet(data: any[], filename: string, sheetName
   setTimeout(() => window.URL.revokeObjectURL(url), 100);
 }
 
-export async function parseSpreadsheet(file: File): Promise<any[]> {
-  const formData = new FormData();
-  formData.append('file', file);
-
-  const response = await fetch('/api/util/parse', {
-    method: 'POST',
-    body: formData,
+function parseCSVText(text: string): string[][] {
+  const lines = text.split(/\r?\n/).filter((l) => l.trim().length > 0);
+  return lines.map((line) => {
+    const row: string[] = [];
+    let cur = '';
+    let inQuotes = false;
+    const delimiter = line.includes(';') && !line.includes(',') ? ';' : ',';
+    for (let i = 0; i < line.length; i++) {
+      const c = line[i];
+      if (c === '"') {
+        inQuotes = !inQuotes;
+      } else if (c === delimiter && !inQuotes) {
+        row.push(cur.trim());
+        cur = '';
+      } else {
+        cur += c;
+      }
+    }
+    row.push(cur.trim());
+    return row;
   });
+}
 
-  const result = await response.json();
-  if (!response.ok || !result.ok) {
-    throw new Error(result.error || 'Gagal memproses file spreadsheet');
+async function loadSheetJS(): Promise<any> {
+  if (typeof window === 'undefined') throw new Error('Client-only parser');
+  if ((window as any).XLSX) return (window as any).XLSX;
+
+  return new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+    script.async = true;
+    script.onload = () => {
+      if ((window as any).XLSX) resolve((window as any).XLSX);
+      else tryFallback();
+    };
+    script.onerror = () => tryFallback();
+
+    function tryFallback() {
+      if (script.parentNode) script.parentNode.removeChild(script);
+      const s2 = document.createElement('script');
+      s2.src = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
+      s2.async = true;
+      s2.onload = () => {
+        if ((window as any).XLSX) resolve((window as any).XLSX);
+        else reject(new Error('Gagal memuat parser XLSX'));
+      };
+      s2.onerror = () => reject(new Error('Gagal memuat library pembaca spreadsheet'));
+      document.head.appendChild(s2);
+    }
+
+    document.head.appendChild(script);
+  });
+}
+
+async function parseExcelClient(file: File): Promise<string[][]> {
+  const XLSX = await loadSheetJS();
+  const buffer = await file.arrayBuffer();
+  const workbook = XLSX.read(buffer, { type: 'array' });
+  const firstSheetName = workbook.SheetNames[0];
+  if (!firstSheetName) return [];
+  const worksheet = workbook.Sheets[firstSheetName];
+  const matrix = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '', raw: true }) as string[][];
+  return matrix.map((row) =>
+    Array.isArray(row) ? row.map((cell) => String(cell ?? '').trim()) : []
+  );
+}
+
+export async function parseSpreadsheet(file: File): Promise<any[]> {
+  // 1. Try backend API first
+  try {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const response = await fetch('/api/util/parse', {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (response.ok) {
+      const result = await response.json();
+      if (result.ok && Array.isArray(result.data)) {
+        return result.data;
+      }
+    }
+  } catch (backendErr) {
+    console.warn('Backend parseSpreadsheet error, attempting client-side fallback:', backendErr);
   }
 
-  return result.data;
+  // 2. Client-side fallback if backend returns Unauthorized (401), 500, or network error
+  try {
+    if (file.name.toLowerCase().endsWith('.csv')) {
+      const text = await file.text();
+      return parseCSVText(text);
+    }
+    return await parseExcelClient(file);
+  } catch (clientErr: any) {
+    console.error('Client-side spreadsheet parse failed:', clientErr);
+    throw new Error(clientErr.message || 'Gagal memproses file spreadsheet');
+  }
 }
 
 export async function parseAllSheets(file: File): Promise<{ name: string; data: string[][] }[]> {

@@ -148,11 +148,11 @@ export function CaslabDataTable({
         cell: ({ row }) => {
           const seat = row.original.seatNumber;
           return seat ? (
-            <Badge variant="outline" className="font-mono text-xs">
+            <Badge variant="outline" className="font-mono">
               #{String(seat).padStart(2, '0')}
             </Badge>
           ) : (
-            <span className="text-muted-foreground text-xs">-</span>
+            <span className="text-muted-foreground">-</span>
           );
         },
       },
@@ -162,9 +162,9 @@ export function CaslabDataTable({
         cell: ({ row }) => {
           const room = row.original.roomName;
           return room ? (
-            <span className="text-xs">{room}</span>
+            <span>{room}</span>
           ) : (
-            <span className="text-muted-foreground text-xs">-</span>
+            <span className="text-muted-foreground">-</span>
           );
         },
       },
@@ -182,31 +182,31 @@ export function CaslabDataTable({
                   value={editKode}
                   onChange={(e) => setEditKode(e.target.value.toUpperCase())}
                   maxLength={3}
-                  className="h-7 w-16 text-center font-mono font-bold text-xs uppercase p-1"
+                  className="h-8 w-18 text-center font-mono font-bold uppercase p-1 text-sm"
                   autoFocus
                 />
                 <Button
-                  size="icon"
+                  size="icon-sm"
                   variant="ghost"
-                  className="h-7 w-7 text-emerald-600 hover:text-emerald-700"
+                  className="text-emerald-600 hover:text-emerald-700"
                   onClick={() => handleSaveEdit(c.id)}
                 >
-                  <Check className="h-3.5 w-3.5" />
+                  <Check size={16} />
                 </Button>
                 <Button
-                  size="icon"
+                  size="icon-sm"
                   variant="ghost"
-                  className="h-7 w-7 text-muted-foreground"
+                  className="text-muted-foreground"
                   onClick={() => setEditingId(null)}
                 >
-                  <X className="h-3.5 w-3.5" />
+                  <X size={16} />
                 </Button>
               </div>
             );
           }
 
           return (
-            <Badge variant="secondary" className="font-mono font-bold tracking-wider text-xs">
+            <Badge variant="secondary" className="font-mono font-bold tracking-wider">
               {c.kode}
             </Badge>
           );
@@ -216,14 +216,14 @@ export function CaslabDataTable({
         accessorKey: 'nim',
         header: 'NIM',
         cell: ({ row }) => (
-          <span className="font-mono text-xs">{row.original.nim}</span>
+          <span className="font-mono">{row.original.nim}</span>
         ),
       },
       {
         accessorKey: 'nama_lengkap',
         header: 'Nama',
         cell: ({ row }) => (
-          <span className="font-medium text-xs">{row.original.nama_lengkap}</span>
+          <span className="font-medium">{row.original.nama_lengkap}</span>
         ),
       },
       {
@@ -234,26 +234,26 @@ export function CaslabDataTable({
           const isEditing = editingId === c.id;
 
           return (
-            <div className="flex justify-end gap-1">
+            <div className="flex items-center justify-end gap-1">
               {!isEditing && (
                 <Button
-                  size="icon"
-                  variant="ghost"
-                  className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                  variant="outline"
+                  size="icon-sm"
+                  className="border-muted-foreground/40 dark:border-muted-foreground/40"
                   onClick={() => handleStartEdit(c)}
                   title="Edit Kode"
                 >
-                  <Pencil className="h-3.5 w-3.5" />
+                  <Pencil size={16} />
                 </Button>
               )}
               <Button
-                size="icon"
-                variant="ghost"
-                className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                variant="outline"
+                size="icon-sm"
+                className="border-muted-foreground/40 text-destructive hover:bg-destructive/10 hover:text-destructive dark:border-muted-foreground/40 dark:hover:bg-destructive/20"
                 onClick={() => onRemoveCandidate(c.id)}
                 title="Hapus"
               >
-                <Trash2 className="h-3.5 w-3.5" />
+                <Trash2 size={16} />
               </Button>
             </div>
           );
@@ -343,7 +343,7 @@ export function CaslabDataTable({
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={columns.length} className="h-24 text-center text-xs text-muted-foreground">
+                <TableCell colSpan={columns.length} className="h-24 text-center text-muted-foreground">
                   Data tidak ditemukan
                 </TableCell>
               </TableRow>

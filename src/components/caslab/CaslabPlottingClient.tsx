@@ -389,19 +389,19 @@ export function CaslabPlottingClient() {
       <Tabs defaultValue="table" className="space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b pb-2">
           <TabsList>
-            <TabsTrigger value="table" className="text-xs">
+            <TabsTrigger value="table">
               Peserta ({candidates.length})
             </TabsTrigger>
-            <TabsTrigger value="layout" className="text-xs">
+            <TabsTrigger value="layout">
               Denah Kursi
             </TabsTrigger>
           </TabsList>
 
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <Badge variant="outline" className="font-normal text-[11px]">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Badge variant="outline">
               {numRooms} Ruangan
             </Badge>
-            <Badge variant="outline" className="font-normal text-[11px]">
+            <Badge variant="outline">
               {seatingMode === 'spaced' ? 'Berselang' : 'Sebelahan'}
             </Badge>
           </div>
