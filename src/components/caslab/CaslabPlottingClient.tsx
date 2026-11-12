@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   ArrowUpDown,
   SlidersHorizontal,
-  Tv,
+  Monitor,
   Shuffle,
   LayoutGrid,
   FileSpreadsheet,
@@ -18,7 +18,6 @@ import { CaslabDataTable } from './CaslabDataTable';
 import { CaslabRoomSeatGrid } from './CaslabRoomSeatGrid';
 import { CaslabSettingsModal } from './CaslabSettingsModal';
 import { CaslabImportExportModal } from './CaslabImportExportModal';
-import { CaslabProjectorModal } from './CaslabProjectorModal';
 import {
   performUnifiedShuffle,
   swapCaslabSeats,
@@ -31,6 +30,7 @@ import type {
 } from '@/types/caslab';
 
 const STORAGE_KEY = 'caslab_plotting_state_v1';
+const CASLAB_PROJECTOR_CHANNEL = 'caslab-projector-sync';
 
 const DEFAULT_ROOMS: [CaslabRoomConfig, CaslabRoomConfig] = [
   {
@@ -58,7 +58,38 @@ export function CaslabPlottingClient() {
   // Modals
   const [showImportExportModal, setShowImportExportModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
-  const [showProjector, setShowProjector] = useState(false);
+
+  // Real-time synchronization with Projector Window via BroadcastChannel
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const channel = new BroadcastChannel(CASLAB_PROJECTOR_CHANNEL);
+
+    channel.onmessage = (event) => {
+      if (event.data?.type === 'REQUEST_SYNC') {
+        channel.postMessage({
+          type: 'SYNC_STATE',
+          allocations,
+          rooms,
+          numRooms,
+          seatingMode,
+          candidates,
+        });
+      }
+    };
+
+    channel.postMessage({
+      type: 'SYNC_STATE',
+      allocations,
+      rooms,
+      numRooms,
+      seatingMode,
+      candidates,
+    });
+
+    return () => {
+      channel.close();
+    };
+  }, [allocations, rooms, numRooms, seatingMode, candidates]);
 
   // Load from localStorage
   useEffect(() => {
@@ -322,15 +353,22 @@ export function CaslabPlottingClient() {
             <span className="hidden sm:inline ml-1">Pengaturan</span>
           </Button>
 
-          {/* Proyektor */}
+          {/* Tampilkan Window Proyektor — Sesuai Generator Kursi */}
           <Button
             variant="outline"
-            onClick={() => setShowProjector(true)}
+            onClick={() => {
+              window.open(
+                '/generator/caslab/projector',
+                'CaslabProjectorWindow',
+                'width=1280,height=720,menubar=no,toolbar=no,location=no,status=no,resizable=yes'
+              );
+            }}
             disabled={!isShuffled}
-            className="flex-1 md:flex-none min-w-0 md:whitespace-nowrap"
+            className="flex-1 md:flex-none min-w-0 md:whitespace-nowrap gap-1.5"
+            title="Buka tampilan denah di window proyektor terpisah"
           >
-            <Tv size={18} className="flex-shrink-0" />
-            <span className="hidden sm:inline ml-1">Layar Proyektor</span>
+            <Monitor size={18} className="flex-shrink-0" />
+            <span className="hidden sm:inline">Tampilkan Window Proyektor</span>
           </Button>
 
           {/* Acak Plotting Kursi */}
@@ -448,12 +486,6 @@ export function CaslabPlottingClient() {
         candidateCount={candidates.length}
         seatedCount={seatedCount}
         isShuffled={isShuffled}
-      />
-
-      <CaslabProjectorModal
-        allocations={allocations}
-        open={showProjector}
-        onOpenChange={setShowProjector}
       />
     </div>
   );
