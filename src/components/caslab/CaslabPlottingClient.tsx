@@ -5,9 +5,6 @@ import {
   Upload,
   SlidersHorizontal,
   Download,
-  Printer,
-  DoorOpen,
-  FileText,
   Tv,
   Shuffle,
   Users,
@@ -17,19 +14,12 @@ import {
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
 import { exportSpreadsheet } from '@/lib/spreadsheet';
 import { CaslabDataTable } from './CaslabDataTable';
 import { CaslabRoomSeatGrid } from './CaslabRoomSeatGrid';
 import { CaslabSettingsModal } from './CaslabSettingsModal';
 import { CaslabImportModal } from './CaslabImportModal';
-import { CaslabPrintViews } from './CaslabPrintViews';
 import { CaslabProjectorModal } from './CaslabProjectorModal';
 import {
   performUnifiedShuffle,
@@ -70,8 +60,6 @@ export function CaslabPlottingClient() {
   // Modals
   const [showImportModal, setShowImportModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
-  const [showPrintModal, setShowPrintModal] = useState(false);
-  const [printType, setPrintType] = useState<'door' | 'attendance'>('door');
   const [showProjector, setShowProjector] = useState(false);
 
   // Load from localStorage
@@ -343,40 +331,6 @@ export function CaslabPlottingClient() {
             <span className="hidden sm:inline ml-1">Export Excel</span>
           </Button>
 
-          {/* Cetak Dokumen Dropdown */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="outline"
-                disabled={!isShuffled}
-                className="flex-1 md:flex-none min-w-0 md:whitespace-nowrap"
-              >
-                <Printer size={18} className="flex-shrink-0" />
-                <span className="hidden sm:inline ml-1">Cetak Dokumen</span>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem
-                onClick={() => {
-                  setPrintType('door');
-                  setShowPrintModal(true);
-                }}
-              >
-                <DoorOpen className="h-4 w-4 mr-2" />
-                Lembar Pintu Masuk
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => {
-                  setPrintType('attendance');
-                  setShowPrintModal(true);
-                }}
-              >
-                <FileText className="h-4 w-4 mr-2" />
-                Berita Acara & Presensi Pengawas
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-
           {/* Proyektor */}
           <Button
             variant="outline"
@@ -497,13 +451,6 @@ export function CaslabPlottingClient() {
         open={showImportModal}
         onOpenChange={setShowImportModal}
         onImportComplete={handleImportComplete}
-      />
-
-      <CaslabPrintViews
-        allocations={allocations}
-        open={showPrintModal}
-        onOpenChange={setShowPrintModal}
-        type={printType}
       />
 
       <CaslabProjectorModal
