@@ -2,9 +2,8 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-  Upload,
+  ArrowUpDown,
   SlidersHorizontal,
-  Download,
   Tv,
   Shuffle,
   Users,
@@ -19,7 +18,7 @@ import { exportSpreadsheet } from '@/lib/spreadsheet';
 import { CaslabDataTable } from './CaslabDataTable';
 import { CaslabRoomSeatGrid } from './CaslabRoomSeatGrid';
 import { CaslabSettingsModal } from './CaslabSettingsModal';
-import { CaslabImportModal } from './CaslabImportModal';
+import { CaslabImportExportModal } from './CaslabImportExportModal';
 import { CaslabProjectorModal } from './CaslabProjectorModal';
 import {
   performUnifiedShuffle,
@@ -58,7 +57,7 @@ export function CaslabPlottingClient() {
   const [historyVersion, setHistoryVersion] = useState<number>(0);
 
   // Modals
-  const [showImportModal, setShowImportModal] = useState(false);
+  const [showImportExportModal, setShowImportExportModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showProjector, setShowProjector] = useState(false);
 
@@ -285,6 +284,10 @@ export function CaslabPlottingClient() {
   };
 
   const isShuffled = allocations.length > 0 && allocations.some((a) => a.assignedCandidates.length > 0);
+  const seatedCount = allocations.reduce(
+    (acc, alloc) => acc + alloc.seats.filter((s) => s.candidate !== null).length,
+    0
+  );
 
   return (
     <div className="container mx-auto max-w-[2000px] 2xl:px-8 relative space-y-6">
@@ -300,14 +303,14 @@ export function CaslabPlottingClient() {
         </div>
 
         <div className="flex flex-wrap gap-2 md:gap-3 items-center w-full md:w-auto">
-          {/* Import Data */}
+          {/* Import / Export Modal Trigger */}
           <Button
             variant="outline"
-            onClick={() => setShowImportModal(true)}
+            onClick={() => setShowImportExportModal(true)}
             className="flex-1 md:flex-none min-w-0 md:whitespace-nowrap"
           >
-            <Upload size={18} className="flex-shrink-0" />
-            <span className="hidden sm:inline ml-1">Import Data</span>
+            <ArrowUpDown size={18} className="flex-shrink-0" />
+            <span className="hidden sm:inline ml-1">Import / Export</span>
           </Button>
 
           {/* Pengaturan Ruangan Modal */}
@@ -318,17 +321,6 @@ export function CaslabPlottingClient() {
           >
             <SlidersHorizontal size={18} className="flex-shrink-0" />
             <span className="hidden sm:inline ml-1">Pengaturan</span>
-          </Button>
-
-          {/* Export Excel */}
-          <Button
-            variant="outline"
-            onClick={handleExportExcel}
-            disabled={!isShuffled}
-            className="flex-1 md:flex-none min-w-0 md:whitespace-nowrap"
-          >
-            <Download size={18} className="flex-shrink-0" />
-            <span className="hidden sm:inline ml-1">Export Excel</span>
           </Button>
 
           {/* Proyektor */}
@@ -390,11 +382,11 @@ export function CaslabPlottingClient() {
               <Button
                 size="sm"
                 variant="outline"
-                onClick={() => setShowImportModal(true)}
+                onClick={() => setShowImportExportModal(true)}
                 className="mt-4 text-xs gap-1.5"
               >
-                <Upload className="h-3.5 w-3.5" />
-                Import File Caslab
+                <ArrowUpDown className="h-3.5 w-3.5" />
+                Import / Export Data Caslab
               </Button>
             </div>
           ) : (
@@ -447,10 +439,14 @@ export function CaslabPlottingClient() {
         onSave={handleSettingsSave}
       />
 
-      <CaslabImportModal
-        open={showImportModal}
-        onOpenChange={setShowImportModal}
+      <CaslabImportExportModal
+        open={showImportExportModal}
+        onOpenChange={setShowImportExportModal}
         onImportComplete={handleImportComplete}
+        onExportExcel={handleExportExcel}
+        candidateCount={candidates.length}
+        seatedCount={seatedCount}
+        isShuffled={isShuffled}
       />
 
       <CaslabProjectorModal
