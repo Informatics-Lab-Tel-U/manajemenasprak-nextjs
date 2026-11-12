@@ -65,8 +65,23 @@ export function CaslabProjectorStandalone() {
     }
   };
 
+  const loadDataFromDb = async () => {
+    try {
+      const response = await fetch('/api/caslab', { cache: 'no-store' });
+      if (response.ok) {
+        const result = await response.json();
+        if (result.ok && result.data && Array.isArray(result.data.allocations)) {
+          setAllocations(result.data.allocations);
+        }
+      }
+    } catch (e) {
+      console.warn('Could not load Caslab state from DB in projector:', e);
+    }
+  };
+
   const requestSync = () => {
     loadDataFromStorage();
+    loadDataFromDb();
     if (typeof window !== 'undefined') {
       try {
         const channel = new BroadcastChannel(CASLAB_PROJECTOR_CHANNEL);
@@ -80,6 +95,7 @@ export function CaslabProjectorStandalone() {
 
   useEffect(() => {
     loadDataFromStorage();
+    loadDataFromDb();
 
     if (typeof window === 'undefined') return;
     const channel = new BroadcastChannel(CASLAB_PROJECTOR_CHANNEL);

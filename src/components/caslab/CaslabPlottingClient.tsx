@@ -7,6 +7,8 @@ import {
   Monitor,
   Shuffle,
   LayoutGrid,
+  CloudUpload,
+  Loader2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
@@ -57,6 +59,92 @@ export function CaslabPlottingClient() {
   // Modals
   const [showImportExportModal, setShowImportExportModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
+
+  // Database persistence state
+  const [isSaving, setIsSaving] = useState(false);
+  const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
+
+  // Load from database on mount (falls back to localStorage if offline/not saved)
+  useEffect(() => {
+    let isMounted = true;
+    const loadFromDb = async () => {
+      try {
+        const response = await fetch('/api/caslab', { cache: 'no-store' });
+        if (response.ok) {
+          const result = await response.json();
+          if (result.ok && result.data && isMounted) {
+            const dbData = result.data;
+            if (Array.isArray(dbData.candidates)) setCandidates(dbData.candidates);
+            if (dbData.numRooms === 1 || dbData.numRooms === 2) setNumRooms(dbData.numRooms);
+            if (dbData.seatingMode === 'spaced' || dbData.seatingMode === 'dense') setSeatingMode(dbData.seatingMode);
+            if (Array.isArray(dbData.rooms) && dbData.rooms.length === 2) setRooms(dbData.rooms);
+            if (Array.isArray(dbData.allocations)) setAllocations(dbData.allocations);
+            if (typeof dbData.historyVersion === 'number') setHistoryVersion(dbData.historyVersion);
+            if (result.updatedAt) setLastSavedAt(result.updatedAt);
+          }
+        }
+      } catch (err) {
+        console.warn('Could not sync Caslab state from DB:', err);
+      }
+    };
+
+    loadFromDb();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  // Save to database function
+  const saveToDatabase = useCallback(
+    async (
+      customPayload?: Partial<{
+        candidates: CaslabCandidate[];
+        numRooms: 1 | 2;
+        seatingMode: SeatingMode;
+        rooms: [CaslabRoomConfig, CaslabRoomConfig];
+        allocations: CaslabRoomAllocation[];
+        historyVersion: number;
+      }>,
+      silent = false
+    ) => {
+      try {
+        setIsSaving(true);
+        const payload = {
+          candidates: customPayload?.candidates ?? candidates,
+          numRooms: customPayload?.numRooms ?? numRooms,
+          seatingMode: customPayload?.seatingMode ?? seatingMode,
+          rooms: customPayload?.rooms ?? rooms,
+          allocations: customPayload?.allocations ?? allocations,
+          historyVersion: customPayload?.historyVersion ?? historyVersion,
+        };
+
+        const response = await fetch('/api/caslab', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+
+        const result = await response.json();
+        if (!response.ok || !result.ok) {
+          throw new Error(result.error || 'Gagal menyimpan ke database');
+        }
+
+        const savedTime = result.updatedAt || new Date().toISOString();
+        setLastSavedAt(savedTime);
+        if (!silent) {
+          toast.success('Data plotting berhasil disimpan ke database.');
+        }
+      } catch (err: any) {
+        console.error('Error saving caslab state to DB:', err);
+        if (!silent) {
+          toast.error(err.message || 'Gagal menyimpan data ke database.');
+        }
+      } finally {
+        setIsSaving(false);
+      }
+    },
+    [candidates, numRooms, seatingMode, rooms, allocations, historyVersion]
+  );
 
   // Real-time synchronization with Projector Window via BroadcastChannel
   useEffect(() => {
@@ -133,10 +221,19 @@ export function CaslabPlottingClient() {
       setCandidates(newCandidates);
       const newAllocations = performUnifiedShuffle(newCandidates, numRooms, rooms, seatingMode);
       setAllocations(newAllocations);
-      setHistoryVersion((v) => v + 1);
+      const nextVersion = historyVersion + 1;
+      setHistoryVersion(nextVersion);
       toast.success(`${newCandidates.length} data peserta berhasil di-import.`);
+      saveToDatabase(
+        {
+          candidates: newCandidates,
+          allocations: newAllocations,
+          historyVersion: nextVersion,
+        },
+        true
+      );
     },
-    [numRooms, rooms, seatingMode]
+    [numRooms, rooms, seatingMode, historyVersion, saveToDatabase]
   );
 
   // Handle Shuffle
@@ -147,9 +244,17 @@ export function CaslabPlottingClient() {
     }
     const newAllocations = performUnifiedShuffle(candidates, numRooms, rooms, seatingMode);
     setAllocations(newAllocations);
-    setHistoryVersion((v) => v + 1);
-    toast.success(`Kursi berhasil diacak (Acakan #${historyVersion + 1}).`);
-  }, [candidates, numRooms, rooms, seatingMode, historyVersion]);
+    const nextVersion = historyVersion + 1;
+    setHistoryVersion(nextVersion);
+    toast.success(`Kursi berhasil diacak (Acakan #${nextVersion}).`);
+    saveToDatabase(
+      {
+        allocations: newAllocations,
+        historyVersion: nextVersion,
+      },
+      true
+    );
+  }, [candidates, numRooms, rooms, seatingMode, historyVersion, saveToDatabase]);
 
   // Handle Settings Save
   const handleSettingsSave = useCallback(
@@ -162,17 +267,30 @@ export function CaslabPlottingClient() {
       setSeatingMode(newSeatingMode);
       setRooms(newRooms);
 
+      let newAllocations: CaslabRoomAllocation[] | undefined;
       // Re-apply shuffle with new settings if candidates exist
       if (candidates.length > 0) {
-        const newAllocations = performUnifiedShuffle(candidates, newNumRooms, newRooms, newSeatingMode);
+        newAllocations = performUnifiedShuffle(candidates, newNumRooms, newRooms, newSeatingMode);
         setAllocations(newAllocations);
-        setHistoryVersion((v) => v + 1);
+        const nextVersion = historyVersion + 1;
+        setHistoryVersion(nextVersion);
         toast.success('Pengaturan disimpan dan denah kursi diperbarui.');
       } else {
         toast.success('Pengaturan berhasil disimpan.');
       }
+
+      saveToDatabase(
+        {
+          numRooms: newNumRooms,
+          seatingMode: newSeatingMode,
+          rooms: newRooms,
+          allocations: newAllocations ?? allocations,
+          historyVersion: candidates.length > 0 ? historyVersion + 1 : historyVersion,
+        },
+        true
+      );
     },
-    [candidates]
+    [candidates, allocations, historyVersion, saveToDatabase]
   );
 
   // Handle Candidate Update (e.g. edit Kode Aslab)
@@ -381,6 +499,22 @@ export function CaslabPlottingClient() {
               {isShuffled ? 'Kocok Ulang' : 'Acak Kursi'}
             </span>
           </Button>
+
+          {/* Simpan ke Database */}
+          <Button
+            variant="outline"
+            onClick={() => saveToDatabase(undefined, false)}
+            disabled={isSaving || candidates.length === 0}
+            className="flex-1 md:flex-none min-w-0 md:whitespace-nowrap gap-1.5"
+            title="Simpan data peserta dan denah ke database Supabase"
+          >
+            {isSaving ? (
+              <Loader2 size={18} className="animate-spin flex-shrink-0" />
+            ) : (
+              <CloudUpload size={18} className="flex-shrink-0" />
+            )}
+            <span className="hidden sm:inline">Simpan ke DB</span>
+          </Button>
         </div>
       </div>
 
@@ -397,6 +531,12 @@ export function CaslabPlottingClient() {
           </TabsList>
 
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            {lastSavedAt && (
+              <Badge variant="outline" className="hidden sm:inline-flex items-center gap-1 font-normal text-muted-foreground">
+                <span className="size-1.5 rounded-full bg-emerald-500" />
+                Tersimpan di DB
+              </Badge>
+            )}
             <Badge variant="outline">
               {numRooms} Ruangan
             </Badge>
