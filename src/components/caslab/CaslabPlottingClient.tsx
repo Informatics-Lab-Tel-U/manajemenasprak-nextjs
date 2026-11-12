@@ -7,12 +7,20 @@ import {
   Monitor,
   Shuffle,
   LayoutGrid,
-  CloudUpload,
+  Trash2,
   Loader2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import { exportSpreadsheet } from '@/lib/spreadsheet';
 import { CaslabDataTable } from './CaslabDataTable';
@@ -294,43 +302,60 @@ export function CaslabPlottingClient() {
   );
 
   // Handle Candidate Update (e.g. edit Kode Aslab)
-  const handleUpdateCandidate = useCallback((id: string, updated: Partial<CaslabCandidate>) => {
-    setCandidates((prev) =>
-      prev.map((c) => (c.id === id ? { ...c, ...updated } : c))
-    );
-    setAllocations((prev) =>
-      prev.map((alloc) => ({
-        ...alloc,
-        seats: alloc.seats.map((s) =>
-          s.candidate?.id === id
-            ? { ...s, candidate: { ...s.candidate, ...updated } }
-            : s
-        ),
-        assignedCandidates: alloc.assignedCandidates.map((c) =>
-          c.id === id ? { ...c, ...updated } : c
-        ),
-      }))
-    );
-  }, []);
+  const handleUpdateCandidate = useCallback(
+    (id: string, updated: Partial<CaslabCandidate>) => {
+      setCandidates((prev) => {
+        const nextCandidates = prev.map((c) => (c.id === id ? { ...c, ...updated } : c));
+        setAllocations((prevAlloc) => {
+          const nextAlloc = prevAlloc.map((alloc) => ({
+            ...alloc,
+            seats: alloc.seats.map((s) =>
+              s.candidate?.id === id
+                ? { ...s, candidate: { ...s.candidate, ...updated } }
+                : s
+            ),
+            assignedCandidates: alloc.assignedCandidates.map((c) =>
+              c.id === id ? { ...c, ...updated } : c
+            ),
+          }));
+          saveToDatabase({ candidates: nextCandidates, allocations: nextAlloc }, true);
+          return nextAlloc;
+        });
+        return nextCandidates;
+      });
+    },
+    [saveToDatabase]
+  );
 
   // Handle Candidate Removal
-  const handleRemoveCandidate = useCallback((id: string) => {
-    setCandidates((prev) => prev.filter((c) => c.id !== id));
-    setAllocations((prev) =>
-      prev.map((alloc) => ({
-        ...alloc,
-        seats: alloc.seats.map((s) =>
-          s.candidate?.id === id ? { ...s, candidate: null } : s
-        ),
-        assignedCandidates: alloc.assignedCandidates.filter((c) => c.id !== id),
-      }))
-    );
-    toast.success('Peserta dihapus dari daftar.');
-  }, []);
+  const handleRemoveCandidate = useCallback(
+    (id: string) => {
+      setCandidates((prev) => {
+        const nextCandidates = prev.filter((c) => c.id !== id);
+        setAllocations((prevAlloc) => {
+          const nextAlloc = prevAlloc.map((alloc) => ({
+            ...alloc,
+            seats: alloc.seats.map((s) =>
+              s.candidate?.id === id ? { ...s, candidate: null } : s
+            ),
+            assignedCandidates: alloc.assignedCandidates.filter((c) => c.id !== id),
+          }));
+          saveToDatabase({ candidates: nextCandidates, allocations: nextAlloc }, true);
+          return nextAlloc;
+        });
+        return nextCandidates;
+      });
+      toast.success('Peserta dihapus dari daftar.');
+    },
+    [saveToDatabase]
+  );
 
   // Handle Toggle Disabled Seat (PC Rusak)
   const handleToggleDisabledSeat = useCallback(
     (roomId: string, seatNumber: number) => {
+      let updatedRooms: [CaslabRoomConfig, CaslabRoomConfig] | null = null;
+      let updatedAllocations: CaslabRoomAllocation[] | null = null;
+
       setRooms((prev) => {
         const next: [CaslabRoomConfig, CaslabRoomConfig] = [{ ...prev[0] }, { ...prev[1] }];
         const rIdx = next.findIndex((r) => r.id === roomId);
@@ -345,11 +370,12 @@ export function CaslabPlottingClient() {
           toast.warning(`Meja #${seatNumber} ditandai sebagai PC Rusak.`);
         }
         next[rIdx].disabledSeats = Array.from(currentDisabled);
+        updatedRooms = next;
         return next;
       });
 
-      setAllocations((prev) =>
-        prev.map((alloc) => {
+      setAllocations((prev) => {
+        const next = prev.map((alloc) => {
           if (alloc.room.id !== roomId) return alloc;
           return {
             ...alloc,
@@ -369,10 +395,15 @@ export function CaslabPlottingClient() {
               };
             }),
           };
-        })
-      );
+        });
+        updatedAllocations = next;
+        if (updatedRooms && updatedAllocations) {
+          saveToDatabase({ rooms: updatedRooms, allocations: updatedAllocations }, true);
+        }
+        return next;
+      });
     },
-    []
+    [saveToDatabase]
   );
 
   // Handle Swap Seats
@@ -383,12 +414,58 @@ export function CaslabPlottingClient() {
       targetRoomId: string,
       targetSeatNum: number
     ) => {
-      setAllocations((prev) =>
-        swapCaslabSeats(prev, sourceRoomId, sourceSeatNum, targetRoomId, targetSeatNum)
-      );
+      setAllocations((prev) => {
+        const next = swapCaslabSeats(prev, sourceRoomId, sourceSeatNum, targetRoomId, targetSeatNum);
+        saveToDatabase({ allocations: next }, true);
+        return next;
+      });
     },
-    []
+    [saveToDatabase]
   );
+
+  // Handle Delete All
+  const [showDeleteAllDialog, setShowDeleteAllDialog] = useState(false);
+  const [isDeletingAll, setIsDeletingAll] = useState(false);
+
+  const handleDeleteAll = async () => {
+    try {
+      setIsDeletingAll(true);
+      setCandidates([]);
+      setAllocations([]);
+      setRooms(DEFAULT_ROOMS);
+      setNumRooms(2);
+      setSeatingMode('spaced');
+      setHistoryVersion(0);
+      try {
+        localStorage.removeItem(STORAGE_KEY);
+      } catch {}
+
+      const res = await fetch('/api/caslab', { method: 'DELETE' });
+      if (!res.ok) {
+        throw new Error('Gagal menghapus data di database.');
+      }
+
+      if (typeof window !== 'undefined') {
+        const channel = new BroadcastChannel(CASLAB_PROJECTOR_CHANNEL);
+        channel.postMessage({
+          type: 'SYNC_STATE',
+          allocations: [],
+          rooms: DEFAULT_ROOMS,
+          numRooms: 2,
+          seatingMode: 'spaced',
+          candidates: [],
+        });
+        setTimeout(() => channel.close(), 500);
+      }
+
+      toast.success('Seluruh data peserta dan plotting berhasil dihapus.');
+      setShowDeleteAllDialog(false);
+    } catch (err: any) {
+      toast.error(err.message || 'Gagal menghapus data.');
+    } finally {
+      setIsDeletingAll(false);
+    }
+  };
 
   // Export Excel
   const handleExportExcel = async () => {
@@ -500,20 +577,15 @@ export function CaslabPlottingClient() {
             </span>
           </Button>
 
-          {/* Simpan ke Database */}
+          {/* Hapus Semua (Matching PraktikanClientPage) */}
           <Button
-            variant="outline"
-            onClick={() => saveToDatabase(undefined, false)}
-            disabled={isSaving || candidates.length === 0}
-            className="flex-1 md:flex-none min-w-0 md:whitespace-nowrap gap-1.5"
-            title="Simpan data peserta dan denah ke database Supabase"
+            variant="destructive"
+            onClick={() => setShowDeleteAllDialog(true)}
+            disabled={candidates.length === 0}
+            className="flex-1 md:flex-none min-w-0 md:whitespace-nowrap bg-red-600 hover:bg-red-700 dark:bg-red-900 dark:hover:bg-red-800"
           >
-            {isSaving ? (
-              <Loader2 size={18} className="animate-spin flex-shrink-0" />
-            ) : (
-              <CloudUpload size={18} className="flex-shrink-0" />
-            )}
-            <span className="hidden sm:inline">Simpan ke DB</span>
+            <Trash2 size={18} className="flex-shrink-0" />
+            <span className="hidden sm:inline ml-1">Hapus Semua</span>
           </Button>
         </div>
       </div>
@@ -607,6 +679,46 @@ export function CaslabPlottingClient() {
         seatedCount={seatedCount}
         isShuffled={isShuffled}
       />
+
+      {/* Dialog Konfirmasi Hapus Semua */}
+      <Dialog open={showDeleteAllDialog} onOpenChange={setShowDeleteAllDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Hapus Seluruh Data Plotting?</DialogTitle>
+            <DialogDescription>
+              Tindakan ini akan menghapus semua data ({candidates.length} peserta) dan penataan denah kursi dari sistem serta database secara permanen. Tindakan ini tidak dapat dibatalkan.
+            </DialogDescription>
+          </DialogHeader>
+
+          <DialogFooter className="gap-2 sm:gap-0 pt-2">
+            <Button
+              variant="outline"
+              onClick={() => setShowDeleteAllDialog(false)}
+              disabled={isDeletingAll}
+            >
+              Batal
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteAll}
+              disabled={isDeletingAll}
+              className="bg-red-600 hover:bg-red-700 dark:bg-red-900 dark:hover:bg-red-800 gap-1.5"
+            >
+              {isDeletingAll ? (
+                <>
+                  <Loader2 size={16} className="animate-spin" />
+                  Menghapus...
+                </>
+              ) : (
+                <>
+                  <Trash2 size={16} />
+                  Ya, Hapus Semua
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
