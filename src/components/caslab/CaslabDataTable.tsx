@@ -135,9 +135,9 @@ export function CaslabDataTable({
     () => [
       {
         id: 'no',
-        header: () => <span className="w-10 block text-center">No</span>,
+        header: 'No',
         cell: ({ row }) => (
-          <span className="text-muted-foreground font-mono text-center block w-10">
+          <span className="text-muted-foreground font-mono">
             {row.index + 1}
           </span>
         ),
@@ -228,7 +228,7 @@ export function CaslabDataTable({
       },
       {
         id: 'actions',
-        header: () => <span className="text-right block">Aksi</span>,
+        header: 'Aksi',
         cell: ({ row }) => {
           const c = row.original;
           const isEditing = editingId === c.id;
@@ -343,7 +343,7 @@ export function CaslabDataTable({
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={columns.length} className="h-24 text-center text-muted-foreground">
+                <TableCell colSpan={columns.length} className="h-24 text-center">
                   Data tidak ditemukan
                 </TableCell>
               </TableRow>

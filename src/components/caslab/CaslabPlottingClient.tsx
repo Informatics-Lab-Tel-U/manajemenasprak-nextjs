@@ -7,7 +7,6 @@ import {
   Monitor,
   Shuffle,
   LayoutGrid,
-  FileSpreadsheet,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
@@ -407,42 +406,23 @@ export function CaslabPlottingClient() {
           </div>
         </div>
 
-        {/* Tab 1: DataTable (Mirip /data-praktikan) */}
+        {/* Tab 1: DataTable (Sama persis dengan /data-praktikan) */}
         <TabsContent value="table" className="mt-0">
-          {candidates.length === 0 ? (
-            <div className="flex flex-col items-center justify-center p-12 border rounded-md text-center bg-card">
-              <FileSpreadsheet className="h-9 w-9 text-muted-foreground mb-3" />
-              <h3 className="text-sm font-medium text-foreground">Belum ada data peserta</h3>
-              <p className="text-xs text-muted-foreground mt-1 max-w-sm">
-                Import file Excel atau CSV untuk memulai plotting kursi.
-              </p>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => setShowImportExportModal(true)}
-                className="mt-4 text-xs gap-1.5"
-              >
-                <ArrowUpDown className="h-3.5 w-3.5" />
-                Import / Export
-              </Button>
-            </div>
-          ) : (
-            <CaslabDataTable
-              candidates={candidates}
-              allocations={allocations}
-              onUpdateCandidate={handleUpdateCandidate}
-              onRemoveCandidate={handleRemoveCandidate}
-            />
-          )}
+          <CaslabDataTable
+            candidates={candidates}
+            allocations={allocations}
+            onUpdateCandidate={handleUpdateCandidate}
+            onRemoveCandidate={handleRemoveCandidate}
+          />
         </TabsContent>
 
         {/* Tab 2: Denah Kursi */}
         <TabsContent value="layout" className="mt-0">
           {!isShuffled ? (
             <div className="flex flex-col items-center justify-center p-12 border rounded-md text-center bg-card">
-              <LayoutGrid className="h-9 w-9 text-muted-foreground mb-3" />
+              <LayoutGrid className="size-9 text-muted-foreground mb-3" />
               <h3 className="text-sm font-medium text-foreground">Kursi belum diacak</h3>
-              <p className="text-xs text-muted-foreground mt-1 max-w-sm">
+              <p className="text-sm text-muted-foreground mt-1 max-w-sm">
                 {candidates.length > 0
                   ? `${candidates.length} peserta siap di-plot.`
                   : 'Import peserta terlebih dahulu untuk mengacak kursi.'}
@@ -451,9 +431,9 @@ export function CaslabPlottingClient() {
                 size="sm"
                 onClick={handleShuffle}
                 disabled={candidates.length === 0}
-                className="mt-4 text-xs gap-1.5"
+                className="mt-4 gap-1.5"
               >
-                <Shuffle className="h-3.5 w-3.5" />
+                <Shuffle size={16} />
                 Acak Kursi
               </Button>
             </div>

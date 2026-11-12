@@ -155,11 +155,11 @@ export function CaslabProjectorStandalone() {
           </p>
           <div className="flex items-center justify-center gap-2 mt-4">
             <Link href="/generator/caslab">
-              <Button size="sm" variant="outline" className="text-xs">
+              <Button size="sm" variant="outline">
                 Panel Utama
               </Button>
             </Link>
-            <Button size="sm" onClick={requestSync} className="text-xs gap-1.5">
+            <Button size="sm" onClick={requestSync} className="gap-1.5">
               <RefreshCw className="size-3.5" />
               Sinkronkan Data
             </Button>
@@ -216,13 +216,13 @@ export function CaslabProjectorStandalone() {
               <ArrowLeft className="size-4" />
             </Button>
           </Link>
-          <div className="relative w-44 sm:w-52">
-            <Search className="size-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+          <div className="relative w-48 sm:w-60">
+            <Search className="size-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <Input
               placeholder="Cari meja, NIM, nama..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="h-8 pl-8 text-xs bg-card border-border"
+              className="h-9 pl-8 text-sm bg-card border-border"
             />
           </div>
         </div>
@@ -235,14 +235,14 @@ export function CaslabProjectorStandalone() {
           >
             <TabsList className="bg-card/90 border border-border/70 shadow-xs backdrop-blur-md">
               {allocations.map((alloc, idx) => (
-                <TabsTrigger key={alloc.room.id} value={String(idx)} className="text-xs font-semibold">
+                <TabsTrigger key={alloc.room.id} value={String(idx)} className="text-sm font-medium">
                   {alloc.room.name} ({alloc.assignedCandidates.length})
                 </TabsTrigger>
               ))}
             </TabsList>
           </Tabs>
         ) : (
-          <div className="text-xs font-bold tracking-widest uppercase text-muted-foreground flex items-center gap-2">
+          <div className="text-sm font-semibold tracking-wider text-muted-foreground flex items-center gap-2">
             <Monitor className="size-4 text-primary" />
             <span>{currentAlloc.room.name}</span>
           </div>

@@ -141,10 +141,10 @@ export function CaslabImportExportModal({
           className="w-full pt-1"
         >
           <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="import" className="text-xs">
+            <TabsTrigger value="import">
               Import
             </TabsTrigger>
-            <TabsTrigger value="export" className="text-xs">
+            <TabsTrigger value="export">
               Export ({candidateCount})
             </TabsTrigger>
           </TabsList>
@@ -152,25 +152,23 @@ export function CaslabImportExportModal({
           {/* TAB 1: IMPORT */}
           <TabsContent value="import" className="space-y-4 pt-2">
             {/* Download Template Buttons */}
-            <div className="flex items-center justify-between text-xs p-2 rounded-md border bg-muted/20">
-              <span className="text-muted-foreground">Template:</span>
+            <div className="flex items-center justify-between text-sm p-2.5 rounded-md border bg-muted/20">
+              <span className="text-muted-foreground">Unduh Template:</span>
               <div className="flex items-center gap-2">
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => handleDownloadTemplate('xlsx')}
-                  className="h-7 text-xs"
                 >
-                  <Download className="h-3 w-3 mr-1" />
+                  <Download className="size-3.5 mr-1" />
                   Excel (.xlsx)
                 </Button>
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => handleDownloadTemplate('csv')}
-                  className="h-7 text-xs"
                 >
-                  <Download className="h-3 w-3 mr-1" />
+                  <Download className="size-3.5 mr-1" />
                   CSV
                 </Button>
               </div>

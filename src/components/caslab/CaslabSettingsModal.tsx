@@ -122,28 +122,27 @@ export function CaslabSettingsModal({
           </div>
 
           {/* Ruangan 1 */}
-          <div className="rounded-md border p-3 space-y-3 bg-muted/20">
+          <div className="rounded-md border p-3.5 space-y-3 bg-muted/20">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-medium">Ruangan 1</span>
-              <Badge variant="outline" className="text-[10px]">
+              <span className="text-sm font-medium">Ruangan 1</span>
+              <Badge variant="outline">
                 {room1.capacity - room1.disabledSeats.length} Kursi
               </Badge>
             </div>
-            <div className="grid grid-cols-3 gap-2">
-              <div className="col-span-2 space-y-1">
-                <Label htmlFor="r1-name" className="text-xs text-muted-foreground">
-                  Nama
+            <div className="grid grid-cols-3 gap-2.5">
+              <div className="col-span-2 space-y-1.5">
+                <Label htmlFor="r1-name" className="text-muted-foreground">
+                  Nama Ruangan
                 </Label>
                 <Input
                   id="r1-name"
                   value={room1.name}
                   onChange={(e) => setRoom1({ ...room1, name: e.target.value })}
                   placeholder="e.g. TULT 0617"
-                  className="h-8 text-xs"
                 />
               </div>
-              <div className="space-y-1">
-                <Label htmlFor="r1-cap" className="text-xs text-muted-foreground">
+              <div className="space-y-1.5">
+                <Label htmlFor="r1-cap" className="text-muted-foreground">
                   Kapasitas
                 </Label>
                 <Input
@@ -155,7 +154,7 @@ export function CaslabSettingsModal({
                   onChange={(e) =>
                     setRoom1({ ...room1, capacity: Math.max(1, parseInt(e.target.value) || 1) })
                   }
-                  className="h-8 text-xs font-mono"
+                  className="font-mono"
                 />
               </div>
             </div>
@@ -163,28 +162,27 @@ export function CaslabSettingsModal({
 
           {/* Ruangan 2 */}
           {numRooms === 2 && (
-            <div className="rounded-md border p-3 space-y-3 bg-muted/20">
+            <div className="rounded-md border p-3.5 space-y-3 bg-muted/20">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-medium">Ruangan 2</span>
-                <Badge variant="outline" className="text-[10px]">
+                <span className="text-sm font-medium">Ruangan 2</span>
+                <Badge variant="outline">
                   {room2.capacity - room2.disabledSeats.length} Kursi
                 </Badge>
               </div>
-              <div className="grid grid-cols-3 gap-2">
-                <div className="col-span-2 space-y-1">
-                  <Label htmlFor="r2-name" className="text-xs text-muted-foreground">
-                    Nama
+              <div className="grid grid-cols-3 gap-2.5">
+                <div className="col-span-2 space-y-1.5">
+                  <Label htmlFor="r2-name" className="text-muted-foreground">
+                    Nama Ruangan
                   </Label>
                   <Input
                     id="r2-name"
                     value={room2.name}
                     onChange={(e) => setRoom2({ ...room2, name: e.target.value })}
                     placeholder="e.g. TULT 0618"
-                    className="h-8 text-xs"
                   />
                 </div>
-                <div className="space-y-1">
-                  <Label htmlFor="r2-cap" className="text-xs text-muted-foreground">
+                <div className="space-y-1.5">
+                  <Label htmlFor="r2-cap" className="text-muted-foreground">
                     Kapasitas
                   </Label>
                   <Input
@@ -196,7 +194,7 @@ export function CaslabSettingsModal({
                     onChange={(e) =>
                       setRoom2({ ...room2, capacity: Math.max(1, parseInt(e.target.value) || 1) })
                     }
-                    className="h-8 text-xs font-mono"
+                    className="font-mono"
                   />
                 </div>
               </div>
