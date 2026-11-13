@@ -138,7 +138,7 @@ export function CaslabSettingsModal({
                   id="r1-name"
                   value={room1.name}
                   onChange={(e) => setRoom1({ ...room1, name: e.target.value })}
-                  placeholder="e.g. TULT 0617"
+                  placeholder="e.g. TULT 0604"
                 />
               </div>
               <div className="space-y-1.5">
@@ -178,7 +178,7 @@ export function CaslabSettingsModal({
                     id="r2-name"
                     value={room2.name}
                     onChange={(e) => setRoom2({ ...room2, name: e.target.value })}
-                    placeholder="e.g. TULT 0618"
+                    placeholder="e.g. TULT 0605"
                   />
                 </div>
                 <div className="space-y-1.5">

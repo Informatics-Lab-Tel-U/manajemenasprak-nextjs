@@ -52,13 +52,13 @@ const ALL_ROOMS_VALUE = '__all_rooms__';
 const DEFAULT_ROOMS: [CaslabRoomConfig, CaslabRoomConfig] = [
   {
     id: 'room-1',
-    name: 'TULT 0617 (Lab Multimedia)',
+    name: 'TULT 0604',
     capacity: 40,
     disabledSeats: [],
   },
   {
     id: 'room-2',
-    name: 'TULT 0618 (Lab Riset)',
+    name: 'TULT 0605',
     capacity: 40,
     disabledSeats: [],
   },
