@@ -19,7 +19,7 @@ import type {
 
 /**
  * Validates and normalizes candidates from CSV/Excel.
- * Every candidate must already have a unique 3-letter uppercase Aslab code (A-Z).
+ * Every candidate must have a 3-letter uppercase Aslab code (A-Z); duplicates are allowed.
  */
 export function processCaslabCandidates(
   rawCandidates: Array<{
@@ -28,7 +28,6 @@ export function processCaslabCandidates(
     kode?: string;
   }>
 ): CaslabCandidate[] {
-  const usedCodes = new Set<string>();
   const results: CaslabCandidate[] = [];
 
   rawCandidates.forEach((item, index) => {
@@ -46,12 +45,6 @@ export function processCaslabCandidates(
     if (!/^[A-Z]{3}$/.test(cleanCode)) {
       throw new Error(`${rowLabel}: Kode Aslab "${cleanCode}" harus terdiri dari 3 huruf kapital (A-Z).`);
     }
-
-    if (usedCodes.has(cleanCode)) {
-      throw new Error(`${rowLabel}: Kode Aslab "${cleanCode}" duplikat di dalam file.`);
-    }
-
-    usedCodes.add(cleanCode);
 
     results.push({
       id: `caslab_${nim}_${index}_${Math.random().toString(36).substring(2, 7)}`,

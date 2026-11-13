@@ -210,7 +210,7 @@ export function CaslabImportExportModal({
             </div>
 
             <p className="text-[11px] text-muted-foreground">
-              * Semua peserta di file wajib memiliki Kode Aslab 3 huruf (A-Z) yang unik.
+              * Semua peserta di file wajib memiliki Kode Aslab 3 huruf (A-Z).
             </p>
 
             {/* Preview snippet if parsed */}
