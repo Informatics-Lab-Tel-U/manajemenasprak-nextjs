@@ -9,7 +9,6 @@ import {
   ColumnDef,
 } from '@tanstack/react-table';
 import {
-  Search,
   ChevronLeft,
   ChevronRight,
   Pencil,
@@ -47,6 +46,8 @@ interface CaslabRowData extends CaslabCandidate {
 interface CaslabDataTableProps {
   candidates: CaslabCandidate[];
   allocations: CaslabRoomAllocation[];
+  searchQuery?: string;
+  roomFilter?: string;
   onUpdateCandidate: (id: string, updated: Partial<CaslabCandidate>) => void;
   onRemoveCandidate: (id: string) => void;
 }
@@ -59,11 +60,11 @@ const ALL_ROOMS_VALUE = '__all_rooms__';
 export function CaslabDataTable({
   candidates,
   allocations,
+  searchQuery = '',
+  roomFilter = '',
   onUpdateCandidate,
   onRemoveCandidate,
 }: CaslabDataTableProps) {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [roomFilter, setRoomFilter] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editKode, setEditKode] = useState('');
 
@@ -110,10 +111,6 @@ export function CaslabDataTable({
       return matchSearch && matchRoom;
     });
   }, [fullRows, searchQuery, roomFilter]);
-
-  const availableRooms = useMemo(() => {
-    return Array.from(new Set(allocations.map((a) => a.room.name)));
-  }, [allocations]);
 
   const handleStartEdit = (c: CaslabRowData) => {
     setEditingId(c.id);
@@ -277,40 +274,6 @@ export function CaslabDataTable({
 
   return (
     <div className="space-y-4">
-      {/* Filters (Matching PraktikanFilters) */}
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-        <div className="relative w-full sm:max-w-sm">
-          <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Cari nama, NIM, atau kode..."
-            className="pl-8"
-          />
-        </div>
-
-        {availableRooms.length > 1 && (
-          <div className="flex flex-col gap-2 sm:ml-auto sm:flex-row">
-            <Select
-              value={roomFilter || ALL_ROOMS_VALUE}
-              onValueChange={(val) => setRoomFilter(val === ALL_ROOMS_VALUE ? '' : val)}
-            >
-              <SelectTrigger className="w-full sm:w-[200px]">
-                <SelectValue placeholder="Semua Ruangan" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={ALL_ROOMS_VALUE}>Semua Ruangan</SelectItem>
-                {availableRooms.map((room) => (
-                  <SelectItem key={room} value={room}>
-                    {room}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        )}
-      </div>
-
       {/* Table */}
       <div className="overflow-hidden rounded-md border">
         <Table className={TABLE_EDGE_PADDING}>

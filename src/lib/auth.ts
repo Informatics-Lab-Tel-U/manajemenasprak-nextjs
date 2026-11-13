@@ -29,6 +29,8 @@ async function getCurrentUserFromHeader(): Promise<AuthUser | null> {
   return null;
 }
 
+const BACKEND_URL = process.env.HONO_BACKEND_URL || 'https://manajemenasprak-backend.iflabdev.workers.dev';
+
 export async function getCurrentUser(): Promise<AuthUser | null> {
   const supabase = await createClient();
 
@@ -42,7 +44,7 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
   }
 
   try {
-    const meRes = await fetch(`${process.env.HONO_BACKEND_URL}/api/auth/me?app=manajemenasprak`, {
+    const meRes = await fetch(`${BACKEND_URL}/api/auth/me?app=manajemenasprak`, {
       headers: { Authorization: `Bearer ${session.access_token}` },
       cache: 'no-store',
       signal: AbortSignal.timeout(2500),
@@ -102,7 +104,7 @@ export async function requireRoleApi(
   allowedRoles: Role[],
   forbiddenMessage = 'Anda tidak memiliki akses untuk aksi ini'
 ): Promise<RoleGuardResult> {
-  const user = await getCurrentUser();
+  const user = (await getCurrentUserFromHeader()) ?? (await getCurrentUser());
   if (!user) {
     return {
       ok: false,

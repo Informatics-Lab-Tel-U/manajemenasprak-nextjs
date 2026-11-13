@@ -1,16 +1,17 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   ArrowUpDown,
   SlidersHorizontal,
-  Monitor,
   Shuffle,
   LayoutGrid,
   Trash2,
   Loader2,
+  Search,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -21,6 +22,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { toast } from 'sonner';
 import { exportSpreadsheet } from '@/lib/spreadsheet';
 import { CaslabDataTable } from './CaslabDataTable';
@@ -39,7 +47,7 @@ import type {
 } from '@/types/caslab';
 
 const STORAGE_KEY = 'caslab_plotting_state_v1';
-const CASLAB_PROJECTOR_CHANNEL = 'caslab-projector-sync';
+const ALL_ROOMS_VALUE = '__all_rooms__';
 
 const DEFAULT_ROOMS: [CaslabRoomConfig, CaslabRoomConfig] = [
   {
@@ -67,6 +75,13 @@ export function CaslabPlottingClient() {
   // Modals
   const [showImportExportModal, setShowImportExportModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [roomFilter, setRoomFilter] = useState('');
+  const [activeTab, setActiveTab] = useState('table');
+
+  const availableRooms = useMemo(() => {
+    return Array.from(new Set(allocations.map((a) => a.room.name)));
+  }, [allocations]);
 
   // Database persistence state
   const [isSaving, setIsSaving] = useState(false);
@@ -144,47 +159,13 @@ export function CaslabPlottingClient() {
         }
       } catch (err: any) {
         console.error('Error saving caslab state to DB:', err);
-        if (!silent) {
-          toast.error(err.message || 'Gagal menyimpan data ke database.');
-        }
+        toast.error(err.message || 'Gagal menyimpan data ke database.');
       } finally {
         setIsSaving(false);
       }
     },
     [candidates, numRooms, seatingMode, rooms, allocations, historyVersion]
   );
-
-  // Real-time synchronization with Projector Window via BroadcastChannel
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const channel = new BroadcastChannel(CASLAB_PROJECTOR_CHANNEL);
-
-    channel.onmessage = (event) => {
-      if (event.data?.type === 'REQUEST_SYNC') {
-        channel.postMessage({
-          type: 'SYNC_STATE',
-          allocations,
-          rooms,
-          numRooms,
-          seatingMode,
-          candidates,
-        });
-      }
-    };
-
-    channel.postMessage({
-      type: 'SYNC_STATE',
-      allocations,
-      rooms,
-      numRooms,
-      seatingMode,
-      candidates,
-    });
-
-    return () => {
-      channel.close();
-    };
-  }, [allocations, rooms, numRooms, seatingMode, candidates]);
 
   // Load from localStorage
   useEffect(() => {
@@ -257,6 +238,10 @@ export function CaslabPlottingClient() {
     toast.success(`Kursi berhasil diacak (Acakan #${nextVersion}).`);
     saveToDatabase(
       {
+        candidates,
+        numRooms,
+        seatingMode,
+        rooms,
         allocations: newAllocations,
         historyVersion: nextVersion,
       },
@@ -304,106 +289,88 @@ export function CaslabPlottingClient() {
   // Handle Candidate Update (e.g. edit Kode Aslab)
   const handleUpdateCandidate = useCallback(
     (id: string, updated: Partial<CaslabCandidate>) => {
-      setCandidates((prev) => {
-        const nextCandidates = prev.map((c) => (c.id === id ? { ...c, ...updated } : c));
-        setAllocations((prevAlloc) => {
-          const nextAlloc = prevAlloc.map((alloc) => ({
-            ...alloc,
-            seats: alloc.seats.map((s) =>
-              s.candidate?.id === id
-                ? { ...s, candidate: { ...s.candidate, ...updated } }
-                : s
-            ),
-            assignedCandidates: alloc.assignedCandidates.map((c) =>
-              c.id === id ? { ...c, ...updated } : c
-            ),
-          }));
-          saveToDatabase({ candidates: nextCandidates, allocations: nextAlloc }, true);
-          return nextAlloc;
-        });
-        return nextCandidates;
-      });
+      const nextCandidates = candidates.map((c) => (c.id === id ? { ...c, ...updated } : c));
+      const nextAllocations = allocations.map((alloc) => ({
+        ...alloc,
+        seats: alloc.seats.map((s) =>
+          s.candidate?.id === id
+            ? { ...s, candidate: { ...s.candidate, ...updated } }
+            : s
+        ),
+        assignedCandidates: alloc.assignedCandidates.map((c) =>
+          c.id === id ? { ...c, ...updated } : c
+        ),
+      }));
+
+      setCandidates(nextCandidates);
+      setAllocations(nextAllocations);
+      saveToDatabase({ candidates: nextCandidates, allocations: nextAllocations }, true);
     },
-    [saveToDatabase]
+    [candidates, allocations, saveToDatabase]
   );
 
   // Handle Candidate Removal
   const handleRemoveCandidate = useCallback(
     (id: string) => {
-      setCandidates((prev) => {
-        const nextCandidates = prev.filter((c) => c.id !== id);
-        setAllocations((prevAlloc) => {
-          const nextAlloc = prevAlloc.map((alloc) => ({
-            ...alloc,
-            seats: alloc.seats.map((s) =>
-              s.candidate?.id === id ? { ...s, candidate: null } : s
-            ),
-            assignedCandidates: alloc.assignedCandidates.filter((c) => c.id !== id),
-          }));
-          saveToDatabase({ candidates: nextCandidates, allocations: nextAlloc }, true);
-          return nextAlloc;
-        });
-        return nextCandidates;
-      });
+      const nextCandidates = candidates.filter((c) => c.id !== id);
+      const nextAllocations = allocations.map((alloc) => ({
+        ...alloc,
+        seats: alloc.seats.map((s) =>
+          s.candidate?.id === id ? { ...s, candidate: null } : s
+        ),
+        assignedCandidates: alloc.assignedCandidates.filter((c) => c.id !== id),
+      }));
+
+      setCandidates(nextCandidates);
+      setAllocations(nextAllocations);
+      saveToDatabase({ candidates: nextCandidates, allocations: nextAllocations }, true);
       toast.success('Peserta dihapus dari daftar.');
     },
-    [saveToDatabase]
+    [candidates, allocations, saveToDatabase]
   );
 
   // Handle Toggle Disabled Seat (PC Rusak)
   const handleToggleDisabledSeat = useCallback(
     (roomId: string, seatNumber: number) => {
-      let updatedRooms: [CaslabRoomConfig, CaslabRoomConfig] | null = null;
-      let updatedAllocations: CaslabRoomAllocation[] | null = null;
+      const nextRooms: [CaslabRoomConfig, CaslabRoomConfig] = [{ ...rooms[0] }, { ...rooms[1] }];
+      const rIdx = nextRooms.findIndex((r) => r.id === roomId);
+      if (rIdx === -1) return;
 
-      setRooms((prev) => {
-        const next: [CaslabRoomConfig, CaslabRoomConfig] = [{ ...prev[0] }, { ...prev[1] }];
-        const rIdx = next.findIndex((r) => r.id === roomId);
-        if (rIdx === -1) return prev;
+      const currentDisabled = new Set(nextRooms[rIdx].disabledSeats);
+      if (currentDisabled.has(seatNumber)) {
+        currentDisabled.delete(seatNumber);
+        toast.success(`Meja #${seatNumber} diaktifkan kembali.`);
+      } else {
+        currentDisabled.add(seatNumber);
+        toast.warning(`Meja #${seatNumber} ditandai sebagai PC Rusak.`);
+      }
+      nextRooms[rIdx].disabledSeats = Array.from(currentDisabled);
 
-        const currentDisabled = new Set(next[rIdx].disabledSeats);
-        if (currentDisabled.has(seatNumber)) {
-          currentDisabled.delete(seatNumber);
-          toast.success(`Meja #${seatNumber} diaktifkan kembali.`);
-        } else {
-          currentDisabled.add(seatNumber);
-          toast.warning(`Meja #${seatNumber} ditandai sebagai PC Rusak.`);
-        }
-        next[rIdx].disabledSeats = Array.from(currentDisabled);
-        updatedRooms = next;
-        return next;
+      const nextAllocations = allocations.map((alloc) => {
+        if (alloc.room.id !== roomId) return alloc;
+        return {
+          ...alloc,
+          room: {
+            ...alloc.room,
+            disabledSeats: nextRooms[rIdx].disabledSeats,
+          },
+          seats: alloc.seats.map((seat) => {
+            if (seat.seatNumber !== seatNumber) return seat;
+            const willBeDisabled = !seat.isDisabled;
+            return {
+              ...seat,
+              isDisabled: willBeDisabled,
+              candidate: willBeDisabled ? null : seat.candidate,
+            };
+          }),
+        };
       });
 
-      setAllocations((prev) => {
-        const next = prev.map((alloc) => {
-          if (alloc.room.id !== roomId) return alloc;
-          return {
-            ...alloc,
-            room: {
-              ...alloc.room,
-              disabledSeats: alloc.room.disabledSeats.includes(seatNumber)
-                ? alloc.room.disabledSeats.filter((s) => s !== seatNumber)
-                : [...alloc.room.disabledSeats, seatNumber],
-            },
-            seats: alloc.seats.map((seat) => {
-              if (seat.seatNumber !== seatNumber) return seat;
-              const willBeDisabled = !seat.isDisabled;
-              return {
-                ...seat,
-                isDisabled: willBeDisabled,
-                candidate: willBeDisabled ? null : seat.candidate,
-              };
-            }),
-          };
-        });
-        updatedAllocations = next;
-        if (updatedRooms && updatedAllocations) {
-          saveToDatabase({ rooms: updatedRooms, allocations: updatedAllocations }, true);
-        }
-        return next;
-      });
+      setRooms(nextRooms);
+      setAllocations(nextAllocations);
+      saveToDatabase({ rooms: nextRooms, allocations: nextAllocations }, true);
     },
-    [saveToDatabase]
+    [rooms, allocations, saveToDatabase]
   );
 
   // Handle Swap Seats
@@ -414,13 +381,17 @@ export function CaslabPlottingClient() {
       targetRoomId: string,
       targetSeatNum: number
     ) => {
-      setAllocations((prev) => {
-        const next = swapCaslabSeats(prev, sourceRoomId, sourceSeatNum, targetRoomId, targetSeatNum);
-        saveToDatabase({ allocations: next }, true);
-        return next;
-      });
+      const nextAllocations = swapCaslabSeats(
+        allocations,
+        sourceRoomId,
+        sourceSeatNum,
+        targetRoomId,
+        targetSeatNum
+      );
+      setAllocations(nextAllocations);
+      saveToDatabase({ allocations: nextAllocations }, true);
     },
-    [saveToDatabase]
+    [allocations, saveToDatabase]
   );
 
   // Handle Delete All
@@ -443,19 +414,6 @@ export function CaslabPlottingClient() {
       const res = await fetch('/api/caslab', { method: 'DELETE' });
       if (!res.ok) {
         throw new Error('Gagal menghapus data di database.');
-      }
-
-      if (typeof window !== 'undefined') {
-        const channel = new BroadcastChannel(CASLAB_PROJECTOR_CHANNEL);
-        channel.postMessage({
-          type: 'SYNC_STATE',
-          allocations: [],
-          rooms: DEFAULT_ROOMS,
-          numRooms: 2,
-          seatingMode: 'spaced',
-          candidates: [],
-        });
-        setTimeout(() => channel.close(), 500);
       }
 
       toast.success('Seluruh data peserta dan plotting berhasil dihapus.');
@@ -547,24 +505,6 @@ export function CaslabPlottingClient() {
             <span className="hidden sm:inline ml-1">Pengaturan</span>
           </Button>
 
-          {/* Tampilkan Window Proyektor — Sesuai Generator Kursi */}
-          <Button
-            variant="outline"
-            onClick={() => {
-              window.open(
-                '/generator/caslab/projector',
-                'CaslabProjectorWindow',
-                'width=1280,height=720,menubar=no,toolbar=no,location=no,status=no,resizable=yes'
-              );
-            }}
-            disabled={!isShuffled}
-            className="flex-1 md:flex-none min-w-0 md:whitespace-nowrap gap-1.5"
-            title="Buka tampilan denah di window proyektor terpisah"
-          >
-            <Monitor size={18} className="flex-shrink-0" />
-            <span className="hidden sm:inline">Tampilkan Window Proyektor</span>
-          </Button>
-
           {/* Acak Plotting Kursi */}
           <Button
             onClick={handleShuffle}
@@ -591,30 +531,61 @@ export function CaslabPlottingClient() {
       </div>
 
       {/* Main Tabs (DataTable vs Layout Denah) */}
-      <Tabs defaultValue="table" className="space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b pb-2">
-          <TabsList>
-            <TabsTrigger value="table">
-              Peserta ({candidates.length})
-            </TabsTrigger>
-            <TabsTrigger value="layout">
-              Denah Kursi
-            </TabsTrigger>
-          </TabsList>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+          {activeTab === 'table' ? (
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2 w-full lg:w-auto">
+              <div className="relative w-full sm:w-72">
+                <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Cari nama, NIM, atau kode..."
+                  className="pl-8"
+                />
+              </div>
 
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            {lastSavedAt && (
-              <Badge variant="outline" className="hidden sm:inline-flex items-center gap-1 font-normal text-muted-foreground">
-                <span className="size-1.5 rounded-full bg-emerald-500" />
-                Tersimpan di DB
+              {availableRooms.length > 1 && (
+                <Select
+                  value={roomFilter || ALL_ROOMS_VALUE}
+                  onValueChange={(val) => setRoomFilter(val === ALL_ROOMS_VALUE ? '' : val)}
+                >
+                  <SelectTrigger className="w-full sm:w-[200px]">
+                    <SelectValue placeholder="Semua Ruangan" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={ALL_ROOMS_VALUE}>Semua Ruangan</SelectItem>
+                    {availableRooms.map((room) => (
+                      <SelectItem key={room} value={room}>
+                        {room}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
+          ) : (
+            <div />
+          )}
+
+          <div className="flex flex-wrap items-center justify-end gap-2 lg:ml-auto">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Badge variant="outline">
+                {numRooms} Ruangan
               </Badge>
-            )}
-            <Badge variant="outline">
-              {numRooms} Ruangan
-            </Badge>
-            <Badge variant="outline">
-              {seatingMode === 'spaced' ? 'Berselang' : 'Sebelahan'}
-            </Badge>
+              <Badge variant="outline">
+                {seatingMode === 'spaced' ? 'Berselang' : 'Sebelahan'}
+              </Badge>
+            </div>
+
+            <TabsList>
+              <TabsTrigger value="table">
+                Peserta ({candidates.length})
+              </TabsTrigger>
+              <TabsTrigger value="layout">
+                Denah Kursi
+              </TabsTrigger>
+            </TabsList>
           </div>
         </div>
 
@@ -623,6 +594,8 @@ export function CaslabPlottingClient() {
           <CaslabDataTable
             candidates={candidates}
             allocations={allocations}
+            searchQuery={searchQuery}
+            roomFilter={roomFilter}
             onUpdateCandidate={handleUpdateCandidate}
             onRemoveCandidate={handleRemoveCandidate}
           />
