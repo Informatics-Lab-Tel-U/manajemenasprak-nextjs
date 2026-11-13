@@ -56,7 +56,7 @@ export function startIwanPolling(
 
 export async function fetchIwanData<T>(url: string, signal?: AbortSignal): Promise<T> {
   const response = await fetch(url, {
-    signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(15000)]) : AbortSignal.timeout(15000),
+    signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(25000)]) : AbortSignal.timeout(25000),
     cache: 'no-store',
   });
   if (!response.ok) throw new Error(`IWAN HTTP ${response.status}`);

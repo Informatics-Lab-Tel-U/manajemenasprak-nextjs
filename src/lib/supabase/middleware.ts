@@ -95,15 +95,17 @@ export async function updateSession(request: NextRequest) {
   // Single pengguna query to Hono backend
   let pengguna: any = null;
   let penggunaError: any = null;
+  let authRejected = false;
 
   if (token) {
     try {
+      const backendBase = process.env.HONO_BACKEND_URL || 'https://manajemenasprak-backend.iflabdev.workers.dev';
       const meRes = await fetch(
-        `${process.env.HONO_BACKEND_URL}/api/auth/me?app=manajemenasprak`,
+        `${backendBase}/api/auth/me?app=manajemenasprak`,
         {
           headers: { Authorization: `Bearer ${token}` },
           cache: 'no-store',
-          signal: AbortSignal.timeout(2500),
+          signal: AbortSignal.timeout(8000),
         }
       );
       if (meRes.ok) {
@@ -114,6 +116,9 @@ export async function updateSession(request: NextRequest) {
           pengguna.role = meData.data.effectiveRole;
         }
       } else {
+        if (meRes.status === 401 || meRes.status === 403) {
+          authRejected = true;
+        }
         penggunaError = new Error(`Hono returned ${meRes.status}`);
       }
     } catch (error) {
@@ -138,7 +143,7 @@ export async function updateSession(request: NextRequest) {
   }
 
   if (isIwanApi) {
-    if (!token || !pengguna) {
+    if (!token || authRejected) {
       return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
     }
     const upstream = await proxyIwanRequest(

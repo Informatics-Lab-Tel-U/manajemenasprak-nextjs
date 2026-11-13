@@ -35,7 +35,7 @@ export async function proxyIwanRequest(
       body: request.method === 'GET' || request.method === 'HEAD' ? undefined : await request.text(),
       cache: 'no-store',
       redirect: 'manual',
-      signal: AbortSignal.timeout(15000),
+      signal: AbortSignal.timeout(24000),
     });
     if (upstream.status >= 300 && upstream.status < 400 && upstream.status !== 304) {
       void upstream.body?.cancel().catch(() => {});

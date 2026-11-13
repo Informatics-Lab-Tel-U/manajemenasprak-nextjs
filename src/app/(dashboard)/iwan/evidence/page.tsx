@@ -132,8 +132,8 @@ function IwanEvidenceContent() {
         : controller.signal;
       const query =
         selectedRoomFilter === 'ALL'
-          ? '?limit=100'
-          : `?roomId=${encodeURIComponent(selectedRoomFilter)}&limit=100`;
+          ? '?limit=50'
+          : `?roomId=${encodeURIComponent(selectedRoomFilter)}&limit=50`;
 
       try {
         const data = await fetchIwanData<EvidenceLogItem[]>(
