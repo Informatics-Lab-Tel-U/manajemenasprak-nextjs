@@ -56,12 +56,12 @@ export function CaslabImportExportModal({
       {
         'NIM': '1301220112',
         'Nama Lengkap': 'Athila Ramdani Saputra',
-        'Kode Aslab': '',
+        'Kode Aslab': 'ARS',
       },
       {
         'NIM': '1301220455',
         'Nama Lengkap': 'Febry Triantoro',
-        'Kode Aslab': '',
+        'Kode Aslab': 'FBT',
       },
     ];
 
@@ -101,6 +101,7 @@ export function CaslabImportExportModal({
       toast.success(`${processed.length} peserta terbaca.`);
     } catch (err: any) {
       console.error(err);
+      setParsedPreview([]);
       toast.error(err.message || 'Gagal memproses file.');
     } finally {
       setIsProcessing(false);
@@ -201,7 +202,7 @@ export function CaslabImportExportModal({
                       {isDragActive ? 'Lepaskan berkas di sini' : 'Tarik berkas ke sini, atau klik untuk memilih'}
                     </p>
                     <p className="text-[11px] text-muted-foreground mt-0.5">
-                      Format: .xlsx, .xls, .csv (NIM, Nama Lengkap, [Kode])
+                      Format: .xlsx, .xls, .csv (NIM, Nama Lengkap, Kode Aslab)
                     </p>
                   </div>
                 )}
@@ -209,7 +210,7 @@ export function CaslabImportExportModal({
             </div>
 
             <p className="text-[11px] text-muted-foreground">
-              * Kode aslab 3-huruf otomatis dibuat jika kolom kode dikosongkan.
+              * Semua peserta di file wajib memiliki Kode Aslab 3 huruf (A-Z) yang unik.
             </p>
 
             {/* Preview snippet if parsed */}

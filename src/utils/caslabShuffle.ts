@@ -4,12 +4,11 @@
  * Implements:
  * 1. Single-cohort Fisher-Yates shuffle across 1 or 2 rooms
  * 2. Spaced (Berselang / Anti-Contek) vs Dense (Sebelahan) seat placement
- * 3. 3-letter Aslab code generation using asprakCodeGenerator
+ * 3. Strict validation for 3-letter Aslab codes from CSV/Excel
  * 4. Disabled seat handling (broken PCs)
  * 5. Manual seat swapping
  */
 
-import { generateAsprakCode } from './asprakCodeGenerator';
 import type {
   CaslabCandidate,
   CaslabRoomConfig,
@@ -19,9 +18,8 @@ import type {
 } from '@/types/caslab';
 
 /**
- * Normalizes and ensures each candidate has a unique 3-letter Aslab code.
- * If code is provided from CSV/Excel, validates and uses it.
- * If missing or invalid, generates a unique code via asprakCodeGenerator.
+ * Validates and normalizes candidates from CSV/Excel.
+ * Every candidate must already have a unique 3-letter uppercase Aslab code (A-Z).
  */
 export function processCaslabCandidates(
   rawCandidates: Array<{
@@ -33,52 +31,35 @@ export function processCaslabCandidates(
   const usedCodes = new Set<string>();
   const results: CaslabCandidate[] = [];
 
-  // Pass 1: Register pre-existing valid codes
-  rawCandidates.forEach((item) => {
-    const cleanCode = (item.kode || '').trim().toUpperCase();
-    if (/^[A-Z]{3}$/.test(cleanCode)) {
-      usedCodes.add(cleanCode);
-    }
-  });
-
-  // Pass 2: Assign codes to all candidates
   rawCandidates.forEach((item, index) => {
     const nim = String(item.nim || '').trim();
     const nama = String(item.nama_lengkap || '').trim();
     if (!nim && !nama) return;
 
-    let cleanCode = (item.kode || '').trim().toUpperCase();
-    let codeRule = 'From CSV/Excel';
-    let codeSource: 'csv' | 'generated' | 'manual' = 'csv';
+    const cleanCode = String(item.kode || '').trim().toUpperCase();
+    const rowLabel = `Baris ${index + 1}${nama ? ` (${nama})` : nim ? ` (${nim})` : ''}`;
 
-    if (!cleanCode || !/^[A-Z]{3}$/.test(cleanCode) || results.some((r) => r.kode === cleanCode)) {
-      try {
-        const generated = generateAsprakCode(nama, usedCodes);
-        cleanCode = generated.code;
-        codeRule = generated.rule;
-        codeSource = 'generated';
-        usedCodes.add(cleanCode);
-      } catch {
-        // Fallback random 3-letter if name cannot generate
-        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-        let fallback = '';
-        do {
-          fallback = Array.from({ length: 3 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
-        } while (usedCodes.has(fallback));
-        cleanCode = fallback;
-        codeRule = 'Emergency Fallback';
-        codeSource = 'generated';
-        usedCodes.add(cleanCode);
-      }
+    if (!cleanCode) {
+      throw new Error(`${rowLabel}: Kode Aslab wajib diisi di dalam file Excel/CSV.`);
     }
+
+    if (!/^[A-Z]{3}$/.test(cleanCode)) {
+      throw new Error(`${rowLabel}: Kode Aslab "${cleanCode}" harus terdiri dari 3 huruf kapital (A-Z).`);
+    }
+
+    if (usedCodes.has(cleanCode)) {
+      throw new Error(`${rowLabel}: Kode Aslab "${cleanCode}" duplikat di dalam file.`);
+    }
+
+    usedCodes.add(cleanCode);
 
     results.push({
       id: `caslab_${nim}_${index}_${Math.random().toString(36).substring(2, 7)}`,
       nim,
       nama_lengkap: nama,
       kode: cleanCode,
-      codeRule,
-      codeSource,
+      codeRule: 'From CSV/Excel',
+      codeSource: 'csv',
     });
   });
 
