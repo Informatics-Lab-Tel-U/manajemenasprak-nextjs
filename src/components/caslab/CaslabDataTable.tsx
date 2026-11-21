@@ -15,6 +15,8 @@ import {
   Trash2,
   Check,
   X,
+  UserX,
+  UserCheck,
 } from 'lucide-react';
 import {
   Table,
@@ -50,6 +52,7 @@ interface CaslabDataTableProps {
   roomFilter?: string;
   onUpdateCandidate: (id: string, updated: Partial<CaslabCandidate>) => void;
   onRemoveCandidate: (id: string) => void;
+  onToggleDisableCandidate: (id: string) => void;
 }
 
 const TABLE_EDGE_PADDING =
@@ -64,6 +67,7 @@ export function CaslabDataTable({
   roomFilter = '',
   onUpdateCandidate,
   onRemoveCandidate,
+  onToggleDisableCandidate,
 }: CaslabDataTableProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editKode, setEditKode] = useState('');
@@ -219,9 +223,21 @@ export function CaslabDataTable({
       {
         accessorKey: 'nama_lengkap',
         header: 'Nama',
-        cell: ({ row }) => (
-          <span className="font-medium">{row.original.nama_lengkap}</span>
-        ),
+        cell: ({ row }) => {
+          const c = row.original;
+          return (
+            <div className="flex items-center gap-2">
+              <span className={c.disabled ? 'font-medium line-through text-muted-foreground' : 'font-medium'}>
+                {c.nama_lengkap}
+              </span>
+              {c.disabled && (
+                <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-destructive border-destructive/40">
+                  Nonaktif
+                </Badge>
+              )}
+            </div>
+          );
+        },
       },
       {
         id: 'actions',
@@ -246,6 +262,23 @@ export function CaslabDataTable({
               <Button
                 variant="outline"
                 size="icon-sm"
+                className={
+                  c.disabled
+                    ? 'border-emerald-500/40 text-emerald-600 hover:bg-emerald-500/10 hover:text-emerald-700'
+                    : 'border-muted-foreground/40 text-amber-600 hover:bg-amber-500/10 hover:text-amber-700'
+                }
+                onClick={() => onToggleDisableCandidate(c.id)}
+                title={
+                  c.disabled
+                    ? 'Aktifkan Peserta (tampilkan di Generator Kursi)'
+                    : 'Nonaktifkan Peserta (sembunyikan dari Generator Kursi)'
+                }
+              >
+                {c.disabled ? <UserCheck size={16} /> : <UserX size={16} />}
+              </Button>
+              <Button
+                variant="outline"
+                size="icon-sm"
                 className="border-muted-foreground/40 text-destructive hover:bg-destructive/10 hover:text-destructive dark:border-muted-foreground/40 dark:hover:bg-destructive/20"
                 onClick={() => onRemoveCandidate(c.id)}
                 title="Hapus"
@@ -257,7 +290,7 @@ export function CaslabDataTable({
         },
       },
     ],
-    [editingId, editKode]
+    [editingId, editKode, onToggleDisableCandidate, onRemoveCandidate]
   );
 
   const table = useReactTable({

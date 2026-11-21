@@ -12,6 +12,7 @@ export interface CaslabCandidate {
   kode: string; // 3 uppercase letters (e.g. "MAB")
   codeRule?: string;
   codeSource: 'csv' | 'generated' | 'manual';
+  disabled?: boolean; // excluded from plotting & generator-kursi display
 }
 
 export type SeatingMode = 'spaced' | 'dense';

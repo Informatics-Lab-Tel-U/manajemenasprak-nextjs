@@ -2,9 +2,9 @@
 
 import React, { useState } from 'react';
 import {
-  Wrench,
+  Ban,
   ArrowLeftRight,
-  Monitor,
+  RotateCcw,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -15,6 +15,7 @@ import type { CaslabRoomAllocation, CaslabSeat } from '@/types/caslab';
 interface CaslabRoomSeatGridProps {
   allocations: CaslabRoomAllocation[];
   onToggleDisabledSeat: (roomId: string, seatNumber: number) => void;
+  onResetDisabledSeats: (roomId: string) => void;
   onSwapSeats: (
     sourceRoomId: string,
     sourceSeatNum: number,
@@ -52,6 +53,7 @@ function getAsprakVariant(asprak: string): string {
 export function CaslabRoomSeatGrid({
   allocations,
   onToggleDisabledSeat,
+  onResetDisabledSeats,
   onSwapSeats,
 }: CaslabRoomSeatGridProps) {
   const [activeTab, setActiveTab] = useState<string>(allocations[0]?.room.id || 'room-1');
@@ -60,15 +62,52 @@ export function CaslabRoomSeatGrid({
     seatNumber: number;
     candidateName: string;
   } | null>(null);
+  const [dragSource, setDragSource] = useState<{ roomId: string; seatNumber: number } | null>(null);
+  const [dragOver, setDragOver] = useState<{ roomId: string; seatNumber: number } | null>(null);
 
   if (allocations.length === 0) return null;
+
+  const handleDragStart = (roomId: string, seatNumber: number) => {
+    setDragSource({ roomId, seatNumber });
+  };
+
+  const handleDragOver = (e: React.DragEvent, roomId: string, seatNumber: number) => {
+    e.preventDefault();
+    if (dragOver?.roomId !== roomId || dragOver?.seatNumber !== seatNumber) {
+      setDragOver({ roomId, seatNumber });
+    }
+  };
+
+  const handleDragLeave = (roomId: string, seatNumber: number) => {
+    if (dragOver?.roomId === roomId && dragOver?.seatNumber === seatNumber) {
+      setDragOver(null);
+    }
+  };
+
+  const handleDrop = (targetRoomId: string, targetSeatNumber: number) => {
+    if (
+      dragSource &&
+      (dragSource.roomId !== targetRoomId || dragSource.seatNumber !== targetSeatNumber)
+    ) {
+      onSwapSeats(dragSource.roomId, dragSource.seatNumber, targetRoomId, targetSeatNumber);
+      toast.success(`Posisi ditukar: Meja #${dragSource.seatNumber} ⇄ #${targetSeatNumber}.`);
+      setSelectedSeat(null);
+    }
+    setDragSource(null);
+    setDragOver(null);
+  };
+
+  const handleDragEnd = () => {
+    setDragSource(null);
+    setDragOver(null);
+  };
 
   const handleSeatClick = (
     roomId: string,
     seat: CaslabSeat
   ) => {
     if (seat.isDisabled) {
-      toast.info(`Meja #${seat.seatNumber} berstatus rusak.`);
+      toast.info(`Meja #${seat.seatNumber} sedang dinonaktifkan.`);
       return;
     }
 
@@ -181,22 +220,35 @@ export function CaslabRoomSeatGrid({
                         const isSelected =
                           selectedSeat?.roomId === alloc.room.id &&
                           selectedSeat?.seatNumber === seat.seatNumber;
+                        const isDragSource =
+                          dragSource?.roomId === alloc.room.id &&
+                          dragSource?.seatNumber === seat.seatNumber;
+                        const isDragOver =
+                          dragOver?.roomId === alloc.room.id &&
+                          dragOver?.seatNumber === seat.seatNumber;
 
                         return (
                           <div
                             key={seat.seatNumber}
                             onClick={() => handleSeatClick(alloc.room.id, seat)}
+                            draggable={Boolean(c) && !seat.isDisabled}
+                            onDragStart={() => handleDragStart(alloc.room.id, seat.seatNumber)}
+                            onDragOver={(e) => !seat.isDisabled && handleDragOver(e, alloc.room.id, seat.seatNumber)}
+                            onDragLeave={() => handleDragLeave(alloc.room.id, seat.seatNumber)}
+                            onDrop={() => !seat.isDisabled && handleDrop(alloc.room.id, seat.seatNumber)}
+                            onDragEnd={handleDragEnd}
                             className={[
                               'seat-row',
                               seat.isDisabled && 'disabled',
                               c ? 'occupied' : 'empty',
-                              isSelected && 'drag-over',
+                              isDragSource && 'dragging',
+                              (isSelected || isDragOver) && 'drag-over',
                             ]
                               .filter(Boolean)
                               .join(' ')}
                             title={
                               seat.isDisabled
-                                ? `Meja #${seat.seatNumber} (PC Rusak)`
+                                ? `Meja #${seat.seatNumber} (Nonaktif)`
                                 : c
                                 ? `Meja #${seat.seatNumber} - ${c.nama_lengkap} (${c.kode})`
                                 : `Meja #${seat.seatNumber} (Kosong)`
@@ -208,7 +260,7 @@ export function CaslabRoomSeatGrid({
                             {/* Nama & NIM */}
                             <span className="cell-nim">
                               {seat.isDisabled ? (
-                                <span className="text-sm text-destructive font-medium">PC Rusak</span>
+                                <span className="text-sm text-destructive font-medium">Nonaktif</span>
                               ) : seat.isSpacedEmpty && !c ? (
                                 <span className="text-sm text-muted-foreground italic">[ Jeda ]</span>
                               ) : !c ? (
@@ -234,14 +286,14 @@ export function CaslabRoomSeatGrid({
                               ) : (
                                 <button
                                   type="button"
-                                  title={seat.isDisabled ? 'Aktifkan Meja ini' : 'Tandai PC Rusak'}
+                                  title={seat.isDisabled ? 'Aktifkan Meja ini' : 'Nonaktifkan Meja ini'}
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     onToggleDisabledSeat(alloc.room.id, seat.seatNumber);
                                   }}
                                   className="text-muted-foreground/40 hover:text-foreground p-1 rounded transition-colors"
                                 >
-                                  <Wrench className="size-3.5" />
+                                  <Ban className="size-3.5" />
                                 </button>
                               )}
                             </span>
@@ -266,8 +318,20 @@ export function CaslabRoomSeatGrid({
                   </span>
                   <span className="flex items-center gap-1.5">
                     <span className="h-2.5 w-2.5 rounded-sm bg-destructive/30" />
-                    PC Rusak ({alloc.room.disabledSeats.length})
+                    Nonaktif ({alloc.room.disabledSeats.length})
                   </span>
+                  {alloc.room.disabledSeats.length > 0 && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => onResetDisabledSeats(alloc.room.id)}
+                      className="h-7 px-2 text-xs text-destructive hover:text-destructive gap-1"
+                    >
+                      <RotateCcw className="size-3" />
+                      Reset Kursi Nonaktif
+                    </Button>
+                  )}
                 </div>
 
                 <span>

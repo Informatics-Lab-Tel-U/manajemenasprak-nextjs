@@ -256,14 +256,29 @@ export function CaslabPlottingClient() {
       newSeatingMode: SeatingMode,
       newRooms: [CaslabRoomConfig, CaslabRoomConfig]
     ) => {
+      const sanitizedRooms: [CaslabRoomConfig, CaslabRoomConfig] = [
+        {
+          ...newRooms[0],
+          disabledSeats: newRooms[0].disabledSeats.filter(
+            (s) => s >= 1 && s <= newRooms[0].capacity
+          ),
+        },
+        {
+          ...newRooms[1],
+          disabledSeats: newRooms[1].disabledSeats.filter(
+            (s) => s >= 1 && s <= newRooms[1].capacity
+          ),
+        },
+      ];
+
       setNumRooms(newNumRooms);
       setSeatingMode(newSeatingMode);
-      setRooms(newRooms);
+      setRooms(sanitizedRooms);
 
       let newAllocations: CaslabRoomAllocation[] | undefined;
       // Re-apply shuffle with new settings if candidates exist
       if (candidates.length > 0) {
-        newAllocations = performUnifiedShuffle(candidates, newNumRooms, newRooms, newSeatingMode);
+        newAllocations = performUnifiedShuffle(candidates, newNumRooms, sanitizedRooms, newSeatingMode);
         setAllocations(newAllocations);
         const nextVersion = historyVersion + 1;
         setHistoryVersion(nextVersion);
@@ -276,7 +291,7 @@ export function CaslabPlottingClient() {
         {
           numRooms: newNumRooms,
           seatingMode: newSeatingMode,
-          rooms: newRooms,
+          rooms: sanitizedRooms,
           allocations: newAllocations ?? allocations,
           historyVersion: candidates.length > 0 ? historyVersion + 1 : historyVersion,
         },
@@ -329,7 +344,46 @@ export function CaslabPlottingClient() {
     [candidates, allocations, saveToDatabase]
   );
 
-  // Handle Toggle Disabled Seat (PC Rusak)
+  // Handle Toggle Candidate Disabled (exclude from plotting & generator-kursi)
+  const handleToggleCandidateDisabled = useCallback(
+    (id: string) => {
+      const target = candidates.find((c) => c.id === id);
+      if (!target) return;
+      const willBeDisabled = !target.disabled;
+
+      const nextCandidates = candidates.map((c) =>
+        c.id === id ? { ...c, disabled: willBeDisabled } : c
+      );
+
+      const nextAllocations = allocations.map((alloc) => {
+        const nextSeats = alloc.seats.map((s) =>
+          s.candidate?.id === id
+            ? { ...s, candidate: willBeDisabled ? null : { ...s.candidate, disabled: false } }
+            : s
+        );
+        const nextAssigned = nextSeats
+          .map((s) => s.candidate)
+          .filter((c): c is CaslabCandidate => c !== null);
+        return {
+          ...alloc,
+          seats: nextSeats,
+          assignedCandidates: nextAssigned,
+        };
+      });
+
+      setCandidates(nextCandidates);
+      setAllocations(nextAllocations);
+      saveToDatabase({ candidates: nextCandidates, allocations: nextAllocations }, true);
+      if (willBeDisabled) {
+        toast.warning(`${target.nama_lengkap} dinonaktifkan (tidak ditampilkan di Generator Kursi).`);
+      } else {
+        toast.success(`${target.nama_lengkap} diaktifkan kembali. Klik Acak Kursi untuk menempatkan ke denah.`);
+      }
+    },
+    [candidates, allocations, saveToDatabase]
+  );
+
+  // Handle Toggle Disabled Seat
   const handleToggleDisabledSeat = useCallback(
     (roomId: string, seatNumber: number) => {
       const nextRooms: [CaslabRoomConfig, CaslabRoomConfig] = [{ ...rooms[0] }, { ...rooms[1] }];
@@ -342,9 +396,53 @@ export function CaslabPlottingClient() {
         toast.success(`Meja #${seatNumber} diaktifkan kembali.`);
       } else {
         currentDisabled.add(seatNumber);
-        toast.warning(`Meja #${seatNumber} ditandai sebagai PC Rusak.`);
+        toast.warning(`Meja #${seatNumber} dinonaktifkan.`);
       }
       nextRooms[rIdx].disabledSeats = Array.from(currentDisabled);
+
+      const nextAllocations = allocations.map((alloc) => {
+        if (alloc.room.id !== roomId) return alloc;
+        const nextSeats = alloc.seats.map((seat) => {
+          if (seat.seatNumber !== seatNumber) return seat;
+          const willBeDisabled = !seat.isDisabled;
+          return {
+            ...seat,
+            isDisabled: willBeDisabled,
+            candidate: willBeDisabled ? null : seat.candidate,
+          };
+        });
+        const nextAssigned = nextSeats
+          .map((s) => s.candidate)
+          .filter((c): c is CaslabCandidate => c !== null);
+        return {
+          ...alloc,
+          room: {
+            ...alloc.room,
+            disabledSeats: nextRooms[rIdx].disabledSeats,
+          },
+          seats: nextSeats,
+          assignedCandidates: nextAssigned,
+        };
+      });
+
+      setRooms(nextRooms);
+      setAllocations(nextAllocations);
+      saveToDatabase({ rooms: nextRooms, allocations: nextAllocations }, true);
+    },
+    [rooms, allocations, saveToDatabase]
+  );
+
+  // Handle Reset All Disabled Seats in a Room
+  const handleResetDisabledSeats = useCallback(
+    (roomId: string) => {
+      const nextRooms: [CaslabRoomConfig, CaslabRoomConfig] = [{ ...rooms[0] }, { ...rooms[1] }];
+      const rIdx = nextRooms.findIndex((r) => r.id === roomId);
+      if (rIdx === -1) return;
+
+      const disabledCount = nextRooms[rIdx].disabledSeats.length;
+      if (disabledCount === 0) return;
+
+      nextRooms[rIdx].disabledSeats = [];
 
       const nextAllocations = allocations.map((alloc) => {
         if (alloc.room.id !== roomId) return alloc;
@@ -352,23 +450,19 @@ export function CaslabPlottingClient() {
           ...alloc,
           room: {
             ...alloc.room,
-            disabledSeats: nextRooms[rIdx].disabledSeats,
+            disabledSeats: [],
           },
-          seats: alloc.seats.map((seat) => {
-            if (seat.seatNumber !== seatNumber) return seat;
-            const willBeDisabled = !seat.isDisabled;
-            return {
-              ...seat,
-              isDisabled: willBeDisabled,
-              candidate: willBeDisabled ? null : seat.candidate,
-            };
-          }),
+          seats: alloc.seats.map((seat) => ({
+            ...seat,
+            isDisabled: false,
+          })),
         };
       });
 
       setRooms(nextRooms);
       setAllocations(nextAllocations);
       saveToDatabase({ rooms: nextRooms, allocations: nextAllocations }, true);
+      toast.success(`${disabledCount} kursi nonaktif di ${nextRooms[rIdx].name} berhasil direset.`);
     },
     [rooms, allocations, saveToDatabase]
   );
@@ -598,6 +692,7 @@ export function CaslabPlottingClient() {
             roomFilter={roomFilter}
             onUpdateCandidate={handleUpdateCandidate}
             onRemoveCandidate={handleRemoveCandidate}
+            onToggleDisableCandidate={handleToggleCandidateDisabled}
           />
         </TabsContent>
 
@@ -626,6 +721,7 @@ export function CaslabPlottingClient() {
             <CaslabRoomSeatGrid
               allocations={allocations}
               onToggleDisabledSeat={handleToggleDisabledSeat}
+              onResetDisabledSeats={handleResetDisabledSeats}
               onSwapSeats={handleSwapSeats}
             />
           )}
@@ -639,7 +735,7 @@ export function CaslabPlottingClient() {
         numRooms={numRooms}
         seatingMode={seatingMode}
         rooms={rooms}
-        candidateCount={candidates.length}
+        candidateCount={candidates.filter((c) => !c.disabled).length}
         onSave={handleSettingsSave}
       />
 

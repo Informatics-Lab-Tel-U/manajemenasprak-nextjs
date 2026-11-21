@@ -112,7 +112,9 @@ export function performUnifiedShuffle(
   roomConfigs: [CaslabRoomConfig, CaslabRoomConfig],
   seatingMode: SeatingMode
 ): CaslabRoomAllocation[] {
-  if (candidates.length === 0) {
+  const activeCandidates = candidates.filter((c) => !c.disabled);
+
+  if (activeCandidates.length === 0) {
     return roomConfigs.slice(0, numRooms).map((room) => ({
       room,
       seats: createEmptySeats(room.capacity, new Set(room.disabledSeats)),
@@ -120,8 +122,8 @@ export function performUnifiedShuffle(
     }));
   }
 
-  // 1. Single unified Fisher-Yates shuffle on the entire master pool
-  const shuffledCandidates = shuffleArray(candidates);
+  // 1. Single unified Fisher-Yates shuffle on the active master pool
+  const shuffledCandidates = shuffleArray(activeCandidates);
 
   const activeConfigs = roomConfigs.slice(0, numRooms);
   const allocations: CaslabRoomAllocation[] = [];

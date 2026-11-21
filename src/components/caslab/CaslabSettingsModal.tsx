@@ -21,7 +21,7 @@ import {
 } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, RotateCcw } from 'lucide-react';
 import type { CaslabRoomConfig, SeatingMode } from '@/types/caslab';
 
 interface CaslabSettingsModalProps {
@@ -123,11 +123,25 @@ export function CaslabSettingsModal({
 
           {/* Ruangan 1 */}
           <div className="rounded-md border p-3.5 space-y-3 bg-muted/20">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-2">
               <span className="text-sm font-medium">Ruangan 1</span>
-              <Badge variant="outline">
-                {room1.capacity - room1.disabledSeats.length} Kursi
-              </Badge>
+              <div className="flex items-center gap-1.5">
+                {room1.disabledSeats.length > 0 && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setRoom1({ ...room1, disabledSeats: [] })}
+                    className="h-6 px-2 text-xs text-destructive hover:text-destructive gap-1"
+                  >
+                    <RotateCcw className="size-3" />
+                    Reset ({room1.disabledSeats.length} nonaktif)
+                  </Button>
+                )}
+                <Badge variant="outline">
+                  {room1.capacity - room1.disabledSeats.length} Kursi
+                </Badge>
+              </div>
             </div>
             <div className="grid grid-cols-3 gap-2.5">
               <div className="col-span-2 space-y-1.5">
@@ -163,11 +177,25 @@ export function CaslabSettingsModal({
           {/* Ruangan 2 */}
           {numRooms === 2 && (
             <div className="rounded-md border p-3.5 space-y-3 bg-muted/20">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-2">
                 <span className="text-sm font-medium">Ruangan 2</span>
-                <Badge variant="outline">
-                  {room2.capacity - room2.disabledSeats.length} Kursi
-                </Badge>
+                <div className="flex items-center gap-1.5">
+                  {room2.disabledSeats.length > 0 && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setRoom2({ ...room2, disabledSeats: [] })}
+                      className="h-6 px-2 text-xs text-destructive hover:text-destructive gap-1"
+                    >
+                      <RotateCcw className="size-3" />
+                      Reset ({room2.disabledSeats.length} nonaktif)
+                    </Button>
+                  )}
+                  <Badge variant="outline">
+                    {room2.capacity - room2.disabledSeats.length} Kursi
+                  </Badge>
+                </div>
               </div>
               <div className="grid grid-cols-3 gap-2.5">
                 <div className="col-span-2 space-y-1.5">
