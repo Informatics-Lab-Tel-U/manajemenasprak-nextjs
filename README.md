@@ -47,10 +47,10 @@ This documentation provides comprehensive technical information about the **Sist
 
 <div style="min-width: 100%;">
 
-|                                             University                                             |                               Laboratorium                               |
-| :------------------------------------------------------------------------------------------------: | :----------------------------------------------------------------------: |
-| <img src="./docs/assets/Logo_Telkom_University_potrait.png" alt="Telkom University" width="110" /> | <img src="./docs/assets/iflab.png" alt="Informatics Lab" width="180"  /> |
-|                                       **Telkom University**                                        |                        **Informatics Laboratory**                        |
+|                                             University                                             |                               Laboratorium                               |                                   Platform                                    |
+| :------------------------------------------------------------------------------------------------: | :----------------------------------------------------------------------: | :---------------------------------------------------------------------------: |
+| <img src="./docs/assets/Logo_Telkom_University_potrait.png" alt="Telkom University" width="110" /> | <img src="./docs/assets/iflab.png" alt="Informatics Lab" width="180"  /> | <img src="./public/manas-logo.svg" alt="Manajemen Asprak" width="110" /> |
+|                                       **Telkom University**                                        |                        **Informatics Laboratory**                        |                            **Manajemen Asprak**                             |
 
 </div>
 
