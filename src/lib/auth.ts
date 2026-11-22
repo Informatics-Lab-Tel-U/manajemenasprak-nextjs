@@ -57,7 +57,7 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
     const meData = await meRes.json();
     const pengguna = meData.data?.pengguna;
 
-    if (!pengguna || pengguna.deleted_at) {
+    if (!pengguna || pengguna.deleted_at || (pengguna.status && pengguna.status !== 'ACTIVE')) {
       return null;
     }
 
@@ -91,6 +91,10 @@ export async function requireAuth(redirectTo = AUTH_CONFIG.paths.login): Promise
 
 export async function requireRole(allowedRoles: Role[], redirectTo = '/'): Promise<AuthUser> {
   const user = await requireAuth();
+  if (user.pengguna.deleted_at || (user.pengguna.status && user.pengguna.status !== 'ACTIVE')) {
+    redirect(AUTH_CONFIG.paths.login);
+  }
+
   if (!allowedRoles.includes(user.pengguna.role)) {
     logger.warn('Access denied', { userRole: user.pengguna.role, allowedRoles });
     redirect(redirectTo);
@@ -109,6 +113,13 @@ export async function requireRoleApi(
     return {
       ok: false,
       response: NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 }),
+    };
+  }
+
+  if (user.pengguna.deleted_at || (user.pengguna.status && user.pengguna.status !== 'ACTIVE')) {
+    return {
+      ok: false,
+      response: NextResponse.json({ ok: false, error: 'Akun tidak aktif.' }, { status: 403 }),
     };
   }
 

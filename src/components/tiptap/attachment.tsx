@@ -12,6 +12,20 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 
 const ONEDRIVE_CDN_ICON = 'https://cdn.jsdelivr.net/gh/glincker/thesvg@main/public/icons/microsoft-onedrive/default.svg';
 
+function sanitizeAttachmentUrl(rawUrl?: string | null): string {
+  const trimmed = rawUrl?.trim();
+  if (!trimmed || trimmed === '#') return '#';
+  if (trimmed.startsWith('/') && !trimmed.startsWith('//')) return trimmed;
+  try {
+    const parsed = new URL(trimmed);
+    if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+      return parsed.toString();
+    }
+  } catch {
+  }
+  return '#';
+}
+
 export const AttachmentNode = Node.create({
   name: 'attachment',
   group: 'block',
@@ -75,7 +89,9 @@ export const AttachmentNode = Node.create({
   renderHTML({ HTMLAttributes }) {
     const title = HTMLAttributes.title || HTMLAttributes['data-title'] || 'Lampiran Dokumen';
     const fileType = HTMLAttributes.fileType || HTMLAttributes['data-file-type'] || 'Document';
-    const downloadUrl = HTMLAttributes.downloadUrl || HTMLAttributes['data-download-url'] || '#';
+    const downloadUrl = sanitizeAttachmentUrl(
+      HTMLAttributes.downloadUrl || HTMLAttributes['data-download-url']
+    );
     const driveTypeAttr = HTMLAttributes.driveType || HTMLAttributes['data-drive-type'] || 'drive';
     const isOneDrive = driveTypeAttr === 'onedrive' ||
       downloadUrl.includes('onedrive') || downloadUrl.includes('1drv.ms') || downloadUrl.includes('sharepoint');
@@ -219,7 +235,7 @@ export function AttachmentNodeView(props: any) {
         {/* Right Single Customizable Action Button */}
         <div className="flex items-center gap-2 shrink-0">
           <a
-            href={downloadUrl || '#'}
+            href={sanitizeAttachmentUrl(downloadUrl)}
             target="_blank"
             rel="noopener noreferrer"
             className="px-3.5 py-1.5 rounded-lg bg-secondary hover:bg-secondary/80 text-secondary-foreground font-medium text-xs flex items-center gap-1.5 border border-border/60 transition-colors shadow-2xs"

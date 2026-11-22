@@ -1,17 +1,29 @@
 'use server';
 
+import { requireRoleApi } from '@/lib/auth';
+
 export async function generateFont(labId: string): Promise<string | null> {
   try {
+    const guard = await requireRoleApi(['ADMIN', 'ASLAB']);
+    if (!guard.ok) {
+      throw new Error('Unauthorized');
+    }
+
+    const internalApiKey = process.env.INTERNAL_API_KEY || '';
+    if (!internalApiKey) {
+      console.error('INTERNAL_API_KEY is not configured for fontService');
+      return null;
+    }
+
     const response = await fetch(
       `${process.env.HONO_BACKEND_URL || 'http://localhost:8787'}/api/fonts/generate`,
       {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-api-key': process.env.INTERNAL_API_KEY || process.env.PRAKTIKAN_GET_API_KEY || '',
-          'x-praktikan-api-key': process.env.INTERNAL_API_KEY || process.env.PRAKTIKAN_GET_API_KEY || ''
+          'x-api-key': internalApiKey,
         },
-        body: JSON.stringify({ lab_id: labId })
+        body: JSON.stringify({ lab_id: labId }),
       }
     );
 

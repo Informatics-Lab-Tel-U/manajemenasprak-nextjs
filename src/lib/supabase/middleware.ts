@@ -165,6 +165,28 @@ export async function updateSession(request: NextRequest) {
     if (!user || !pengguna) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+
+    const apiRole = pengguna?.role as Role | undefined;
+    const apiStatus = (pengguna?.status || 'ACTIVE') as 'PENDING' | 'ACTIVE' | 'REJECTED';
+
+    if (!apiRole || pengguna?.deleted_at || apiStatus !== 'ACTIVE') {
+      return NextResponse.json(
+        { error: 'Forbidden: Account is not active' },
+        { status: 403 }
+      );
+    }
+
+    const { data: apiAalData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+    if (
+      (apiAalData?.currentLevel === 'aal1' && apiAalData?.nextLevel === 'aal2') ||
+      (isMfaRequiredForUser(user, apiRole) && apiAalData?.currentLevel !== 'aal2')
+    ) {
+      return NextResponse.json(
+        { error: 'Forbidden: Two-Factor Authentication (AAL2) required' },
+        { status: 403 }
+      );
+    }
+
     // Simpan auth user ke header agar forwardToHono tidak perlu re-auth
     if (token) {
       const authUser = { id: user.id, email: user.email ?? '', token, pengguna };

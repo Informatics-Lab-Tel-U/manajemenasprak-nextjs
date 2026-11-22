@@ -154,7 +154,7 @@ export async function verifyTotp(factorId: string, code: string): Promise<{ succ
 
 /**
  * Menghapus/menonaktifkan factor TOTP.
- * Mencoba unenroll standar terlebih dahulu, dengan fallback ke admin client jika sesi belum AAL2.
+ * Mewajibkan sesi AAL2 untuk menghapus factor yang sudah terverifikasi (mencegah bypass 2FA dari sesi AAL1).
  */
 export async function unenrollTotp(factorId: string): Promise<{ success: boolean; error?: string }> {
   try {
@@ -164,20 +164,23 @@ export async function unenrollTotp(factorId: string): Promise<{ success: boolean
       return { success: false, error: 'Sesi pengguna tidak valid' };
     }
 
+    const { data: aalData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+    const { data: factorData } = await supabase.auth.mfa.listFactors();
+    const targetFactor = factorData?.totp?.find((f) => f.id === factorId);
+
+    if (targetFactor?.status === 'verified' && aalData?.currentLevel !== 'aal2') {
+      return {
+        success: false,
+        error: 'Verifikasi 2FA (AAL2) diperlukan untuk menonaktifkan 2FA.',
+      };
+    }
+
     const { error } = await supabase.auth.mfa.unenroll({
       factorId,
     });
 
     if (error) {
-      // Fallback ke admin client jika unenroll gagal karena batasan AAL
-      const admin = createAdminClient();
-      const { error: adminError } = await admin.auth.admin.mfa.deleteFactor({
-        id: factorId,
-        userId: user.id,
-      });
-      if (adminError) {
-        return { success: false, error: adminError.message };
-      }
+      return { success: false, error: error.message };
     }
 
     return { success: true };
