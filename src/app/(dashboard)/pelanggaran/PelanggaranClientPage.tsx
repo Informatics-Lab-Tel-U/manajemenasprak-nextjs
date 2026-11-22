@@ -1,18 +1,13 @@
 'use client';
 
-/* eslint-disable react-doctor/no-chain-state-updates, react-doctor/no-cascading-set-state, react-doctor/no-effect-chain, react-doctor/rendering-hydration-no-flicker */
-
 import * as React from 'react';
-import { useRouter } from 'next/navigation';
-import { CheckCircle2, ArrowRight, Filter } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Card, CardHeader, CardTitle, CardDescription, CardAction, CardFooter } from '@/components/ui/card';
+import Link from 'next/link';
+import { CheckCircle2, ChevronRight, Filter } from 'lucide-react';
 
-
-import type { Praktikum } from '@/types/database';
-import { usePelanggaran } from '@/hooks/usePelanggaran';
 import { PelanggaranCardSkeleton } from '@/components/pelanggaran/PelanggaranCardSkeleton';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { usePelanggaran } from '@/hooks/usePelanggaran';
+import type { Praktikum } from '@/types/database';
 
 interface Props {
   initialPraktikumList: Praktikum[];
@@ -29,29 +24,29 @@ export default function PelanggaranClientPage({
   isKoor,
   userId,
 }: Props) {
-  const router = useRouter();
-  const initialData = React.useMemo(() => ({
-    praktikumList: initialPraktikumList,
-    tahunAjaranList: initialTahunAjaranList,
-    countMap: initialCountMap,
-  }), [initialPraktikumList, initialTahunAjaranList, initialCountMap]);
+  const initialData = React.useMemo(
+    () => ({
+      praktikumList: initialPraktikumList,
+      tahunAjaranList: initialTahunAjaranList,
+      countMap: initialCountMap,
+    }),
+    [initialPraktikumList, initialTahunAjaranList, initialCountMap]
+  );
 
   const {
     praktikumList,
-    tahunAjaranList,
     selectedTahun: filterTahun,
     countMap,
     loading,
   } = usePelanggaran(initialTahunAjaranList[0], isKoor, userId, initialData);
 
-  const [mounted, setMounted] = React.useState(false);
-  React.useEffect(() => {
-    setMounted(true);
-  }, []);
+  const mounted = React.useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false
+  );
 
-  // Hook data is now pre-initialized with initial props
   const displayedPraktikum = praktikumList;
-  const displayedTahunList = tahunAjaranList;
   const displayedCountMap = countMap;
 
   const currentTahun = (mounted ? filterTahun : null) || initialTahunAjaranList[0] || '';
@@ -61,7 +56,6 @@ export default function PelanggaranClientPage({
       currentTahun
         ? displayedPraktikum.filter((p) => p.tahun_ajaran === currentTahun)
         : displayedPraktikum,
-    // eslint-disable-next-line react-doctor/exhaustive-deps
     [displayedPraktikum, currentTahun]
   );
 
@@ -70,32 +64,44 @@ export default function PelanggaranClientPage({
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
         <div>
-          <h1 className="text-2xl 2xl:text-3xl font-bold tracking-tight">Log Pelanggaran</h1>
-          <p className="text-sm 2xl:text-base text-muted-foreground mt-1">
+          <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-foreground">
+            Log Pelanggaran
+          </h1>
+          <p className="text-sm text-muted-foreground mt-0.5">
             Log pelanggaran asisten praktikum per praktikum
           </p>
         </div>
 
         {/* Filter Tahun */}
-        <div className="flex items-center gap-3 w-full sm:w-auto">
-          <Filter className="h-4 w-4 text-muted-foreground hidden sm:block" />
-          <span className="text-sm font-medium text-muted-foreground hidden sm:block">
+        <div className="flex items-center gap-2.5 w-full sm:w-auto">
+          <Filter className="size-4 text-muted-foreground hidden sm:block" aria-hidden="true" />
+          <span className="text-sm font-medium text-muted-foreground hidden sm:block tabular-nums">
             {currentTahun ? `Tahun Ajaran Aktif: ${currentTahun}` : 'Memuat Tahun Ajaran...'}
           </span>
           {loading && (
-            <div className="h-4 w-4 rounded-full border-2 border-primary border-t-transparent animate-spin ml-2" />
+            <div
+              role="status"
+              aria-label="Memuat data pelanggaran"
+              className="size-4 rounded-full border-2 border-foreground border-t-transparent animate-spin ml-1"
+            />
           )}
         </div>
       </div>
 
       {loading && filteredPraktikum.length === 0 ? (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 min-[2000px]:grid-cols-5">
+        <div
+          aria-busy="true"
+          className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 min-[2000px]:grid-cols-5"
+        >
+          <span className="sr-only">Memuat daftar log pelanggaran</span>
           {Array.from({ length: 12 }).map((_, i) => (
             <PelanggaranCardSkeleton key={i} />
           ))}
         </div>
       ) : filteredPraktikum.length === 0 ? (
-        <p className="text-muted-foreground text-sm text-center py-16">Tidak ada data praktikum.</p>
+        <div className="rounded-lg border border-dashed border-border bg-transparent py-16 text-center">
+          <p className="text-muted-foreground text-sm">Tidak ada data praktikum.</p>
+        </div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 min-[2000px]:grid-cols-5">
           {filteredPraktikum.map((p) => {
@@ -104,45 +110,59 @@ export default function PelanggaranClientPage({
               allFinal: false,
               finalized: false,
             };
-            return (
-              <Card
-                key={p.id}
-                className="@container/card bg-card shadow-sm hover:shadow-md transition-shadow cursor-pointer group flex flex-col"
-                onClick={() => router.push(`/pelanggaran/${p.id}`)}
-              >
-                <CardHeader>
-                  <CardDescription>Praktikum</CardDescription>
-                  <CardTitle className="text-xl font-bold line-clamp-2 leading-tight transition-colors" title={p.nama}>
-                    {p.nama}
-                  </CardTitle>
-                  <CardAction className="flex flex-col gap-2 items-end">
-                    <Badge variant="outline" className="text-foreground/80">
-                      Term {p.tahun_ajaran}
-                    </Badge>
-                    {info.finalized && (
-                      <Badge className="gap-1 bg-primary/10 text-primary border-primary/20 dark:bg-primary/20 dark:text-primary-foreground/90 dark:border-primary/30 shadow-sm">
-                        <CheckCircle2 className="h-3 w-3" />
-                        Terfinalisasi
-                      </Badge>
-                    )}
-                  </CardAction>
-                </CardHeader>
+            const hasLogs = info.total > 0;
 
-                <CardFooter className="mt-auto flex items-center justify-between pt-4 border-t border-border/50">
-                  <div className="flex flex-col gap-0.5">
-                    <span className="text-xs text-muted-foreground">Total Pelanggaran</span>
-                    <span className="text-sm font-semibold text-foreground">{info.total} Log</span>
-                  </div>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="gap-1.5 text-muted-foreground group-hover:text-foreground transition-colors"
-                  >
-                    Lihat
-                    <ArrowRight className="h-3.5 w-3.5" />
-                  </Button>
-                </CardFooter>
-              </Card>
+            return (
+              <Link
+                key={p.id}
+                href={`/pelanggaran/${p.id}`}
+                prefetch={false}
+                className="group block h-full rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              >
+                <Card className="h-full justify-between bg-transparent border border-border shadow-none py-5 gap-3 transition-colors group-hover:border-foreground/25 group-focus-visible:border-foreground/40">
+                  <CardHeader className="flex flex-row items-start justify-between gap-3 px-5">
+                    <CardTitle
+                      className="text-sm font-medium text-foreground line-clamp-2 leading-snug"
+                      title={p.nama}
+                    >
+                      {p.nama}
+                    </CardTitle>
+
+                    {info.finalized ? (
+                      <span className="inline-flex items-center gap-1 text-xs font-medium text-green-700 dark:text-green-400 shrink-0">
+                        <CheckCircle2 className="size-3.5" aria-hidden="true" />
+                        Final
+                      </span>
+                    ) : (
+                      <ChevronRight
+                        className="size-4 text-muted-foreground group-hover:text-foreground transition-colors shrink-0 mt-0.5"
+                        aria-hidden="true"
+                      />
+                    )}
+                  </CardHeader>
+
+                  <CardContent className="px-5 space-y-1.5">
+                    <div className="flex items-baseline gap-1.5">
+                      <span
+                        className={`text-2xl sm:text-3xl font-semibold tracking-tight tabular-nums ${
+                          hasLogs ? 'text-foreground' : 'text-muted-foreground'
+                        }`}
+                      >
+                        {info.total}
+                      </span>
+                      <span className="text-xs text-muted-foreground">log</span>
+                    </div>
+
+                    <p className="text-xs text-muted-foreground">
+                      {info.finalized
+                        ? 'Semua catatan sudah difinalisasi'
+                        : hasLogs
+                          ? 'Menunggu tinjauan dan finalisasi'
+                          : 'Belum ada pelanggaran tercatat'}
+                    </p>
+                  </CardContent>
+                </Card>
+              </Link>
             );
           })}
         </div>

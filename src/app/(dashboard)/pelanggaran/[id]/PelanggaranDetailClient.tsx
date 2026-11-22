@@ -1,8 +1,7 @@
 'use client';
 
-/* eslint-disable react-doctor/no-chain-state-updates, react-doctor/no-cascading-set-state, react-doctor/no-effect-chain, react-doctor/rendering-hydration-no-flicker */
-
 import * as React from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
   ArrowLeft,
@@ -13,44 +12,25 @@ import {
   Download,
   Lock,
   Plus,
+  RotateCcw,
   Search,
   Trash2,
-  RotateCcw,
+  X,
 } from 'lucide-react';
 import {
-  useReactTable,
+  flexRender,
   getCoreRowModel,
+  getFilteredRowModel,
   getPaginationRowModel,
   getSortedRowModel,
-  getFilteredRowModel,
-  flexRender,
+  useReactTable,
   type ColumnDef,
-  type SortingState,
   type ColumnFiltersState,
+  type SortingState,
 } from '@tanstack/react-table';
 import { toast } from 'sonner';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
+
 import PelanggaranAddModal from '@/components/pelanggaran/PelanggaranAddModal';
-import { Skeleton } from '@/components/ui/skeleton';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-  SelectGroup,
-  SelectLabel,
-} from '@/components/ui/select';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -61,13 +41,32 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import type { Pelanggaran, Praktikum } from '@/types/database';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Skeleton } from '@/components/ui/skeleton';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import type { Role } from '@/config/rbac';
-
 import { usePelanggaranDetail } from '@/hooks/usePelanggaran';
 import { useTermStore } from '@/store/useTermStore';
+import type { Pelanggaran, Praktikum } from '@/types/database';
 
-// Lebih lega dari px-2 default di sisi tepi tabel, supaya kolom pertama dan terakhir tidak menempel ke border.
 const TABLE_EDGE_PADDING =
   '[&_th:first-child]:pl-4 [&_td:first-child]:pl-4 [&_th:last-child]:pr-4 [&_td:last-child]:pr-4';
 
@@ -88,8 +87,8 @@ function buildRecap(violations: Pelanggaran[]) {
     if (!id) continue;
     if (!map.has(id)) {
       map.set(id, {
-        kode: v.asprak?.kode ?? '—',
-        nama: v.asprak?.nama_lengkap ?? '—',
+        kode: v.asprak?.kode ?? '-',
+        nama: v.asprak?.nama_lengkap ?? '-',
         counts: {},
         total: 0,
       });
@@ -104,12 +103,13 @@ function buildRecap(violations: Pelanggaran[]) {
 function SortHeader({ column, label }: { column: any; label: string }) {
   return (
     <Button
+      type="button"
       variant="ghost"
       onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-      className="-ml-3 gap-1 px-3"
+      className="-ml-3 gap-1.5 px-3 text-xs font-medium text-muted-foreground hover:text-foreground"
     >
       {label}
-      <ArrowUpDown className="h-3 w-3" />
+      <ArrowUpDown className="size-3" aria-hidden="true" />
     </Button>
   );
 }
@@ -129,7 +129,7 @@ export default function PelanggaranDetailClient({
     loading,
     isModalDepsLoading,
     loadModalDependencies,
-    error: _error,
+    error,
     isFinalized,
     selectedModul,
     setSelectedModul,
@@ -141,7 +141,6 @@ export default function PelanggaranDetailClient({
     unfinalizeModul,
   } = usePelanggaranDetail(idPraktikum, initialViolations, initialPraktikum);
 
-  // Use praktikum from hook (which includes the one from props as initial state)
   const praktikum = hookPraktikum || initialPraktikum;
 
   const [sorting, setSorting] = React.useState<SortingState>([]);
@@ -157,10 +156,11 @@ export default function PelanggaranDetailClient({
   const canFinalize =
     (role === 'ADMIN' || role === 'ASLAB' || role === 'ASPRAK_KOOR') && !isFinalized;
 
-  const [mounted, setMounted] = React.useState(false);
-  React.useEffect(() => {
-    setMounted(true);
-  }, []);
+  const mounted = React.useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false
+  );
 
   const { activeTerm, setActiveTerm } = useTermStore();
   const hasSyncedTermRef = React.useRef(false);
@@ -169,17 +169,13 @@ export default function PelanggaranDetailClient({
     if (!praktikum?.tahun_ajaran) return;
 
     if (!hasSyncedTermRef.current) {
-      // First load: force global term to match this detail page
       if (activeTerm !== praktikum.tahun_ajaran) {
         setActiveTerm(praktikum.tahun_ajaran);
       }
       hasSyncedTermRef.current = true;
-    } else {
-      if (activeTerm !== praktikum.tahun_ajaran) {
-        toast.info('Tahun ajaran diubah, mengalihkan ke daftar pelanggaran...');
-        // eslint-disable-next-line react-doctor/nextjs-no-client-side-redirect
-        router.push('/pelanggaran');
-      }
+    } else if (activeTerm !== praktikum.tahun_ajaran) {
+      toast.info('Tahun ajaran diubah, mengalihkan ke daftar pelanggaran...');
+      router.push('/pelanggaran');
     }
   }, [activeTerm, praktikum?.tahun_ajaran, router, setActiveTerm]);
 
@@ -193,7 +189,7 @@ export default function PelanggaranDetailClient({
         accessorKey: 'created_at',
         header: ({ column }) => <SortHeader column={column} label="Tanggal" />,
         cell: ({ row }) => (
-          <span className="text-sm text-muted-foreground whitespace-nowrap">
+          <span className="text-sm text-muted-foreground whitespace-nowrap tabular-nums">
             {new Date(row.original.created_at).toLocaleDateString('id-ID', {
               day: 'numeric',
               month: 'short',
@@ -208,9 +204,9 @@ export default function PelanggaranDetailClient({
         header: ({ column }) => <SortHeader column={column} label="Asprak" />,
         cell: ({ row: { original: v } }) => (
           <div>
-            <div className="font-medium">{v.asprak?.nama_lengkap ?? '—'}</div>
-            <div className="text-xs text-muted-foreground">
-              {v.asprak?.kode} · {v.asprak?.nim}
+            <div className="font-medium text-foreground">{v.asprak?.nama_lengkap ?? '-'}</div>
+            <div className="text-xs text-muted-foreground tabular-nums">
+              {v.asprak?.kode ?? '-'} · {v.asprak?.nim ?? '-'}
             </div>
           </div>
         ),
@@ -220,9 +216,9 @@ export default function PelanggaranDetailClient({
         header: 'Mata Kuliah / Kelas',
         cell: ({ row: { original: v } }) => (
           <div>
-            <div>{v.jadwal?.mata_kuliah?.nama_lengkap ?? '—'}</div>
+            <div className="text-foreground">{v.jadwal?.mata_kuliah?.nama_lengkap ?? '-'}</div>
             <div className="text-xs text-muted-foreground">
-              Kelas {v.jadwal?.kelas} · {v.jadwal?.hari}
+              Kelas {v.jadwal?.kelas ?? '-'} · {v.jadwal?.hari ?? '-'}
             </div>
           </div>
         ),
@@ -230,13 +226,17 @@ export default function PelanggaranDetailClient({
       {
         accessorKey: 'modul',
         header: 'Modul',
-        cell: ({ row }) => <span>{row.original.modul ? `Modul ${row.original.modul}` : '—'}</span>,
+        cell: ({ row }) => (
+          <span className="tabular-nums text-sm">
+            {row.original.modul ? `Modul ${row.original.modul}` : '-'}
+          </span>
+        ),
       },
       {
         accessorKey: 'jenis',
         header: ({ column }) => <SortHeader column={column} label="Jenis" />,
         cell: ({ row }) => (
-          <Badge variant="outline" className="px-1.5 text-muted-foreground">
+          <Badge variant="outline" className="bg-transparent px-2 text-muted-foreground">
             {row.original.jenis}
           </Badge>
         ),
@@ -247,25 +247,27 @@ export default function PelanggaranDetailClient({
         cell: ({ row: { original: v } }) => (
           <div className="flex items-center justify-end gap-2">
             {isFinalized ? (
-              <Badge variant="outline" className="gap-1 px-1.5 text-muted-foreground">
-                <CheckCircle2 className="text-green-600 dark:text-green-400" /> Final
-              </Badge>
+              <span className="inline-flex items-center gap-1 text-xs font-medium text-green-700 dark:text-green-400">
+                <CheckCircle2 className="size-3.5" aria-hidden="true" />
+                Final
+              </span>
             ) : (
               <Button
+                type="button"
                 variant="outline"
                 size="icon-sm"
-                className="border-muted-foreground/40 text-destructive hover:bg-destructive/10 hover:text-destructive dark:border-muted-foreground/40 dark:hover:bg-destructive/20"
+                className="bg-transparent border-border text-destructive hover:bg-destructive/10 hover:border-destructive/50 hover:text-destructive dark:hover:bg-destructive/20"
                 onClick={() => setViolationToDelete(v.id)}
+                aria-label={`Hapus pelanggaran ${v.asprak?.nama_lengkap ?? ''}`}
               >
-                <Trash2 className="h-4 w-4" />
-                <span className="sr-only">Hapus</span>
+                <Trash2 className="size-4" aria-hidden="true" />
               </Button>
             )}
           </div>
         ),
       },
     ],
-    [isFinalized, setViolationToDelete]
+    [isFinalized]
   );
 
   const table = useReactTable({
@@ -289,6 +291,8 @@ export default function PelanggaranDetailClient({
     return Array.from(set).sort();
   }, [violations]);
 
+  const searchValue = (table.getColumn('asprak')?.getFilterValue() as string) ?? '';
+
   async function handleAddViolation(data: {
     id_asprak: string[];
     id_jadwal: string;
@@ -302,8 +306,8 @@ export default function PelanggaranDetailClient({
 
       toast.success(
         data.id_asprak.length > 1
-          ? `${data.id_asprak.length} pelanggaran berhasil dicatat!`
-          : 'Pelanggaran berhasil dicatat!'
+          ? `${data.id_asprak.length} pelanggaran berhasil dicatat`
+          : 'Pelanggaran berhasil dicatat'
       );
       setIsAddOpen(false);
       refresh();
@@ -363,13 +367,13 @@ export default function PelanggaranDetailClient({
 
   if (!mounted) {
     return (
-      <div className="container mx-auto max-w-[2000px] 2xl:px-8 space-y-8">
+      <div className="container mx-auto max-w-[2000px] 2xl:px-8 space-y-6">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <Skeleton className="h-10 w-10 rounded-md" />
-            <div className="space-y-2">
-              <Skeleton className="h-8 w-48" />
-              <Skeleton className="h-4 w-64" />
+          <div className="flex items-center gap-3">
+            <Skeleton className="size-9 rounded-md" />
+            <div className="space-y-1.5">
+              <Skeleton className="h-7 w-48" />
+              <Skeleton className="h-4 w-32" />
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -379,14 +383,14 @@ export default function PelanggaranDetailClient({
         </div>
         <div className="space-y-4">
           <Skeleton className="h-4 w-32" />
-          <Skeleton className="h-[300px] w-full" />
+          <Skeleton className="h-[300px] w-full rounded-lg" />
         </div>
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto max-w-[2000px] 2xl:px-8 space-y-8">
+    <div className="container mx-auto max-w-[2000px] 2xl:px-8 space-y-6 pb-8">
       {/* Delete confirmation dialog */}
       <AlertDialog
         open={!!violationToDelete}
@@ -412,37 +416,46 @@ export default function PelanggaranDetailClient({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3 min-w-0">
           <Button
-            variant="ghost"
+            asChild
+            variant="outline"
             size="icon"
-            onClick={() => router.push('/pelanggaran')}
-            className="hover:bg-accent/50"
+            className="min-h-11 min-w-11 sm:min-h-9 sm:min-w-9 shrink-0 bg-transparent border-border hover:bg-accent/50"
           >
-            <ArrowLeft className="h-5 w-5" />
+            <Link prefetch={false} href="/pelanggaran" aria-label="Kembali ke daftar pelanggaran">
+              <ArrowLeft className="size-4" aria-hidden="true" />
+            </Link>
           </Button>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-2xl 2xl:text-3xl font-bold tracking-tight">
+          <div className="min-w-0 space-y-0.5">
+            <div className="flex flex-wrap items-center gap-2.5">
+              <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-foreground truncate">
                 {praktikum?.nama ?? 'Detail Praktikum'}
               </h1>
               {isFinalized && (
-                <Badge variant="outline" className="gap-1 px-1.5 text-muted-foreground">
-                  <CheckCircle2 className="text-green-600 dark:text-green-400" />
-                  Finalized
-                </Badge>
+                <span className="inline-flex items-center gap-1 text-xs font-medium text-green-700 dark:text-green-400">
+                  <CheckCircle2 className="size-3.5" aria-hidden="true" />
+                  Final
+                </span>
               )}
             </div>
-
+            {praktikum?.tahun_ajaran && (
+              <p className="text-xs text-muted-foreground tabular-nums">
+                Term {praktikum.tahun_ajaran} · Modul {selectedModul}
+              </p>
+            )}
           </div>
         </div>
 
         <div className="flex flex-wrap gap-2 items-center w-full md:w-auto">
-          {/* Module Selector */}
           <Select value={selectedModul} onValueChange={setSelectedModul}>
-            <SelectTrigger className="w-full sm:w-[180px]">
+            <SelectTrigger
+              aria-label="Pilih modul"
+              className="w-full sm:w-[180px] min-h-11 sm:min-h-9 bg-transparent border-border"
+            >
               <SelectValue placeholder="Pilih Modul" />
             </SelectTrigger>
             <SelectContent>
@@ -455,7 +468,9 @@ export default function PelanggaranDetailClient({
                     <SelectItem key={m} value={String(m)}>
                       <div className="flex items-center gap-2">
                         <span>Modul {m}</span>
-                        {isModulFinal && <Lock className="h-3 w-3 text-muted-foreground" />}
+                        {isModulFinal && (
+                          <Lock className="size-3 text-muted-foreground" aria-hidden="true" />
+                        )}
                       </div>
                     </SelectItem>
                   );
@@ -466,87 +481,114 @@ export default function PelanggaranDetailClient({
 
           {!isFinalized && (
             <Button
+              type="button"
               onClick={() => {
                 loadModalDependencies();
                 setIsAddOpen(true);
               }}
               onMouseEnter={() => loadModalDependencies()}
               size="sm"
-              className="h-9 gap-2 shadow-sm flex-1 sm:flex-none min-w-0"
+              className="min-h-11 sm:min-h-9 gap-2 flex-1 sm:flex-none min-w-0"
               disabled={loading}
             >
-              <Plus className="h-4 w-4 flex-shrink-0" />
-              <span className="hidden sm:inline truncate">Catat Pelanggaran</span>
+              <Plus className="size-4 shrink-0" aria-hidden="true" />
+              <span className="truncate">Catat Pelanggaran</span>
             </Button>
           )}
 
           {canFinalize && (
             <Button
+              type="button"
               onClick={() => setShowFinalize(true)}
               size="sm"
-              variant="destructive"
-              className="h-9 gap-2 flex-1 sm:flex-none min-w-0"
+              variant="destructive-outline"
+              className="min-h-11 sm:min-h-9 gap-2 flex-1 sm:flex-none min-w-0"
               disabled={loading}
             >
-              <CheckCircle2 className="h-4 w-4 flex-shrink-0" />
-              <span className="hidden sm:inline truncate">Finalisasi Modul {selectedModul}</span>
+              <CheckCircle2 className="size-4 shrink-0" aria-hidden="true" />
+              <span className="truncate">Finalisasi Modul {selectedModul}</span>
             </Button>
           )}
 
           {isFinalized && role === 'ADMIN' && (
             <Button
+              type="button"
               onClick={() => setShowUnfinalize(true)}
               size="sm"
               variant="outline"
-              className="h-9 gap-2 flex-1 sm:flex-none min-w-0 text-amber-600 border-amber-200 hover:bg-amber-50 hover:text-amber-700"
+              className="min-h-11 sm:min-h-9 gap-2 flex-1 sm:flex-none min-w-0 bg-transparent border-amber-500/40 text-amber-700 dark:text-amber-400 hover:bg-amber-500/10"
               disabled={loading}
             >
-              <RotateCcw className="h-4 w-4 flex-shrink-0" />
-              <span className="hidden sm:inline truncate">Reset Finalisasi</span>
+              <RotateCcw className="size-4 shrink-0" aria-hidden="true" />
+              <span className="truncate">Reset Finalisasi</span>
             </Button>
           )}
 
           <Button
+            type="button"
             variant="outline"
             size="sm"
             onClick={handleExport}
-            className="h-9 gap-2 flex-1 sm:flex-none min-w-0 border-primary/20 hover:border-primary/40"
+            className="min-h-11 sm:min-h-9 gap-2 flex-1 sm:flex-none min-w-0 bg-transparent border-border hover:bg-accent/50"
             disabled={loading || violations.length === 0}
           >
-            <Download className="h-4 w-4 flex-shrink-0" />
-            <span className="hidden sm:inline">Export</span>
+            <Download className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+            <span>Ekspor</span>
           </Button>
         </div>
       </div>
 
-      {/* Search filter */}
-      <div className="flex items-center justify-between">
-        <div className="relative w-full sm:max-w-sm">
-          <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="Cari nama / kode asprak..."
-            value={(table.getColumn('asprak')?.getFilterValue() as string) ?? ''}
-            onChange={(e) => table.getColumn('asprak')?.setFilterValue(e.target.value)}
-            className="pl-8"
-          />
+      {error && (
+        <div
+          role="alert"
+          className="rounded-lg border border-destructive/40 bg-transparent px-4 py-3 text-sm text-destructive"
+        >
+          Gagal memuat data pelanggaran: {error}
         </div>
-        <div className="flex items-center gap-2">
-          {loading && (
-            <div className="h-4 w-4 rounded-full border-2 border-primary border-t-transparent animate-spin mr-2" />
+      )}
+
+      {/* Search filter */}
+      <div className="flex items-center justify-between gap-3">
+        <div className="relative w-full sm:max-w-sm">
+          <Search
+            className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
+            aria-hidden="true"
+          />
+          <Input
+            placeholder="Cari nama atau kode asprak..."
+            aria-label="Cari nama atau kode asprak"
+            value={searchValue}
+            onChange={(e) => table.getColumn('asprak')?.setFilterValue(e.target.value)}
+            className="pl-9 pr-9 min-h-11 sm:min-h-9 bg-transparent border-border"
+          />
+          {searchValue.trim().length > 0 && (
+            <button
+              type="button"
+              onClick={() => table.getColumn('asprak')?.setFilterValue('')}
+              aria-label="Hapus pencarian asprak"
+              className="absolute right-1 top-1/2 -translate-y-1/2 inline-flex size-8 items-center justify-center rounded-md text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <X className="size-4" />
+            </button>
           )}
         </div>
+        {loading && (
+          <div
+            role="status"
+            aria-label="Memuat data pelanggaran"
+            className="size-4 rounded-full border-2 border-foreground border-t-transparent animate-spin shrink-0"
+          />
+        )}
       </div>
 
       {/* Dual table layout */}
       <div className="space-y-6">
-        {/* === Violation Log Table === */}
-        <div>
-          <h2 className="text-sm 2xl:text-base font-semibold mb-3 text-muted-foreground uppercase tracking-wide">
-            Log Pelanggaran
-          </h2>
-          <div className="overflow-hidden rounded-md border">
+        {/* Violation Log Table */}
+        <div className="space-y-3">
+          <h2 className="text-sm font-semibold text-foreground">Log Pelanggaran</h2>
+          <div className="overflow-x-auto rounded-lg border border-border bg-transparent">
             <Table className={`2xl:text-base ${TABLE_EDGE_PADDING}`}>
-              <TableHeader className="bg-muted">
+              <TableHeader className="bg-muted/30">
                 {table.getHeaderGroups().map((hg) => (
                   <TableRow key={hg.id}>
                     {hg.headers.map((h) => (
@@ -565,7 +607,7 @@ export default function PelanggaranDetailClient({
               <TableBody>
                 {table.getRowModel().rows.length ? (
                   table.getRowModel().rows.map((row) => (
-                    <TableRow key={row.id}>
+                    <TableRow key={row.id} className="hover:bg-muted/20">
                       {row.getVisibleCells().map((cell) => (
                         <TableCell key={cell.id}>
                           {flexRender(cell.column.columnDef.cell, cell.getContext())}
@@ -574,7 +616,7 @@ export default function PelanggaranDetailClient({
                     </TableRow>
                   ))
                 ) : loading ? (
-                  Array.from({ length: 10 }).map((_, i) => (
+                  Array.from({ length: 8 }).map((_, i) => (
                     <TableRow key={i}>
                       <TableCell>
                         <Skeleton className="h-4 w-20" />
@@ -597,8 +639,8 @@ export default function PelanggaranDetailClient({
                       <TableCell>
                         <Skeleton className="h-5 w-24 rounded-full" />
                       </TableCell>
-                      <TableCell>
-                        <Skeleton className="h-8 w-8 rounded-md" />
+                      <TableCell className="text-right">
+                        <Skeleton className="ml-auto size-8 rounded-md" />
                       </TableCell>
                     </TableRow>
                   ))
@@ -608,7 +650,9 @@ export default function PelanggaranDetailClient({
                       colSpan={columns.length}
                       className="h-24 text-center text-muted-foreground"
                     >
-                      Belum ada pelanggaran.
+                      {searchValue.trim()
+                        ? `Tidak ada catatan untuk "${searchValue.trim()}".`
+                        : `Belum ada pelanggaran pada Modul ${selectedModul}.`}
                     </TableCell>
                   </TableRow>
                 )}
@@ -617,40 +661,42 @@ export default function PelanggaranDetailClient({
           </div>
 
           {/* Pagination */}
-          <div className="flex items-center justify-end space-x-2 py-4">
-            <div className="text-sm font-medium">
+          <div className="flex items-center justify-end gap-2 pt-1">
+            <div className="text-xs sm:text-sm font-medium text-muted-foreground tabular-nums mr-1">
               Halaman {table.getState().pagination.pageIndex + 1} dari{' '}
               {Math.max(1, table.getPageCount())}
             </div>
             <Button
+              type="button"
               variant="outline"
               size="sm"
               onClick={() => table.previousPage()}
               disabled={!table.getCanPreviousPage()}
+              className="min-h-11 sm:min-h-8 bg-transparent border-border"
             >
-              <ChevronLeft className="h-4 w-4" />
+              <ChevronLeft className="size-4" aria-hidden="true" />
               <span className="hidden sm:inline">Sebelumnya</span>
             </Button>
             <Button
+              type="button"
               variant="outline"
               size="sm"
               onClick={() => table.nextPage()}
               disabled={!table.getCanNextPage()}
+              className="min-h-11 sm:min-h-8 bg-transparent border-border"
             >
               <span className="hidden sm:inline">Berikutnya</span>
-              <ChevronRight className="h-4 w-4" />
+              <ChevronRight className="size-4" aria-hidden="true" />
             </Button>
           </div>
         </div>
 
-        {/* === Recap Table === */}
-        <div>
-          <h2 className="text-sm 2xl:text-base font-semibold mb-3 text-muted-foreground uppercase tracking-wide">
-            Rekap per Asprak
-          </h2>
-          <div className="overflow-hidden rounded-md border">
+        {/* Recap Table */}
+        <div className="space-y-3">
+          <h2 className="text-sm font-semibold text-foreground">Rekap per Asprak</h2>
+          <div className="overflow-x-auto rounded-lg border border-border bg-transparent">
             <Table className={`2xl:text-base ${TABLE_EDGE_PADDING}`}>
-              <TableHeader className="bg-muted">
+              <TableHeader className="bg-muted/30">
                 <TableRow>
                   <TableHead>Kode</TableHead>
                   <TableHead>Nama</TableHead>
@@ -665,19 +711,21 @@ export default function PelanggaranDetailClient({
               <TableBody>
                 {recap.length ? (
                   recap.map((r) => (
-                    <TableRow key={r.kode}>
+                    <TableRow key={r.kode} className="hover:bg-muted/20">
                       <TableCell>
-                        <Badge variant="outline" className="px-1.5">
+                        <Badge variant="outline" className="bg-transparent px-2">
                           {r.kode}
                         </Badge>
                       </TableCell>
-                      <TableCell>{r.nama}</TableCell>
+                      <TableCell className="font-medium text-foreground">{r.nama}</TableCell>
                       {activeJenis.map((j) => (
-                        <TableCell key={j} className="text-right">
+                        <TableCell key={j} className="text-right tabular-nums text-muted-foreground">
                           {r.counts[j] ?? 0}
                         </TableCell>
                       ))}
-                      <TableCell className="text-right font-medium">{r.total}</TableCell>
+                      <TableCell className="text-right font-semibold tabular-nums text-foreground">
+                        {r.total}
+                      </TableCell>
                     </TableRow>
                   ))
                 ) : loading ? (
@@ -703,7 +751,7 @@ export default function PelanggaranDetailClient({
                       colSpan={3 + activeJenis.length}
                       className="h-16 text-center text-muted-foreground"
                     >
-                      Tidak ada data.
+                      Belum ada rekap pelanggaran pada Modul {selectedModul}.
                     </TableCell>
                   </TableRow>
                 )}

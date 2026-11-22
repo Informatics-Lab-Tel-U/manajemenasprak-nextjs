@@ -1,18 +1,7 @@
-/* eslint-disable react-doctor/no-impure-state-updater */
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Plus, Shield } from 'lucide-react';
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-import { useJaga } from '@/hooks/useJaga';
-import { getShiftTimeString } from '@/utils/jagaUtils';
-import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
-import {
-  deleteJadwalJaga,
-  bulkDeleteJadwalJaga,
-  submitManualPresensi,
-  deletePresensiJaga,
-} from '@/lib/fetchers/jagaFetcher';
-import { usePresensiJagaStore } from '@/store/usePresensiJagaStore';
+
 import { JagaCell } from '@/components/jadwal/JagaCell';
 import {
   AlertDialog,
@@ -24,7 +13,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import {
   Field,
   FieldContent,
@@ -32,8 +20,20 @@ import {
   FieldLabel,
   FieldTitle,
 } from '@/components/ui/field';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { DAYS } from '@/constants';
+import { useJaga } from '@/hooks/useJaga';
+import {
+  bulkDeleteJadwalJaga,
+  deleteJadwalJaga,
+  deletePresensiJaga,
+  submitManualPresensi,
+} from '@/lib/fetchers/jagaFetcher';
+import { usePresensiJagaStore } from '@/store/usePresensiJagaStore';
+import { getShiftTimeString } from '@/utils/jagaUtils';
 
 interface JagaPanelProps {
   term: string;
@@ -64,7 +64,6 @@ export default function JagaPanel({
   const isDefault = selectedModul === 'Default';
   const modulNum = isDefault ? 0 : parseInt(selectedModul.replace('Modul ', ''), 10);
 
-  // Default to today if SENIN-SABTU, otherwise SENIN
   const [localDay, setLocalDay] = useState<string>(() => {
     const dayNames = ['MINGGU', 'SENIN', 'SELASA', 'RABU', 'KAMIS', 'JUMAT', 'SABTU'];
     const nowDay = dayNames[new Date().getDay()];
@@ -173,7 +172,10 @@ export default function JagaPanel({
     }
   };
 
-  const [deletingPresensiItem, setDeletingPresensiItem] = useState<{ id: string; name: string } | null>(null);
+  const [deletingPresensiItem, setDeletingPresensiItem] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
   const [isDeletingPresensi, setIsDeletingPresensi] = useState(false);
 
   const handleConfirmedDeletePresensi = async () => {
@@ -198,20 +200,16 @@ export default function JagaPanel({
     }
   };
 
-
-  // Compute max asprak columns across all shifts (min MIN_ASPRAK_COLS)
   const maxCols = Math.max(
     MIN_ASPRAK_COLS,
-    ...SHIFT_NUMBERS.map(
-      (s) => jagaList.filter((j) => j.shift === s).length
-    )
+    ...SHIFT_NUMBERS.map((s) => jagaList.filter((j) => j.shift === s).length)
   );
 
   const renderContent = () => {
     if (isDefault) {
       return (
-        <div className="flex flex-col items-center justify-center p-12 text-center text-muted-foreground h-full min-h-[350px]">
-          <Shield className="w-12 h-12 mb-4 opacity-20" />
+        <div className="flex flex-col items-center justify-center p-12 text-center text-muted-foreground rounded-lg border border-dashed border-border bg-transparent min-h-[350px]">
+          <Shield className="size-10 mb-3 opacity-25" aria-hidden="true" />
           <p className="text-sm font-medium">
             Pilih Modul (Modul 1 s/d 16) untuk melihat jadwal Jaga Aslab/Asprak.
           </p>
@@ -221,10 +219,14 @@ export default function JagaPanel({
 
     if (loading) {
       return (
-        <div className="overflow-x-auto rounded-lg border border-border shadow-sm bg-card/50 backdrop-blur-sm min-h-[300px]">
+        <div
+          aria-busy="true"
+          className="overflow-x-auto rounded-lg border border-border bg-transparent min-h-[300px]"
+        >
+          <span className="sr-only">Memuat jadwal jaga</span>
           <table className="w-full border-collapse text-sm">
             <thead>
-              <tr className="bg-muted/50 border-b border-border">
+              <tr className="bg-muted/30 border-b border-border">
                 <th className="p-2 border-r border-border min-w-[90px]">
                   <Skeleton className="h-4 w-12 mx-auto" />
                 </th>
@@ -238,7 +240,7 @@ export default function JagaPanel({
             <tbody>
               {SHIFT_NUMBERS.map((s) => (
                 <tr key={s} className="border-b border-border/50">
-                  <td className="p-2 border-r border-border bg-muted/5">
+                  <td className="p-2 border-r border-border bg-muted/10">
                     <Skeleton className="h-10 w-14 mx-auto" />
                   </td>
                   {Array.from({ length: MIN_ASPRAK_COLS }).map((_, i) => (
@@ -255,30 +257,26 @@ export default function JagaPanel({
     }
 
     return (
-      <div className="overflow-x-auto rounded-lg border border-border shadow-sm bg-card/50 backdrop-blur-sm">
+      <div className="overflow-x-auto rounded-lg border border-border bg-transparent">
         <table className="w-full border-collapse text-sm">
           <thead>
-            <tr className="bg-muted/50 border-b border-border">
-              <th className="p-2 border-r border-border text-center font-bold text-xs uppercase text-muted-foreground min-w-[90px]">
+            <tr className="bg-muted/30 border-b border-border">
+              <th className="p-2 border-r border-border text-center font-medium text-xs text-muted-foreground min-w-[90px]">
                 Shift
               </th>
-              {/* Single merged header spanning all asprak columns */}
               <th
                 colSpan={maxCols}
-                className="p-2 border-r border-border text-center font-bold text-xs uppercase text-muted-foreground"
+                className="p-2 border-r border-border text-center font-medium text-xs text-muted-foreground"
               >
                 Jadwal Jaga
               </th>
-              {userRole === 'ADMIN' && (
-                <th className="w-8 border-r border-border" />
-              )}
+              {userRole === 'ADMIN' && <th className="w-8 border-r border-border" />}
             </tr>
           </thead>
           <tbody>
             {SHIFT_NUMBERS.map((shiftNum) => {
               const shiftJaga = jagaList.filter((j) => j.shift === shiftNum);
               const shiftTime = getShiftTimeString(activeDay, shiftNum);
-              // Pad with nulls to reach maxCols
               const padded: (any | null)[] = [
                 ...shiftJaga,
                 ...Array(Math.max(0, maxCols - shiftJaga.length)).fill(null),
@@ -286,24 +284,22 @@ export default function JagaPanel({
 
               return (
                 <tr key={shiftNum} className="group/row border-b border-border/50">
-                  {/* Shift label cell */}
                   <td className="p-2 border-r border-border bg-muted/10 text-center align-middle min-w-[90px]">
                     <div className="flex flex-col items-center gap-0.5">
-                      <span className="font-bold text-xs 2xl:text-sm text-foreground">
+                      <span className="font-semibold text-xs 2xl:text-sm text-foreground">
                         Shift {shiftNum}
                       </span>
-                      <span className="text-xs font-medium text-muted-foreground">
+                      <span className="text-xs font-medium text-muted-foreground tabular-nums">
                         {shiftTime}
                       </span>
                     </div>
                   </td>
 
-                  {/* Asprak cells — one per column */}
                   {padded.map((j, idx) => (
                     <td
                       key={j ? j.id : `empty-${shiftNum}-${idx}`}
                       className="group/cell p-0 border-r border-border min-w-[120px] 2xl:min-w-[140px]"
-                      style={{ height: '1px' /* trick: lets child div use h-full */ }}
+                      style={{ height: '1px' }}
                     >
                       <div className="h-full flex flex-col">
                         {j ? (
@@ -349,9 +345,7 @@ export default function JagaPanel({
                               setDeletingPresensiItem({ id: presensiId, name: asprakName })
                             }
                           />
-                      ) : (
-                        /* Empty cell — shows + on hover for ADMIN */
-                        userRole === 'ADMIN' ? (
+                        ) : userRole === 'ADMIN' ? (
                           <button
                             type="button"
                             onClick={() =>
@@ -359,20 +353,22 @@ export default function JagaPanel({
                                 ? onAdd(activeDay, shiftNum)
                                 : onEdit?.({ hari: activeDay, shift: shiftNum })
                             }
-                            className="flex-1 min-h-[72px] 2xl:min-h-[88px] w-full flex items-center justify-center group/empty bg-muted/5 hover:bg-muted/20 transition-colors"
+                            aria-label={`Tambah asisten Shift ${shiftNum}`}
+                            className="flex-1 min-h-[72px] 2xl:min-h-[88px] w-full flex items-center justify-center group/empty hover:bg-muted/30 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
                             title={`Tambah asisten Shift ${shiftNum}`}
                           >
-                            <Plus className="w-4 h-4 text-muted-foreground opacity-0 group-hover/empty:opacity-100 transition-opacity" />
+                            <Plus
+                              className="size-4 text-muted-foreground opacity-0 group-hover/empty:opacity-100 group-focus-visible/empty:opacity-100 transition-opacity"
+                              aria-hidden="true"
+                            />
                           </button>
                         ) : (
-                          <div className="flex-1 min-h-[72px] 2xl:min-h-[88px] bg-muted/5" />
-                        )
-                      )}
+                          <div className="flex-1 min-h-[72px] 2xl:min-h-[88px]" />
+                        )}
                       </div>
                     </td>
                   ))}
 
-                  {/* Admin: add button as last column */}
                   {userRole === 'ADMIN' && (
                     <td className="p-0 w-8 border-r border-border" style={{ height: '1px' }}>
                       <button
@@ -382,10 +378,11 @@ export default function JagaPanel({
                             ? onAdd(activeDay, shiftNum)
                             : onEdit?.({ hari: activeDay, shift: shiftNum })
                         }
-                        className="w-full h-full min-h-[72px] 2xl:min-h-[88px] flex items-center justify-center opacity-0 group-hover/row:opacity-100 text-muted-foreground hover:text-foreground hover:bg-muted/30 transition-all"
+                        aria-label={`Tambah kolom asisten Shift ${shiftNum}`}
+                        className="w-full h-full min-h-[72px] 2xl:min-h-[88px] flex items-center justify-center opacity-0 group-hover/row:opacity-100 focus-visible:opacity-100 text-muted-foreground hover:text-foreground hover:bg-muted/30 transition-[opacity,colors] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
                         title={`Tambah asisten Shift ${shiftNum}`}
                       >
-                        <Plus className="w-3.5 h-3.5" />
+                        <Plus className="size-3.5" aria-hidden="true" />
                       </button>
                     </td>
                   )}
@@ -401,7 +398,6 @@ export default function JagaPanel({
   return (
     <>
       <div className="flex flex-col h-full space-y-4">
-        {/* Day filter — ToggleGroup mirip JadwalClientPage */}
         {!filterDay && (
           <div className="overflow-x-auto pb-0.5">
             <ToggleGroup
@@ -414,7 +410,7 @@ export default function JagaPanel({
                 }
               }}
               variant="outline"
-              className="*:data-[slot=toggle-group-item]:px-4! w-max"
+              className="*:data-[slot=toggle-group-item]:px-4! *:data-[slot=toggle-group-item]:min-h-11 sm:*:data-[slot=toggle-group-item]:min-h-9 w-max"
             >
               {DAYS.map((d) => (
                 <ToggleGroupItem key={d} value={d.toUpperCase()}>
@@ -425,22 +421,20 @@ export default function JagaPanel({
           </div>
         )}
 
-        {/* Table */}
         {renderContent()}
 
-        {/* Legend */}
         {!isDefault && !loading && (
-          <div className="flex flex-wrap items-center gap-4 sm:gap-6 text-xs text-muted-foreground border-t border-border/50 pt-3 px-1">
+          <div className="flex flex-wrap items-center gap-4 sm:gap-6 text-xs text-muted-foreground border-t border-border pt-3 px-1">
             <div className="flex items-center gap-1.5">
-              <div className="w-3.5 h-3.5 rounded-sm bg-card ring-2 ring-inset ring-emerald-400"></div>
+              <div className="size-3.5 rounded-sm bg-transparent ring-2 ring-inset ring-emerald-500" />
               <span>Hadir Tepat Waktu</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <div className="w-3.5 h-3.5 rounded-sm bg-card ring-2 ring-inset ring-amber-400"></div>
+              <div className="size-3.5 rounded-sm bg-transparent ring-2 ring-inset ring-amber-500" />
               <span>Terlambat</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <div className="w-3.5 h-3.5 rounded-sm bg-card border border-border"></div>
+              <div className="size-3.5 rounded-sm bg-transparent border border-border" />
               <span>Belum Hadir</span>
             </div>
           </div>
@@ -516,7 +510,7 @@ export default function JagaPanel({
             >
               {isDeleting ? (
                 <>
-                  <Spinner className="mr-2 h-4 w-4" /> Menghapus...
+                  <Spinner className="mr-2 size-4" /> Menghapus...
                 </>
               ) : (
                 'Ya, Hapus Jadwal'
@@ -563,7 +557,7 @@ export default function JagaPanel({
             >
               {isDeletingPresensi ? (
                 <>
-                  <Spinner className="mr-2 h-4 w-4" /> Memproses...
+                  <Spinner className="mr-2 size-4" /> Memproses...
                 </>
               ) : (
                 'Ya, Batalkan Presensi'

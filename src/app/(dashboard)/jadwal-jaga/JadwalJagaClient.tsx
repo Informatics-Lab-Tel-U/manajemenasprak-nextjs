@@ -1,6 +1,26 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import {
+  ChevronDown,
+  CreditCard,
+  FileSpreadsheet,
+  Loader2,
+  Plus,
+  RotateCw,
+} from 'lucide-react';
+import { toast } from 'sonner';
+
+import JagaInputModal from '@/components/jadwal/JagaInputModal';
+import JagaPanel from '@/components/jadwal/JagaPanel';
+import JagaRfidModal from '@/components/jadwal/JagaRfidModal';
+import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import {
   Select,
   SelectContent,
@@ -8,21 +28,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import JagaPanel from '@/components/jadwal/JagaPanel';
-import { Button } from '@/components/ui/button';
-import { CreditCard, FileSpreadsheet, Loader2, ChevronDown, Plus, RotateCw } from 'lucide-react';
-import JagaInputModal from '@/components/jadwal/JagaInputModal';
-import JagaRfidModal from '@/components/jadwal/JagaRfidModal';
-import { useTermStore } from '@/store/useTermStore';
 import { exportPresensiJagaExcel } from '@/lib/spreadsheet';
-import { toast } from 'sonner';
+import { useTermStore } from '@/store/useTermStore';
 import { determineActiveModul } from '@/utils/jagaUtils';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 
 interface ModulScheduleItem {
   modul: number;
@@ -52,11 +60,14 @@ export default function JadwalJagaClient({
   const [isExporting, setIsExporting] = useState(false);
 
   const lastFetchedTermRef = useRef<string | null>(
-    initialModulSchedule && initialModulSchedule.length > 0 && initialTerms[0] ? initialTerms[0] : null
+    initialModulSchedule && initialModulSchedule.length > 0 && initialTerms[0]
+      ? initialTerms[0]
+      : null
   );
 
   const moduls = Array.from({ length: 16 }, (_, i) => `Modul ${i + 1}`);
-  const modulNum = selectedModul === 'Default' ? 0 : parseInt(selectedModul.replace('Modul ', ''));
+  const modulNum =
+    selectedModul === 'Default' ? 0 : parseInt(selectedModul.replace('Modul ', ''), 10);
 
   useEffect(() => {
     if (!selectedTerm) return;
@@ -66,7 +77,9 @@ export default function JadwalJagaClient({
     }
 
     const controller = new AbortController();
-    fetch(`/api/modul-schedule?term=${encodeURIComponent(selectedTerm)}`, { signal: controller.signal })
+    fetch(`/api/modul-schedule?term=${encodeURIComponent(selectedTerm)}`, {
+      signal: controller.signal,
+    })
       .then((res) => res.json())
       .then((data) => {
         if (!controller.signal.aborted && data.ok && data.data) {
@@ -122,15 +135,20 @@ export default function JadwalJagaClient({
     <div className="container mx-auto max-w-[2000px] 2xl:px-8 space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl 2xl:text-3xl font-bold tracking-tight">Manajemen Penjagaan</h1>
-          <p className="text-sm 2xl:text-base text-muted-foreground mt-1">
+          <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-foreground">
+            Manajemen Penjagaan
+          </h1>
+          <p className="text-sm text-muted-foreground mt-0.5">
             Kelola jadwal jaga Asisten Laboratorium
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+        <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto">
           <Select value={selectedModul} onValueChange={setSelectedModul}>
-            <SelectTrigger className="w-full sm:w-[160px] bg-card/50 backdrop-blur-sm">
+            <SelectTrigger
+              aria-label="Pilih modul penjagaan"
+              className="w-full sm:w-[160px] min-h-11 sm:min-h-9 bg-transparent border-border"
+            >
               <SelectValue placeholder="Pilih Modul" />
             </SelectTrigger>
             <SelectContent>
@@ -143,30 +161,33 @@ export default function JadwalJagaClient({
           </Select>
 
           <Button
+            type="button"
             variant="outline"
             size="icon"
             onClick={handleRefresh}
             title="Muat ulang jadwal & presensi"
-            className="rounded-lg shadow-sm border-border/80 bg-background/80 hover:bg-accent"
+            aria-label="Muat ulang jadwal dan presensi"
+            className="min-h-11 min-w-11 sm:min-h-9 sm:min-w-9 bg-transparent border-border hover:bg-accent/50"
           >
-            <RotateCw size={16} className="text-muted-foreground hover:text-foreground" />
+            <RotateCw className="size-4 text-muted-foreground" aria-hidden="true" />
           </Button>
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
+                type="button"
                 variant="outline"
                 disabled={isExporting}
-                className="flex-1 sm:flex-none min-w-0 md:whitespace-nowrap rounded-lg shadow-sm border-border/80 bg-background/80 hover:bg-accent"
+                className="flex-1 sm:flex-none min-w-0 min-h-11 sm:min-h-9 md:whitespace-nowrap bg-transparent border-border hover:bg-accent/50"
                 title="Ekspor hasil presensi jaga ke Excel"
               >
                 {isExporting ? (
-                  <Loader2 size={16} className="animate-spin text-primary" />
+                  <Loader2 className="size-4 animate-spin" aria-hidden="true" />
                 ) : (
-                  <FileSpreadsheet size={16} className="text-emerald-600 dark:text-emerald-500" />
+                  <FileSpreadsheet className="size-4 text-muted-foreground" aria-hidden="true" />
                 )}
-                <span className="hidden sm:inline ml-2 font-medium">Ekspor Excel</span>
-                <ChevronDown size={14} className="ml-1 opacity-60" />
+                <span className="hidden sm:inline font-medium">Ekspor Excel</span>
+                <ChevronDown className="size-3.5 text-muted-foreground" aria-hidden="true" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
@@ -181,22 +202,24 @@ export default function JadwalJagaClient({
 
           {userRole === 'ADMIN' && (
             <Button
+              type="button"
               variant="outline"
               onClick={() => setIsRfidModalOpen(true)}
-              className="flex-1 sm:flex-none min-w-0 md:whitespace-nowrap rounded-lg shadow-sm border-border/80 bg-background/80 hover:bg-accent"
+              className="flex-1 sm:flex-none min-w-0 min-h-11 sm:min-h-9 md:whitespace-nowrap bg-transparent border-border hover:bg-accent/50"
             >
-              <CreditCard size={18} className="flex-shrink-0 text-primary" />
-              <span className="hidden sm:inline ml-2 font-medium">Presensi & RFID</span>
+              <CreditCard className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+              <span className="hidden sm:inline font-medium">Presensi & RFID</span>
             </Button>
           )}
 
           {userRole === 'ADMIN' && (
             <Button
+              type="button"
               onClick={() => handleAdd()}
-              className="flex-1 sm:flex-none min-w-0 md:whitespace-nowrap rounded-lg shadow-sm"
+              className="flex-1 sm:flex-none min-w-0 min-h-11 sm:min-h-9 md:whitespace-nowrap"
             >
-              <Plus size={18} className="flex-shrink-0" />
-              <span className="hidden sm:inline ml-2 font-medium">Input Jaga</span>
+              <Plus className="size-4 shrink-0" aria-hidden="true" />
+              <span className="hidden sm:inline font-medium">Input Jaga</span>
             </Button>
           )}
         </div>
