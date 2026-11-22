@@ -35,7 +35,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
-import { Plus, RefreshCw, Copy, Trash2, Check, Laptop } from 'lucide-react';
+import { Plus, RefreshCw, Copy, Trash2, Check, Laptop, Pencil } from 'lucide-react';
 
 // Lebih lega dari px-2 default di sisi tepi tabel, supaya kolom pertama dan terakhir tidak menempel ke border.
 const TABLE_EDGE_PADDING =
@@ -75,6 +75,10 @@ export default function IwanAdminAccessPage() {
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
   const [generatedCodeResult, setGeneratedCodeResult] = React.useState<{ code: string; label: string } | null>(null);
+  const [editingToken, setEditingToken] = React.useState<AdminToken | null>(null);
+  const [editLabel, setEditLabel] = React.useState('');
+  const [editScopeAll, setEditScopeAll] = React.useState(false);
+  const [editRoomIds, setEditRoomIds] = React.useState<string[]>([]);
   const [deletingToken, setDeletingToken] = React.useState<AdminToken | null>(null);
   const [reissuingToken, setReissuingToken] = React.useState<AdminToken | null>(null);
 
@@ -125,6 +129,46 @@ export default function IwanAdminAccessPage() {
         await fetchData();
       } else {
         toast.error(json.error || 'Gagal membuat kode admin');
+      }
+    } catch {
+      toast.error('Terjadi kesalahan');
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  function openEditDialog(tok: AdminToken) {
+    setEditingToken(tok);
+    setEditLabel(tok.label);
+    setEditScopeAll(tok.scope_all);
+    setEditRoomIds(tok.allowed_room_ids ?? []);
+  }
+
+  async function handleUpdateToken(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editingToken) return;
+    if (!editLabel.trim()) return toast.error('Label konsol admin wajib diisi');
+    if (!editScopeAll && editRoomIds.length === 0) {
+      return toast.error('Pilih minimal satu ruangan atau centang Semua Ruangan');
+    }
+    setIsSubmitting(true);
+    try {
+      const res = await fetch(`/api/iwan/admin-tokens/${editingToken.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          label: editLabel.trim(),
+          scopeAll: editScopeAll,
+          allowedRoomIds: editScopeAll ? [] : editRoomIds,
+        }),
+      });
+      const json = await res.json();
+      if (json.ok) {
+        toast.success(`Konsol ${editLabel.trim()} berhasil diperbarui`);
+        setEditingToken(null);
+        await fetchData();
+      } else {
+        toast.error(json.error || 'Gagal memperbarui akses admin');
       }
     } catch {
       toast.error('Terjadi kesalahan');
@@ -382,6 +426,16 @@ export default function IwanAdminAccessPage() {
                           variant="outline"
                           size="icon-sm"
                           className="border-muted-foreground/40 dark:border-muted-foreground/40"
+                          onClick={() => openEditDialog(tok)}
+                          aria-label="Edit akses admin"
+                          title="Edit akses admin"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="icon-sm"
+                          className="border-muted-foreground/40 dark:border-muted-foreground/40"
                           onClick={() => setReissuingToken(tok)}
                           aria-label="Terbitkan ulang kode"
                           title="Terbitkan ulang kode"
@@ -407,6 +461,63 @@ export default function IwanAdminAccessPage() {
           </TableBody>
         </Table>
       </div>
+
+      {/* Edit Dialog */}
+      <Dialog open={Boolean(editingToken)} onOpenChange={(open) => !open && setEditingToken(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Konsol IWAN Admin</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleUpdateToken} className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-admin-label">Label Konsol / Laptop Aslab</Label>
+              <Input
+                id="edit-admin-label"
+                placeholder="Contoh: Laptop Aslab Shift 1"
+                value={editLabel}
+                onChange={(e) => setEditLabel(e.target.value)}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Scope Ruangan</Label>
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="edit-scope-all"
+                  checked={editScopeAll}
+                  onCheckedChange={(checked) => setEditScopeAll(Boolean(checked))}
+                />
+                <label htmlFor="edit-scope-all" className="text-sm cursor-pointer">Akses Semua Ruangan</label>
+              </div>
+              {!editScopeAll && (
+                <div className="border rounded-md p-3 space-y-2 bg-muted/30 max-h-40 overflow-y-auto">
+                  {rooms.map((r) => {
+                    const checked = editRoomIds.includes(r.id);
+                    return (
+                      <div key={r.id} className="flex items-center gap-2">
+                        <Checkbox
+                          id={`edit-room-${r.id}`}
+                          checked={checked}
+                          onCheckedChange={(c) =>
+                            setEditRoomIds(c
+                              ? [...editRoomIds, r.id]
+                              : editRoomIds.filter((id) => id !== r.id))
+                          }
+                        />
+                        <label htmlFor={`edit-room-${r.id}`} className="text-sm cursor-pointer">{r.name}</label>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+            <DialogFooter className="pt-2">
+              <Button type="button" variant="outline" onClick={() => setEditingToken(null)}>Batal</Button>
+              <Button type="submit" disabled={isSubmitting}>Simpan Perubahan</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       {/* Reissue AlertDialog */}
       <AlertDialog open={Boolean(reissuingToken)} onOpenChange={(open) => !open && setReissuingToken(null)}>
