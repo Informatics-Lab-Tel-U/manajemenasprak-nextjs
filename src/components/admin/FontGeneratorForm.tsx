@@ -14,6 +14,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Spinner } from '@/components/ui/spinner';
 import { generateFont } from '@/services/fontService';
 import { toast } from 'sonner';
 
@@ -102,14 +103,14 @@ export default function FontGeneratorForm({
   };
 
   return (
-    <Card className="w-full max-w-md mt-4">
+    <Card className="w-full max-w-md bg-transparent border-border shadow-none">
       <CardHeader>
-        <CardTitle>Generator Font Fingerprint</CardTitle>
+        <CardTitle className="text-base font-semibold">Generator Font Fingerprint</CardTitle>
         <CardDescription>
           Pilih nama ruangan untuk mengunduh file font.
         </CardDescription>
       </CardHeader>
-      <form onSubmit={handleGenerate}>
+      <form onSubmit={handleGenerate} className="space-y-4">
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="labId">ID Ruangan Lab (contoh: TULT0604)</Label>
@@ -140,6 +141,7 @@ export default function FontGeneratorForm({
         </CardContent>
         <CardFooter>
           <Button type="submit" className="w-full" disabled={loading}>
+            {loading && <Spinner className="mr-2" />}
             {loading ? 'Men-generate...' : 'Generate & Download TTF'}
           </Button>
         </CardFooter>

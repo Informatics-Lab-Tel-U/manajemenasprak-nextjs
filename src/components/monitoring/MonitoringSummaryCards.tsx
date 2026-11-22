@@ -1,11 +1,10 @@
-"use client";
+'use client';
 
 import { useEffect, useMemo } from 'react';
-import { Card, CardHeader, CardTitle, CardDescription, CardAction, CardFooter } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { useMonitoringStore, LabStatus } from '@/store/useMonitoringStore';
-import { Activity, Computer, Users, AlertTriangle } from 'lucide-react';
+import { Activity, AlertTriangle, Computer, Users } from 'lucide-react';
+import { StatCard } from '@/components/ui/StatCard';
 import { isLabOnline } from '@/lib/labStatus';
+import { useMonitoringStore, LabStatus } from '@/store/useMonitoringStore';
 
 interface MonitoringSummaryCardsProps {
   /** Data awal dari SSR — menghilangkan flash "0" di render pertama */
@@ -18,9 +17,7 @@ export function MonitoringSummaryCards({ initialData = [] }: MonitoringSummaryCa
   const now = useMonitoringStore((s) => s.now);
   const init = useMonitoringStore((s) => s.init);
   const setInitialLabStatus = useMonitoringStore((s) => s.setInitialLabStatus);
-  
-  // Populate store dengan data SSR SEBELUM init() async selesai,
-  // sehingga render pertama sudah memiliki data yang benar.
+
   useEffect(() => {
     if (initialData.length > 0) {
       setInitialLabStatus(initialData);
@@ -28,21 +25,17 @@ export function MonitoringSummaryCards({ initialData = [] }: MonitoringSummaryCa
     init();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Memo 1: Bergantung pada monitoringData + now (aktif/offline).
-  // Hanya re-compute saat ada update Realtime ATAU setiap 10 detik (timer).
   const { activeLabs, offlineLabs } = useMemo(() => {
     const active = monitoringData.filter((d) => isLabOnline(d, now));
     const offline = monitoringData.filter((d) => !isLabOnline(d, now));
     return { activeLabs: active, offlineLabs: offline };
   }, [monitoringData, now]);
 
-  // Memo 2: Bergantung pada heartbeatData + activeLabs.
-  // Menghitung latensi HANYA untuk lab yang sedang ONLINE saat ini.
   const { avgLatency, highestSpike, spikeLab } = useMemo(() => {
     let totalLatency = 0;
     let count = 0;
-    let highestSpike = 0;
-    let spikeLab = "-";
+    let maxSpike = 0;
+    let maxSpikeLab = '-';
 
     const activeSet = new Set(activeLabs.map((l) => l.lab_id));
 
@@ -56,39 +49,41 @@ export function MonitoringSummaryCards({ initialData = [] }: MonitoringSummaryCa
       }
 
       points.forEach((p) => {
-        if (p.response_time_ms !== null && p.response_time_ms > highestSpike) {
-          highestSpike = p.response_time_ms;
-          spikeLab = labId;
+        if (p.response_time_ms !== null && p.response_time_ms > maxSpike) {
+          maxSpike = p.response_time_ms;
+          maxSpikeLab = labId;
         }
       });
     });
 
     return {
       avgLatency: count > 0 ? Math.round(totalLatency / count) : 0,
-      highestSpike,
-      spikeLab,
+      highestSpike: maxSpike,
+      spikeLab: maxSpikeLab,
     };
   }, [heartbeatData, activeLabs]);
 
-  // Memo 3: Gabungkan semua metric (sangat murah, hanya satu objek)
   const metrics = useMemo(() => {
-    const uniqueClasses = new Set(activeLabs.map(l => l.kelas).filter(k => k && k !== '-'));
+    const uniqueClasses = new Set(
+      activeLabs.map((l) => l.kelas).filter((k) => k && k !== '-')
+    );
     const hasOffline = offlineLabs.length > 0;
 
-    let anomalyText = "Semua koneksi stabil";
+    let anomalyText =
+      monitoringData.length === 0 ? 'Belum ada data lab' : 'Semua koneksi stabil';
     let anomalyWarn = false;
 
     if (hasOffline) {
-      anomalyText = `${offlineLabs.length} Lab Disconnect!`;
+      anomalyText = `${offlineLabs.length} Lab Disconnect`;
       anomalyWarn = true;
     } else if (highestSpike > 1000) {
-      anomalyText = `Spike: ${highestSpike}ms (${spikeLab})`;
+      anomalyText = `Spike ${highestSpike}ms (${spikeLab})`;
       anomalyWarn = true;
     }
 
     return {
       activeCount: activeLabs.length,
-      totalCount: Math.max(monitoringData.length, 1),
+      totalCount: monitoringData.length,
       classCount: uniqueClasses.size,
       avgLatency,
       anomalyText,
@@ -96,118 +91,73 @@ export function MonitoringSummaryCards({ initialData = [] }: MonitoringSummaryCa
     };
   }, [activeLabs, offlineLabs, avgLatency, highestSpike, spikeLab, monitoringData.length]);
 
+  const activePercent =
+    metrics.totalCount > 0
+      ? `${Math.round((metrics.activeCount / metrics.totalCount) * 100)}%`
+      : '-';
+
   return (
-    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4 mb-6">
-      <Card className="@container/card bg-card shadow-sm">
-        <CardHeader>
-          <CardDescription>Total Lab Aktif</CardDescription>
-          <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
-            {metrics.activeCount} / {metrics.totalCount}
-          </CardTitle>
-          <CardAction>
-            <Badge variant="outline">
-              <Computer />
-              {metrics.activeCount === metrics.totalCount ? "100%" : `${Math.round((metrics.activeCount / metrics.totalCount) * 100)}%`}
-            </Badge>
-          </CardAction>
-        </CardHeader>
-        <CardFooter className="flex-col items-start gap-1.5 text-sm">
-          <div className="line-clamp-1 flex gap-2 font-medium">
-            Sinyal berjalan normal <Activity className="size-4" />
-          </div>
-          <div className="text-muted-foreground">
-            {metrics.activeCount} PC Lab merespons
-          </div>
-        </CardFooter>
-      </Card>
-      
-      <Card className="@container/card bg-card shadow-sm">
-        <CardHeader>
-          <CardDescription>Sesi Praktikum</CardDescription>
-          <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
-            {metrics.classCount}
-          </CardTitle>
-          <CardAction>
-            <Badge variant="outline">
-              <Users />
-              Aktif
-            </Badge>
-          </CardAction>
-        </CardHeader>
-        <CardFooter className="flex-col items-start gap-1.5 text-sm">
-          <div className="line-clamp-1 flex gap-2 font-medium">
-            Kelas sedang berlangsung <Users className="size-4" />
-          </div>
-          <div className="text-muted-foreground">
-            Berdasarkan sesi aktif di PC
-          </div>
-        </CardFooter>
-      </Card>
-      
-      <Card className="@container/card bg-card shadow-sm">
-        <CardHeader>
-          <CardDescription>Rata-rata Ping</CardDescription>
-          <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
-            {metrics.activeCount > 0 ? (
-              <>{metrics.avgLatency} <span className="text-lg">ms</span></>
-            ) : (
-              <span className="text-muted-foreground">- ms</span>
-            )}
-          </CardTitle>
-          <CardAction>
-            <Badge
-              variant="outline"
-              className={
-                metrics.activeCount === 0
-                  ? "text-muted-foreground"
-                  : metrics.avgLatency < 500
-                  ? "text-blue-500"
-                  : "text-orange-500"
-              }
-            >
-              <Activity />
-              {metrics.activeCount === 0 ? "Offline" : metrics.avgLatency < 500 ? "Good" : "Slow"}
-            </Badge>
-          </CardAction>
-        </CardHeader>
-        <CardFooter className="flex-col items-start gap-1.5 text-sm">
-          <div className="line-clamp-1 flex gap-2 font-medium">
-            {metrics.activeCount === 0
-              ? "Tidak ada lab aktif"
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <StatCard
+        title="Total Lab Aktif"
+        value={`${metrics.activeCount} / ${metrics.totalCount}`}
+        headlineIcon={Computer}
+        description={
+          metrics.totalCount === 0
+            ? 'Menunggu sinyal PC Lab'
+            : `${metrics.activeCount} PC Lab merespons`
+        }
+        badge={{
+          label: activePercent,
+          icon: Computer,
+        }}
+      />
+
+      <StatCard
+        title="Sesi Praktikum"
+        value={metrics.classCount}
+        headlineIcon={Users}
+        description="Berdasarkan sesi aktif di PC"
+        badge={{
+          label: metrics.classCount > 0 ? 'Aktif' : 'Kosong',
+          icon: Users,
+        }}
+      />
+
+      <StatCard
+        title="Rata-rata Ping"
+        value={metrics.activeCount > 0 ? `${metrics.avgLatency} ms` : '- ms'}
+        headlineIcon={Activity}
+        description={
+          metrics.activeCount === 0
+            ? 'Menunggu koneksi lab'
+            : metrics.avgLatency < 500
+              ? 'Koneksi jaringan stabil'
+              : 'Koneksi jaringan melambat'
+        }
+        badge={{
+          label:
+            metrics.activeCount === 0
+              ? 'Offline'
               : metrics.avgLatency < 500
-              ? "Koneksi jaringan stabil"
-              : "Koneksi jaringan melambat"}{" "}
-            <Activity className="size-4" />
-          </div>
-          <div className="text-muted-foreground">
-            {metrics.activeCount === 0 ? "Menunggu koneksi lab" : "Rata-rata dari ping terakhir"}
-          </div>
-        </CardFooter>
-      </Card>
+                ? 'Good'
+                : 'Slow',
+          icon: Activity,
+          tone: metrics.activeCount > 0 && metrics.avgLatency >= 500 ? 'warning' : 'default',
+        }}
+      />
 
-
-      <Card className={`@container/card bg-card shadow-sm ${metrics.anomalyWarn ? 'border-destructive/50' : ''}`}>
-        <CardHeader>
-          <CardDescription>Status Anomali</CardDescription>
-          <CardTitle className={`text-2xl font-semibold tabular-nums @[250px]/card:text-3xl ${metrics.anomalyWarn ? 'text-destructive' : 'text-green-600 dark:text-green-400'}`}>
-            {metrics.anomalyWarn ? "Perhatian" : "Aman"}
-          </CardTitle>
-          <CardAction>
-            <Badge variant="outline" className={metrics.anomalyWarn ? "border-destructive text-destructive" : ""}>
-              <AlertTriangle />
-              {metrics.anomalyWarn ? "Alert" : "OK"}
-            </Badge>
-          </CardAction>
-        </CardHeader>
-        <CardFooter className="flex-col items-start gap-1.5 text-sm">
-          <div className="line-clamp-1 flex gap-2 font-medium truncate w-full" title={metrics.anomalyText}>
-            {metrics.anomalyText} <AlertTriangle className="size-4" />
-          </div>
-          <div className="text-muted-foreground">
-            Monitor anomali jaringan
-          </div>
-        </CardFooter>
-      </Card>
+      <StatCard
+        title="Status Anomali"
+        value={metrics.anomalyWarn ? 'Perhatian' : 'Aman'}
+        headlineIcon={AlertTriangle}
+        description={metrics.anomalyText}
+        badge={{
+          label: metrics.anomalyWarn ? 'Alert' : 'OK',
+          icon: AlertTriangle,
+          tone: metrics.anomalyWarn ? 'warning' : 'default',
+        }}
+      />
     </div>
   );
 }

@@ -7,7 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
+import { StatCard } from '@/components/ui/StatCard';
 import {
   Table,
   TableBody,
@@ -41,7 +42,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { RefreshCw, Search, Copy, Edit2, Trash2, Check } from 'lucide-react';
+import { RefreshCw, Search, Copy, Edit2, Trash2, Check, Monitor, Wifi, WifiOff } from 'lucide-react';
 
 // Lebih lega dari px-2 default di sisi tepi tabel, supaya kolom pertama dan terakhir tidak menempel ke border.
 const TABLE_EDGE_PADDING =
@@ -214,8 +215,13 @@ export default function IwanDevicesPage() {
   return (
     <div className="container mx-auto max-w-[2000px] 2xl:px-8 space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-        <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-foreground">Pemetaan PC</h1>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-foreground">Pemetaan PC</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            Kelola pemetaan perangkat PC Lab dan status koneksi.
+          </p>
+        </div>
         <div className="flex flex-wrap items-center gap-2">
           <Button
             type="button"
@@ -235,153 +241,191 @@ export default function IwanDevicesPage() {
       </div>
 
       {/* Stat Summary */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-        {[
-          { label: 'Total PC Terdaftar', value: totalCount, color: '' },
-          { label: 'Online', value: onlineCount, color: 'text-emerald-500' },
-          { label: 'Offline', value: totalCount - onlineCount, color: 'text-muted-foreground' },
-        ].map((s) => (
-          <Card key={s.label} className="gap-1 py-4">
-            <CardContent className="px-4">
-              <p className="text-xs text-muted-foreground">{s.label}</p>
-              <p className={`text-2xl font-semibold mt-1 tabular-nums ${s.color}`}>{s.value}</p>
-            </CardContent>
-          </Card>
-        ))}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <StatCard
+          title="Total PC Terdaftar"
+          value={totalCount}
+          headlineIcon={Monitor}
+          description="Perangkat terikat di ruangan lab"
+          loading={isLoading && devices.length === 0}
+        />
+        <StatCard
+          title="Online"
+          value={onlineCount}
+          headlineIcon={Wifi}
+          description="Perangkat aktif mengirim heartbeat"
+          loading={isLoading && devices.length === 0}
+          badge={
+            totalCount > 0
+              ? {
+                  label: `${Math.round((onlineCount / totalCount) * 100)}%`,
+                  icon: Wifi,
+                }
+              : undefined
+          }
+        />
+        <StatCard
+          title="Offline"
+          value={totalCount - onlineCount}
+          headlineIcon={WifiOff}
+          description="Tidak ada heartbeat terbaru"
+          loading={isLoading && devices.length === 0}
+          badge={
+            totalCount - onlineCount > 0
+              ? {
+                  label: `${totalCount - onlineCount} Offline`,
+                  icon: WifiOff,
+                  tone: 'warning',
+                }
+              : undefined
+          }
+        />
       </div>
 
-      {/* Filter Bar */}
-      <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center">
-        <div className="relative w-full sm:max-w-sm">
-          <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="Cari label, MAC address, IP, hostname..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-8"
-          />
+      <div className="space-y-4">
+        {/* Filter Bar */}
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <div className="relative w-full sm:max-w-sm">
+            <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Cari label, MAC address, IP, hostname..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-8"
+            />
+          </div>
+          <div className="sm:ml-auto">
+            <Select value={selectedRoomFilter} onValueChange={setSelectedRoomFilter}>
+              <SelectTrigger className="w-full sm:w-[200px]">
+                <SelectValue placeholder="Pilih Ruangan" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">Semua Ruangan</SelectItem>
+                {rooms.map((r) => (
+                  <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
-        <div className="sm:ml-auto">
-          <Select value={selectedRoomFilter} onValueChange={setSelectedRoomFilter}>
-            <SelectTrigger className="w-full sm:w-[200px]">
-              <SelectValue placeholder="Pilih Ruangan" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="ALL">Semua Ruangan</SelectItem>
-              {rooms.map((r) => (
-                <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
 
-      {/* Table */}
-      <div className="overflow-hidden rounded-md border">
-        <Table className={`2xl:text-base ${TABLE_EDGE_PADDING}`}>
-          <TableHeader className="bg-muted">
-            <TableRow>
-              <TableHead>No.</TableHead>
-              <TableHead>Label PC</TableHead>
-              <TableHead>Ruangan</TableHead>
-              <TableHead>MAC Address</TableHead>
-              <TableHead>IP LAN Terkini</TableHead>
-              <TableHead>Hostname Windows</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Detak Terakhir</TableHead>
-              <TableHead className="text-right">Aksi</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filteredDevices.length === 0 ? (
+        {/* Table */}
+        <div className="overflow-hidden rounded-md border">
+          <Table className={`2xl:text-base ${TABLE_EDGE_PADDING}`}>
+            <TableHeader className="bg-muted">
               <TableRow>
-                <TableCell colSpan={9} className="h-32 text-center text-muted-foreground">
-                  {isLoading ? 'Memuat data perangkat...' : 'Tidak ada perangkat yang sesuai.'}
-                </TableCell>
+                <TableHead>No.</TableHead>
+                <TableHead>Label PC</TableHead>
+                <TableHead>Ruangan</TableHead>
+                <TableHead>MAC Address</TableHead>
+                <TableHead>IP LAN Terkini</TableHead>
+                <TableHead>Hostname Windows</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Detak Terakhir</TableHead>
+                <TableHead className="text-right">Aksi</TableHead>
               </TableRow>
-            ) : (
-              filteredDevices.map((dev) => {
-                const isOnline = dev.computedStatus !== 'offline';
-                const isStreaming = dev.computedStatus === 'streaming';
-                return (
-                  <TableRow key={dev.id}>
-                    <TableCell className="font-medium tabular-nums">#{dev.seatNumber}</TableCell>
-                    <TableCell className="font-medium">{dev.label}</TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className="px-1.5 text-muted-foreground">{dev.roomName}</Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className="gap-1.5 px-1.5 font-mono">
-                        {dev.macAddress}
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleCopy(dev.macAddress)}
-                          className="h-4 w-4 p-0 text-muted-foreground hover:text-foreground"
-                          aria-label={`Salin MAC ${dev.macAddress}`}
-                        >
-                          {copiedMac === dev.macAddress
-                            ? <Check className="h-3.5 w-3.5 text-emerald-500" />
-                            : <Copy className="h-3.5 w-3.5" />}
-                        </Button>
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="font-mono text-xs">{dev.localIp}:{dev.port}</TableCell>
-                    <TableCell className="font-mono text-xs text-muted-foreground">
-                      {dev.hostnameRaw || '-'}
-                    </TableCell>
-                    <TableCell>
-                      {isStreaming ? (
-                        <Badge variant="outline" className="gap-1.5 px-1.5 text-muted-foreground">
-                          <span className="h-1.5 w-1.5 rounded-full bg-blue-500 motion-safe:animate-pulse" />Streaming
-                        </Badge>
-                      ) : isOnline ? (
-                        <Badge variant="outline" className="gap-1.5 px-1.5 text-muted-foreground">
-                          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />Online
-                        </Badge>
-                      ) : (
-                        <Badge variant="outline" className="gap-1.5 px-1.5 text-muted-foreground">
-                          <span className="h-1.5 w-1.5 rounded-full bg-zinc-400" />Offline
-                        </Badge>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {formatRelativeTime(dev.lastSeen)}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-1">
-                        <Button
-                          variant="outline"
-                          size="icon-sm"
-                          className="border-muted-foreground/40 dark:border-muted-foreground/40"
-                          aria-label={`Edit ${dev.label}`}
-                          onClick={() => {
-                            setEditingDevice(dev);
-                            setEditLabel(dev.label);
-                            setEditSeatNumber(dev.seatNumber);
-                            setEditRoomId(dev.roomId);
-                          }}
-                        >
-                          <Edit2 className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="icon-sm"
-                          aria-label={`Hapus ${dev.label}`}
-                          onClick={() => setDeletingDevice(dev)}
-                          className="border-muted-foreground/40 text-destructive hover:bg-destructive/10 hover:text-destructive dark:border-muted-foreground/40 dark:hover:bg-destructive/20"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
+            </TableHeader>
+            <TableBody>
+              {isLoading && devices.length === 0 ? (
+                Array.from({ length: 5 }).map((_, i) => (
+                  <TableRow key={i}>
+                    {Array.from({ length: 9 }).map((__, j) => (
+                      <TableCell key={j}>
+                        <Skeleton className="h-5 w-full" />
+                      </TableCell>
+                    ))}
                   </TableRow>
-                );
-              })
-            )}
-          </TableBody>
-        </Table>
+                ))
+              ) : filteredDevices.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={9} className="h-32 text-center text-muted-foreground">
+                    Tidak ada perangkat yang sesuai.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                filteredDevices.map((dev) => {
+                  const isOnline = dev.computedStatus !== 'offline';
+                  const isStreaming = dev.computedStatus === 'streaming';
+                  return (
+                    <TableRow key={dev.id}>
+                      <TableCell className="font-medium tabular-nums">#{dev.seatNumber}</TableCell>
+                      <TableCell className="font-medium">{dev.label}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="px-1.5 text-muted-foreground">{dev.roomName}</Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="gap-1.5 px-1.5 font-mono">
+                          {dev.macAddress}
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleCopy(dev.macAddress)}
+                            className="h-4 w-4 p-0 text-muted-foreground hover:text-foreground"
+                            aria-label={`Salin MAC ${dev.macAddress}`}
+                          >
+                            {copiedMac === dev.macAddress
+                              ? <Check className="h-3.5 w-3.5 text-emerald-500" />
+                              : <Copy className="h-3.5 w-3.5" />}
+                          </Button>
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="font-mono text-xs tabular-nums">{dev.localIp}:{dev.port}</TableCell>
+                      <TableCell className="font-mono text-xs text-muted-foreground">
+                        {dev.hostnameRaw || '-'}
+                      </TableCell>
+                      <TableCell>
+                        {isStreaming ? (
+                          <Badge variant="outline" className="gap-1.5 px-1.5 text-muted-foreground">
+                            <span className="h-1.5 w-1.5 rounded-full bg-blue-500 motion-safe:animate-pulse" />Streaming
+                          </Badge>
+                        ) : isOnline ? (
+                          <Badge variant="outline" className="gap-1.5 px-1.5 text-muted-foreground">
+                            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />Online
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="gap-1.5 px-1.5 text-muted-foreground">
+                            <span className="h-1.5 w-1.5 rounded-full bg-zinc-400" />Offline
+                          </Badge>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground tabular-nums">
+                        {formatRelativeTime(dev.lastSeen)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-1">
+                          <Button
+                            variant="outline"
+                            size="icon-sm"
+                            className="border-muted-foreground/40 dark:border-muted-foreground/40"
+                            aria-label={`Edit ${dev.label}`}
+                            onClick={() => {
+                              setEditingDevice(dev);
+                              setEditLabel(dev.label);
+                              setEditSeatNumber(dev.seatNumber);
+                              setEditRoomId(dev.roomId);
+                            }}
+                          >
+                            <Edit2 className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="icon-sm"
+                            aria-label={`Hapus ${dev.label}`}
+                            onClick={() => setDeletingDevice(dev)}
+                            className="border-muted-foreground/40 text-destructive hover:bg-destructive/10 hover:text-destructive dark:border-muted-foreground/40 dark:hover:bg-destructive/20"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
+              )}
+            </TableBody>
+          </Table>
+        </div>
       </div>
 
       {/* Edit Dialog */}
@@ -441,10 +485,7 @@ export default function IwanDevicesPage() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Batal</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDeleteSubmit}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
+            <AlertDialogAction onClick={handleDeleteSubmit} variant="destructive">
               Hapus Pemetaan
             </AlertDialogAction>
           </AlertDialogFooter>

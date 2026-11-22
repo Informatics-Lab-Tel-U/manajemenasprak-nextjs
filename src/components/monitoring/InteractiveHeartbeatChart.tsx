@@ -95,10 +95,10 @@ export function InteractiveHeartbeatChart() {
   }, [labs, safeLabKeys]);
 
   return (
-    <Card className="pt-0">
-      <CardHeader className="flex items-center gap-2 space-y-0 border-b py-5 sm:flex-row">
+    <Card className="bg-transparent border border-border shadow-none pt-0">
+      <CardHeader className="flex items-center gap-2 space-y-0 border-b border-border py-4 px-5 sm:flex-row">
         <div className="grid flex-1 gap-1">
-          <CardTitle>Response Time Interactive Chart</CardTitle>
+          <CardTitle className="text-base font-semibold">Response Time Interactive Chart</CardTitle>
           <CardDescription>
             Menampilkan riwayat response time (ms) untuk seluruh PC Lab aktif
           </CardDescription>

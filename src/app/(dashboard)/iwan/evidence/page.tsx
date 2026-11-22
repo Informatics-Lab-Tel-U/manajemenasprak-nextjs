@@ -5,8 +5,10 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useIwanPolling } from '@/hooks/useIwanPolling';
 import { fetchIwanData } from '@/lib/iwanPolling';
+import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
@@ -114,6 +116,21 @@ interface RoomOption {
   name: string;
 }
 
+function mapEvidenceRow(row: Record<string, any>): EvidenceLogItem {
+  return {
+    id: String(row.id ?? ''),
+    deviceId: String(row.device_id ?? row.deviceId ?? ''),
+    roomId: String(row.room_id ?? row.roomId ?? ''),
+    deviceLabel: String(row.device_label ?? row.deviceLabel ?? ''),
+    seatNumber: Number(row.seat_number ?? row.seatNumber ?? 0),
+    roomName: String(row.room_name ?? row.roomName ?? ''),
+    windowTitle: String(row.window_title ?? row.windowTitle ?? ''),
+    screenshotUrl: String(row.screenshot_url ?? row.screenshotUrl ?? ''),
+    screenshotStoragePath: String(row.screenshot_storage_path ?? row.screenshotStoragePath ?? ''),
+    detectedAt: String(row.detected_at ?? row.detectedAt ?? ''),
+  };
+}
+
 function IwanEvidenceContent() {
   const searchParams = useSearchParams();
   const initialRoomParam = searchParams.get('roomId') || 'ALL';
@@ -126,12 +143,15 @@ function IwanEvidenceContent() {
   const [pageSize, setPageSize] = React.useState<number>(10);
   const [isLoading, setIsLoading] = React.useState(true);
   const [loadError, setLoadError] = React.useState<string | null>(null);
-  const [autoRefresh, setAutoRefresh] = React.useState(false);
+  const [realtimeEnabled, setRealtimeEnabled] = React.useState(true);
   const [lastUpdated, setLastUpdated] = React.useState(0);
 
   const [selectedEvidence, setSelectedEvidence] = React.useState<EvidenceLogItem | null>(null);
   const [deletingEvidence, setDeletingEvidence] = React.useState<EvidenceLogItem | null>(null);
   const [isDeleting, setIsDeleting] = React.useState(false);
+  const [selectedIds, setSelectedIds] = React.useState<Set<string>>(() => new Set());
+  const [isBulkDeleteOpen, setIsBulkDeleteOpen] = React.useState(false);
+  const [isBulkDeleting, setIsBulkDeleting] = React.useState(false);
 
   const [forbiddenPatterns, setForbiddenPatterns] = React.useState<string[]>(
     DEFAULT_FORBIDDEN_PATTERNS,
@@ -152,14 +172,37 @@ function IwanEvidenceContent() {
       const requestSignal = signal
         ? AbortSignal.any([signal, controller.signal])
         : controller.signal;
-      const query =
-        selectedRoomFilter === 'ALL'
-          ? '?limit=50'
-          : `?roomId=${encodeURIComponent(selectedRoomFilter)}&limit=50`;
 
       try {
+        // Query directly from Supabase to avoid unnecessary Cloudflare Workers requests
+        const supabase = createClient();
+        let query = supabase
+          .from('iwan_evidence_logs')
+          .select('*')
+          .order('detected_at', { ascending: false })
+          .limit(50);
+
+        if (selectedRoomFilter !== 'ALL') {
+          query = query.eq('room_id', selectedRoomFilter);
+        }
+
+        const { data: rows, error: sbError } = await query;
+        if (!sbError && rows) {
+          if (!requestSignal.aborted) {
+            setLogs(rows.map((r) => mapEvidenceRow(r as Record<string, any>)));
+            setLoadError(null);
+            setLastUpdated(Date.now());
+          }
+          return;
+        }
+
+        // Fallback to Hono API if Supabase RLS policy is not yet applied
+        const apiQuery =
+          selectedRoomFilter === 'ALL'
+            ? '?limit=50'
+            : `?roomId=${encodeURIComponent(selectedRoomFilter)}&limit=50`;
         const data = await fetchIwanData<EvidenceLogItem[]>(
-          `/api/iwan/evidence${query}`,
+          `/api/iwan/evidence${apiQuery}`,
           requestSignal,
         );
         if (!requestSignal.aborted) {
@@ -206,16 +249,95 @@ function IwanEvidenceContent() {
     (signal: AbortSignal) => loadEvidenceLogs(signal),
     [loadEvidenceLogs],
   );
-  const pollLogsIfIdle = React.useCallback(
-    (signal: AbortSignal) =>
-      logsRequest.current ? Promise.resolve() : loadEvidenceLogs(signal),
-    [loadEvidenceLogs],
-  );
 
   useIwanPolling(pollLogs, 0, 'Gagal memuat log kecurangan');
-  useIwanPolling(pollLogsIfIdle, 10000, 'Gagal memuat log kecurangan', autoRefresh, false);
   useIwanPolling(loadRoomOptions, 0, 'Gagal memuat daftar ruangan');
   useIwanPolling(loadPolicy, 0, 'Gagal memuat daftar kata kunci kecurangan');
+
+  // Supabase Realtime subscription (0 CF Workers requests)
+  React.useEffect(() => {
+    if (!realtimeEnabled) return;
+    let disposed = false;
+    const supabase = createClient();
+    let activeChannel: ReturnType<typeof supabase.channel> | null = null;
+
+    const subscribeRealtime = async () => {
+      // Ensure Realtime WebSocket carries the authenticated user JWT before subscribing,
+      // otherwise it joins as `anon` and RLS `TO authenticated` blocks all events.
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (disposed) return;
+
+      if (session?.access_token) {
+        await supabase.realtime.setAuth(session.access_token);
+      }
+      if (disposed) return;
+
+      const uniqueSuffix = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+      const channelName =
+        selectedRoomFilter === 'ALL'
+          ? `iwan_evidence_logs_all_${uniqueSuffix}`
+          : `iwan_evidence_logs_${selectedRoomFilter}_${uniqueSuffix}`;
+      const filter =
+        selectedRoomFilter === 'ALL' ? undefined : `room_id=eq.${selectedRoomFilter}`;
+
+      activeChannel = supabase
+        .channel(channelName)
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'iwan_evidence_logs',
+            ...(filter ? { filter } : {}),
+          },
+          (payload) => {
+            if (payload.eventType === 'INSERT' && payload.new) {
+              const newItem = mapEvidenceRow(payload.new as Record<string, any>);
+              setLogs((prev) => {
+                if (prev.some((item) => item.id === newItem.id)) return prev;
+                return [newItem, ...prev].slice(0, 50);
+              });
+              setLastUpdated(Date.now());
+            } else if (payload.eventType === 'UPDATE' && payload.new) {
+              const updated = mapEvidenceRow(payload.new as Record<string, any>);
+              setLogs((prev) => prev.map((item) => (item.id === updated.id ? updated : item)));
+              setLastUpdated(Date.now());
+            } else if (payload.eventType === 'DELETE' && payload.old) {
+              const deletedId = (payload.old as { id?: string }).id;
+              if (deletedId) {
+                setLogs((prev) => prev.filter((item) => item.id !== deletedId));
+                setLastUpdated(Date.now());
+              }
+            }
+          },
+        )
+        .subscribe((status, err) => {
+          if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+            console.warn('[IwanEvidence] Realtime status:', status, err?.message);
+          }
+        });
+    };
+
+    void subscribeRealtime();
+
+    const {
+      data: { subscription: authSubscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.access_token) {
+        void supabase.realtime.setAuth(session.access_token);
+      }
+    });
+
+    return () => {
+      disposed = true;
+      authSubscription.unsubscribe();
+      if (activeChannel) {
+        void supabase.removeChannel(activeChannel);
+      }
+    };
+  }, [realtimeEnabled, selectedRoomFilter]);
 
   React.useEffect(() => () => logsRequest.current?.abort(), []);
 
@@ -230,6 +352,12 @@ function IwanEvidenceContent() {
       if (json.ok) {
         toast.success(`Bukti insiden ${deletingEvidence.deviceLabel} dihapus`);
         setLogs((prev) => prev.filter((item) => item.id !== deletingEvidence.id));
+        setSelectedIds((prev) => {
+          if (!prev.has(deletingEvidence.id)) return prev;
+          const next = new Set(prev);
+          next.delete(deletingEvidence.id);
+          return next;
+        });
         if (selectedEvidence?.id === deletingEvidence.id) {
           setSelectedEvidence(null);
         }
@@ -241,6 +369,67 @@ function IwanEvidenceContent() {
       toast.error('Terjadi kesalahan saat menghapus bukti insiden');
     } finally {
       setIsDeleting(false);
+    }
+  }
+
+  const toggleSelectRow = (id: string, checked: boolean) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (checked) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  };
+
+  async function handleConfirmBulkDelete() {
+    const idsToDelete = logs.filter((l) => selectedIds.has(l.id)).map((l) => l.id);
+    if (idsToDelete.length === 0) {
+      setIsBulkDeleteOpen(false);
+      return;
+    }
+
+    setIsBulkDeleting(true);
+    try {
+      // Try single-request bulk-delete endpoint first to minimize CF Workers requests
+      const bulkRes = await fetch('/api/iwan/evidence/bulk-delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: idsToDelete }),
+      });
+
+      if (bulkRes.status === 404 || bulkRes.status === 405) {
+        // Graceful fallback if backend bulk-delete route is not yet deployed
+        const results = await Promise.all(
+          idsToDelete.map((id) =>
+            fetch(`/api/iwan/evidence/${id}`, { method: 'DELETE' }).then((r) => r.json()),
+          ),
+        );
+        const failed = results.filter((r) => !r?.ok).length;
+        if (failed > 0) {
+          toast.error(`${failed} item gagal dihapus`);
+        } else {
+          toast.success(`${idsToDelete.length} bukti insiden dihapus`);
+        }
+      } else {
+        const json = await bulkRes.json();
+        if (!json?.ok) {
+          toast.error(json?.error || 'Gagal menghapus bukti insiden terpilih');
+          return;
+        }
+        toast.success(`${idsToDelete.length} bukti insiden dihapus`);
+      }
+
+      const deletedSet = new Set(idsToDelete);
+      setLogs((prev) => prev.filter((item) => !deletedSet.has(item.id)));
+      setSelectedIds(new Set());
+      if (selectedEvidence && deletedSet.has(selectedEvidence.id)) {
+        setSelectedEvidence(null);
+      }
+      setIsBulkDeleteOpen(false);
+    } catch {
+      toast.error('Terjadi kesalahan saat menghapus bukti insiden terpilih');
+    } finally {
+      setIsBulkDeleting(false);
     }
   }
 
@@ -332,6 +521,23 @@ function IwanEvidenceContent() {
     safeCurrentPage * pageSize,
   );
 
+  const visibleIdSet = new Set(logs.map((l) => l.id));
+  const activeSelectedCount = Array.from(selectedIds).filter((id) => visibleIdSet.has(id)).length;
+  const pageSelectedCount = paginatedLogs.filter((l) => selectedIds.has(l.id)).length;
+  const allPageSelected = paginatedLogs.length > 0 && pageSelectedCount === paginatedLogs.length;
+  const somePageSelected = pageSelectedCount > 0 && !allPageSelected;
+
+  const toggleSelectPage = (checked: boolean) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      paginatedLogs.forEach((l) => {
+        if (checked) next.add(l.id);
+        else next.delete(l.id);
+      });
+      return next;
+    });
+  };
+
   return (
     <div className="container mx-auto max-w-[2000px] 2xl:px-8 space-y-6">
       {/* Header */}
@@ -342,11 +548,11 @@ function IwanEvidenceContent() {
           <div className="flex items-center gap-2">
             <Switch
               id="auto-refresh-evidence"
-              checked={autoRefresh}
-              onCheckedChange={setAutoRefresh}
+              checked={realtimeEnabled}
+              onCheckedChange={setRealtimeEnabled}
             />
             <Label htmlFor="auto-refresh-evidence" className="text-sm font-normal">
-              Otomatis{autoRefresh ? ' (10 dtk)' : ''}
+              Live
             </Label>
           </div>
 
@@ -434,11 +640,59 @@ function IwanEvidenceContent() {
         </div>
       )}
 
+      {/* Bulk Action Bar */}
+      {activeSelectedCount > 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border px-4 py-2.5">
+          <span className="text-sm font-medium tabular-nums">
+            {activeSelectedCount} item dipilih
+          </span>
+          <div className="flex flex-wrap items-center gap-2">
+            {filteredLogs.length > paginatedLogs.length && activeSelectedCount < filteredLogs.length && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setSelectedIds(new Set(filteredLogs.map((l) => l.id)))}
+              >
+                Pilih semua ({filteredLogs.length})
+              </Button>
+            )}
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setSelectedIds(new Set())}
+              disabled={isBulkDeleting}
+            >
+              Batal
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              size="sm"
+              onClick={() => setIsBulkDeleteOpen(true)}
+              disabled={isBulkDeleting}
+            >
+              <Trash2 className="h-4 w-4 mr-1.5" />
+              Hapus Terpilih ({activeSelectedCount})
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Table */}
       <div className="overflow-x-auto rounded-md border">
         <Table className={`2xl:text-base ${TABLE_EDGE_PADDING}`}>
           <TableHeader className="bg-muted">
             <TableRow>
+              <TableHead className="w-10">
+                <Checkbox
+                  checked={allPageSelected ? true : somePageSelected ? 'indeterminate' : false}
+                  onCheckedChange={(checked) => toggleSelectPage(checked === true)}
+                  aria-label="Pilih semua baris di halaman ini"
+                  disabled={paginatedLogs.length === 0}
+                />
+              </TableHead>
               <TableHead className="w-[180px]">Waktu Deteksi</TableHead>
               <TableHead className="w-[140px]">Ruangan</TableHead>
               <TableHead className="w-[150px]">Kursi &amp; Label PC</TableHead>
@@ -450,13 +704,13 @@ function IwanEvidenceContent() {
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={6} className="h-36 text-center text-muted-foreground">
+                <TableCell colSpan={7} className="h-36 text-center text-muted-foreground">
                   Memuat daftar log kecurangan...
                 </TableCell>
               </TableRow>
             ) : filteredLogs.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="h-40 text-center">
+                <TableCell colSpan={7} className="h-40 text-center">
                   {searchQuery.trim() || selectedRoomFilter !== 'ALL' ? (
                     <div className="mx-auto flex max-w-md flex-col items-center gap-2 py-4">
                       <p className="text-sm font-medium">
@@ -497,6 +751,13 @@ function IwanEvidenceContent() {
             ) : (
               paginatedLogs.map((item) => (
                 <TableRow key={item.id}>
+                  <TableCell>
+                    <Checkbox
+                      checked={selectedIds.has(item.id)}
+                      onCheckedChange={(checked) => toggleSelectRow(item.id, checked === true)}
+                      aria-label={`Pilih bukti ${item.deviceLabel} kursi ${item.seatNumber}`}
+                    />
+                  </TableCell>
                   <TableCell className="tabular-nums">
                     <div className="font-medium text-foreground">
                       {formatRelativeTime(item.detectedAt)}
@@ -804,6 +1065,35 @@ function IwanEvidenceContent() {
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {isDeleting ? 'Menghapus...' : 'Hapus Permanen'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* AlertDialog Konfirmasi Hapus Massal */}
+      <AlertDialog
+        open={isBulkDeleteOpen}
+        onOpenChange={(open) => {
+          if (!isBulkDeleting) setIsBulkDeleteOpen(open);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Hapus {activeSelectedCount} Bukti Kecurangan?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Sebanyak <strong>{activeSelectedCount}</strong> catatan insiden beserta file
+              screenshot terkait di Supabase Storage akan dihapus permanen dan tidak dapat
+              dikembalikan.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isBulkDeleting}>Batal</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={isBulkDeleting}
+              onClick={handleConfirmBulkDelete}
+              variant="destructive"
+            >
+              {isBulkDeleting ? 'Menghapus...' : `Hapus ${activeSelectedCount} Item`}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

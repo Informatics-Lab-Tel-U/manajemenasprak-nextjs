@@ -19,9 +19,7 @@ export default async function FontGeneratorPage() {
         </div>
       </div>
       
-      <div className="flex items-start pt-4">
-        <FontGeneratorForm initialRooms={[]} initialTerm="" />
-      </div>
+      <FontGeneratorForm initialRooms={[]} initialTerm="" />
     </div>
   );
 }

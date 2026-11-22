@@ -128,7 +128,7 @@ export default function StepPreviewFinalAsprak({ term }: StepPreviewFinalAsprakP
                         <TableCell className="font-medium">{r.nama_lengkap}</TableCell>
                         <TableCell>
                           {r.role === 'ASLAB' ? (
-                            <Badge className="bg-slate-900 text-white hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200 font-semibold px-2 py-0.5">
+                            <Badge variant="default" className="px-2 py-0.5">
                               ASLAB {!HIDE_ASLAB_YEAR && getAslabTerm(r.angkatan)}
                             </Badge>
                           ) : (
