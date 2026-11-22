@@ -60,6 +60,44 @@ export async function updateSession(request: NextRequest) {
     return supabaseResponse;
   }
 
+  // Fast-path: tanpa cookie sesi Supabase, lewati createServerClient + getUser + /api/auth/me
+  const hasSupabaseCookie = request.cookies
+    .getAll()
+    .some((cookie) => cookie.name.startsWith('sb-'));
+
+  if (!hasSupabaseCookie) {
+    if (isIwanApi) {
+      return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
+    }
+    if (pathname.startsWith('/api/')) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const isMaintenanceMode = await getMaintenanceStatus(process.env.HONO_BACKEND_URL);
+    if (!isMaintenanceMode && pathname === '/maintenance') {
+      const url = request.nextUrl.clone();
+      url.pathname = '/';
+      return NextResponse.redirect(url);
+    }
+    if (
+      isMaintenanceMode &&
+      !pathname.startsWith('/api/auth') &&
+      pathname !== '/maintenance' &&
+      pathname !== '/login'
+    ) {
+      const url = request.nextUrl.clone();
+      url.pathname = '/maintenance';
+      return NextResponse.redirect(url);
+    }
+    if (isPublicPath(pathname)) {
+      return supabaseResponse;
+    }
+
+    const loginUrl = request.nextUrl.clone();
+    loginUrl.pathname = AUTH_CONFIG.paths.login;
+    return NextResponse.redirect(loginUrl);
+  }
+
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,

@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
 
 const BACKEND_URL = process.env.HONO_BACKEND_URL || 'https://manajemenasprak-backend.iflabdev.workers.dev';
 
@@ -56,23 +55,18 @@ export async function forwardToHono(request: NextRequest, customPath?: string) {
     if (xApiKey) headers['x-api-key'] = xApiKey;
 
     const contentType = request.headers.get('content-type');
+    const hasBody = request.method !== 'GET' && request.method !== 'HEAD';
 
-    let body: any = undefined;
-    if (request.method !== 'GET' && request.method !== 'HEAD') {
-      if (contentType?.includes('multipart/form-data')) {
-        body = await request.formData();
-      } else {
-        body = await request.text();
-        if (contentType) {
-          headers['content-type'] = contentType;
-        }
-      }
+    if (hasBody && contentType) {
+      headers['content-type'] = contentType;
     }
 
-    const init: RequestInit = {
+    // Stream request body directly — hindari buffering formData/text di Worker
+    const init: RequestInit & { duplex?: 'half' } = {
       method: request.method,
       headers,
-      body,
+      body: hasBody ? request.body : undefined,
+      ...(hasBody && request.body ? { duplex: 'half' } : {}),
     };
 
     const res = await fetch(targetUrl.toString(), init);

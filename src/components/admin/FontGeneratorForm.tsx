@@ -15,7 +15,6 @@ import {
 } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Spinner } from '@/components/ui/spinner';
-import { generateFont } from '@/services/fontService';
 import { toast } from 'sonner';
 
 export default function FontGeneratorForm({ 
@@ -70,20 +69,18 @@ export default function FontGeneratorForm({
 
     setLoading(true);
     try {
-      const base64 = await generateFont(labId.trim());
-      
-      if (!base64) {
+      const response = await fetch('/api/fonts/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lab_id: labId.trim() }),
+      });
+
+      if (!response.ok) {
         toast.error('Gagal men-generate font');
         return;
       }
 
-      const byteCharacters = atob(base64);
-      const byteNumbers = new Array(byteCharacters.length);
-      for (let i = 0; i < byteCharacters.length; i++) {
-        byteNumbers[i] = byteCharacters.charCodeAt(i);
-      }
-      const byteArray = new Uint8Array(byteNumbers);
-      const blob = new Blob([byteArray], { type: 'font/ttf' });
+      const blob = await response.blob();
 
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');

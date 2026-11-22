@@ -29,10 +29,12 @@ export async function proxyIwanRequest(
   };
 
   try {
+    const hasBody = request.method !== 'GET' && request.method !== 'HEAD';
     const upstream = await fetch(new URL(source.pathname + source.search, backendUrl), {
       method: request.method,
       headers,
-      body: request.method === 'GET' || request.method === 'HEAD' ? undefined : await request.text(),
+      body: hasBody ? request.body : undefined,
+      ...(hasBody && request.body ? { duplex: 'half' as const } : {}),
       cache: 'no-store',
       redirect: 'manual',
       signal: AbortSignal.timeout(24000),
