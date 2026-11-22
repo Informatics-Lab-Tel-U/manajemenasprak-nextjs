@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { Cell, Pie, PieChart } from 'recharts';
 import { format } from 'date-fns';
@@ -23,6 +23,10 @@ import { SynchronizedJagaSnakeBorder } from '@/components/jadwal/JagaCell';
 import { ScheduleCell } from '@/components/jadwal/ScheduleCell';
 import { ROOMS, STATIC_SESSIONS } from '@/constants';
 import { useJaga } from '@/hooks/useJaga';
+import {
+  useIwanEvidenceRealtime,
+  type EvidenceLogItem,
+} from '@/hooks/useIwanEvidenceRealtime';
 import { useScheduleData } from '@/hooks/useScheduleData';
 import { isLabOnline } from '@/lib/labStatus';
 import { useMonitoringStore } from '@/store/useMonitoringStore';
@@ -57,21 +61,6 @@ const chartConfigAsprak = {
   },
 } satisfies ChartConfig;
 
-function parseRoomClassText(rawKelas?: string): string | null {
-  const trimmed = rawKelas?.trim();
-  if (!trimmed || trimmed === '-' || trimmed.toLowerCase() === 'tidak ada sesi') {
-    return null;
-  }
-  if (trimmed.includes(' | ')) {
-    const parts = trimmed
-      .split(' | ')
-      .map((p) => p.trim())
-      .filter(Boolean);
-    return parts.join(' · ');
-  }
-  return trimmed;
-}
-
 function matchesScheduleQuery(jadwal: Jadwal, room: string, normalizedQuery: string): boolean {
   if (!normalizedQuery) return true;
   const fields = [
@@ -85,6 +74,71 @@ function matchesScheduleQuery(jadwal: Jadwal, room: string, normalizedQuery: str
   return fields.some((field) => field?.toLowerCase().includes(normalizedQuery));
 }
 
+function EvidenceListRow({
+  item,
+  isRecentInsert,
+}: {
+  item: EvidenceLogItem;
+  isRecentInsert: boolean;
+}) {
+  const [expanded, setExpanded] = useState(!isRecentInsert);
+
+  useEffect(() => {
+    if (expanded) return;
+    let raf2 = 0;
+    const raf1 = requestAnimationFrame(() => {
+      raf2 = requestAnimationFrame(() => setExpanded(true));
+    });
+    return () => {
+      cancelAnimationFrame(raf1);
+      if (raf2) cancelAnimationFrame(raf2);
+    };
+  }, [expanded]);
+
+  const detectedDate = item.detectedAt ? new Date(item.detectedAt) : null;
+  const timeLabel =
+    detectedDate && !Number.isNaN(detectedDate.getTime())
+      ? format(detectedDate, 'dd MMM, HH:mm', { locale: id })
+      : '-';
+
+  return (
+    <div
+      style={{
+        gridTemplateRows: expanded ? '1fr' : '0fr',
+        opacity: expanded ? 1 : 0,
+        transform: expanded ? 'translateY(0)' : 'translateY(-6px)',
+        transition:
+          'grid-template-rows 360ms cubic-bezier(0.22, 1, 0.36, 1), opacity 300ms ease-out, transform 360ms cubic-bezier(0.22, 1, 0.36, 1)',
+      }}
+      className="grid overflow-hidden"
+    >
+      <div className="min-h-0 overflow-hidden">
+        <Link
+          prefetch={false}
+          href="/iwan/evidence"
+          style={{
+            transition: 'border-color 2000ms ease-out, background-color 150ms ease-out',
+          }}
+          className={`flex min-h-14 items-center justify-between gap-3 rounded-lg border bg-transparent px-3.5 py-2.5 hover:bg-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+            isRecentInsert ? 'border-red-500/80 dark:border-red-500/70' : 'border-border'
+          }`}
+        >
+          <div className="min-w-0 flex-1 space-y-0.5">
+            <p className="text-sm font-medium text-foreground truncate">
+              {item.roomName} · {item.deviceLabel} (Kursi {item.seatNumber})
+            </p>
+            <p className="text-xs text-muted-foreground truncate">{item.windowTitle}</p>
+          </div>
+
+          <div className="shrink-0 text-right">
+            <span className="text-xs text-muted-foreground tabular-nums">{timeLabel}</span>
+          </div>
+        </Link>
+      </div>
+    </div>
+  );
+}
+
 export default function DashboardCharts({
   asprakByAngkatan,
   jadwalByDay,
@@ -95,6 +149,7 @@ export default function DashboardCharts({
   term,
   activeModul,
   userRole: _userRole,
+  evidenceRealtime,
 }: {
   asprakByAngkatan: { name: string; count: number }[];
   jadwalByDay: { name: string; count: number }[];
@@ -105,6 +160,7 @@ export default function DashboardCharts({
   term: string;
   activeModul: number;
   userRole?: string;
+  evidenceRealtime?: ReturnType<typeof useIwanEvidenceRealtime>;
 }) {
   const [programType, setProgramType] = useState<'REGULER' | 'PJJ'>('REGULER');
   const [searchQuery, setSearchQuery] = useState('');
@@ -145,6 +201,25 @@ export default function DashboardCharts({
 
   const storeNow = useMonitoringStore((state) => state.now);
   const labStatus = useMonitoringStore((state) => state.labStatus);
+  const fallbackEvidenceRealtime = useIwanEvidenceRealtime({
+    limit: 15,
+    autoFetch: !evidenceRealtime,
+    enabled: !evidenceRealtime,
+  });
+  const {
+    logs: evidenceLogs,
+    recentInsertIds,
+    isLoading: isEvidenceLoading,
+    loadError: evidenceLoadError,
+    loadEvidenceLogs,
+  } = evidenceRealtime ?? fallbackEvidenceRealtime;
+  const evidenceListRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (recentInsertIds.size > 0) {
+      evidenceListRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }, [recentInsertIds]);
   const todayDate = storeNow;
 
   const uniqueRooms = useMemo(() => ROOMS, []);
@@ -757,13 +832,16 @@ export default function DashboardCharts({
           </CardContent>
         </Card>
 
-        {/* Center: Status Ruangan Realtime (List Card) */}
-        <Card className="flex flex-col bg-transparent border border-border shadow-none py-5 gap-4">
-          <CardHeader className="flex flex-row items-start justify-between gap-2 px-5">
+        {/* Center: Log Kecurangan Realtime (List Card) */}
+        <Card
+          aria-busy={isEvidenceLoading || undefined}
+          className="flex flex-col bg-transparent border border-border shadow-none py-5 gap-4"
+        >
+          <CardHeader className="flex flex-row items-start justify-between gap-3 px-5">
             <div className="min-w-0 space-y-1">
-              <CardTitle className="text-base font-semibold">Status Ruangan</CardTitle>
+              <CardTitle className="text-base font-semibold">Log Kecurangan</CardTitle>
               <CardDescription className="text-xs">
-                Pemantauan langsung {ROOMS.length} ruang laboratorium
+                Deteksi aktivitas terlarang secara realtime
               </CardDescription>
             </div>
             <Button
@@ -772,63 +850,49 @@ export default function DashboardCharts({
               size="sm"
               className="min-h-11 sm:min-h-8 shrink-0 bg-transparent border-border hover:bg-accent/50"
             >
-              <Link prefetch={false} href="/monitoring">
-                Monitoring
+              <Link prefetch={false} href="/iwan/evidence">
+                Lihat Semua
               </Link>
             </Button>
           </CardHeader>
 
           <CardContent className="flex-1 flex flex-col px-5 min-h-0">
-            <div className="max-h-[300px] overflow-y-auto scrollbar-thin space-y-2 pr-1">
-              {ROOMS.map((room) => {
-                const roomData = labStatus.find(
-                  (d) => d.lab_id.replace(/\s+/g, '').toUpperCase() === room.replace(/\s+/g, '').toUpperCase()
-                );
-                const isOnline = roomData ? isLabOnline(roomData, storeNow) : false;
-                const activeClassText = parseRoomClassText(roomData?.kelas);
-
-                return (
-                  <div
-                    key={room}
-                    className={`flex items-center justify-between gap-3 rounded-lg border bg-transparent px-3.5 py-2.5 transition-colors ${
-                      isOnline
-                        ? 'border-green-500/40 dark:border-green-500/30'
-                        : 'border-border'
-                    }`}
+            <div
+              ref={evidenceListRef}
+              className="max-h-[300px] overflow-y-auto scrollbar-thin space-y-2 pr-1"
+            >
+              {isEvidenceLoading ? (
+                Array.from({ length: 4 }).map((_, idx) => (
+                  <Skeleton key={idx} className="h-14 w-full rounded-lg" />
+                ))
+              ) : evidenceLoadError ? (
+                <div className="flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-border px-4 py-8 text-center">
+                  <p className="text-xs text-muted-foreground">
+                    Gagal memuat log kecurangan
+                  </p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => void loadEvidenceLogs().catch(() => {})}
+                    className="min-h-9 bg-transparent border-border hover:bg-accent/50"
                   >
-                    <div className="min-w-0 flex-1 space-y-0.5">
-                      <p className="text-sm font-medium text-foreground truncate">{room}</p>
-                      <p className="text-xs text-muted-foreground truncate">
-                        {isOnline && activeClassText
-                          ? activeClassText
-                          : isOnline
-                            ? 'Perangkat lab aktif'
-                            : 'Tidak ada sesi aktif'}
-                      </p>
-                    </div>
-
-                    <div className="shrink-0">
-                      {isOnline ? (
-                        <span className="inline-flex items-center gap-1.5 rounded-full border border-green-500/40 px-2.5 py-0.5 text-xs font-medium text-green-700 dark:text-green-400">
-                          <span
-                            className="size-1.5 rounded-full bg-green-600 dark:bg-green-400"
-                            aria-hidden="true"
-                          />
-                          Online
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1.5 rounded-full border border-border px-2.5 py-0.5 text-xs font-medium text-muted-foreground">
-                          <span
-                            className="size-1.5 rounded-full bg-muted-foreground"
-                            aria-hidden="true"
-                          />
-                          Offline
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
+                    Coba Lagi
+                  </Button>
+                </div>
+              ) : evidenceLogs.length === 0 ? (
+                <div className="flex items-center justify-center rounded-lg border border-dashed border-border px-4 py-10 text-center text-xs text-muted-foreground">
+                  Belum ada log kecurangan terdeteksi
+                </div>
+              ) : (
+                evidenceLogs.map((item) => (
+                  <EvidenceListRow
+                    key={item.id}
+                    item={item}
+                    isRecentInsert={recentInsertIds.has(item.id)}
+                  />
+                ))
+              )}
             </div>
           </CardContent>
         </Card>

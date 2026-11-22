@@ -14,6 +14,8 @@ export interface StatCardBadge {
 interface StatCardProps {
   title: string;
   value: number | string;
+  valueClassName?: string;
+  valueStyle?: React.CSSProperties;
   headline?: string;
   headlineIcon?: LucideIcon;
   description: string;
@@ -26,6 +28,8 @@ interface StatCardProps {
 export function StatCard({
   title,
   value,
+  valueClassName,
+  valueStyle,
   headlineIcon: HeadlineIcon,
   description,
   badge,
@@ -49,7 +53,13 @@ export function StatCard({
           <CardDescription className="text-sm font-medium text-muted-foreground">
             {title}
           </CardDescription>
-          <CardTitle className="text-2xl font-semibold tracking-tight tabular-nums @[220px]/card:text-3xl text-foreground">
+          <CardTitle
+            style={valueStyle}
+            className={cn(
+              'text-2xl font-semibold tracking-tight tabular-nums @[220px]/card:text-3xl text-foreground',
+              valueClassName
+            )}
+          >
             {loading ? (
               <>
                 <Skeleton className="h-8 w-16" />

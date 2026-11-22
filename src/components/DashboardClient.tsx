@@ -13,6 +13,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { ROOMS } from '@/constants';
 import { isLabOnline } from '@/lib/labStatus';
 import { useDashboard } from '@/hooks/useDashboard';
+import { useIwanEvidenceRealtime } from '@/hooks/useIwanEvidenceRealtime';
 import { useScheduleData } from '@/hooks/useScheduleData';
 import { LabStatus, useMonitoringStore } from '@/store/useMonitoringStore';
 import type { DashboardStats } from '@/services/databaseService';
@@ -59,6 +60,7 @@ export default function DashboardClient({
   );
 
   const labStatus = useMonitoringStore((state) => state.labStatus);
+  const evidenceRealtime = useIwanEvidenceRealtime({ limit: 15, autoFetch: true });
   const now = useMonitoringStore((state) => state.now);
   const initMonitoring = useMonitoringStore((state) => state.init);
   const setInitialLabStatus = useMonitoringStore((state) => state.setInitialLabStatus);
@@ -210,18 +212,24 @@ export default function DashboardClient({
         />
 
         <StatCard
-          title="Pelanggaran"
-          value={stats.pelanggaranCount}
+          title="Log Kecurangan"
+          value={evidenceRealtime.totalCount}
+          valueClassName={
+            evidenceRealtime.recentInsertIds.size > 0
+              ? 'text-red-500 dark:text-red-400'
+              : 'text-foreground'
+          }
+          valueStyle={{ transition: 'color 2000ms ease-out' }}
           headlineIcon={AlertTriangle}
-          description={`Tercatat pada ${termLabel}`}
+          description="Terdeteksi oleh IWAN"
           badge={
-            stats.pelanggaranCount > 0
+            evidenceRealtime.totalCount > 0
               ? { label: 'Perlu ditinjau', icon: AlertTriangle, tone: 'warning' }
               : undefined
           }
-          href="/pelanggaran"
-          loading={loading}
-          error={!!error}
+          href="/iwan/evidence"
+          loading={evidenceRealtime.isLoading}
+          error={!!evidenceRealtime.loadError}
         />
       </div>
 
@@ -235,6 +243,7 @@ export default function DashboardClient({
         term={selectedTerm}
         activeModul={activeModul}
         userRole={userRole}
+        evidenceRealtime={evidenceRealtime}
       />
     </div>
   );

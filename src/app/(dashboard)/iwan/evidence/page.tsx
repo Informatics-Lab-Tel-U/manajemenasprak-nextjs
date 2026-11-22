@@ -4,8 +4,11 @@ import * as React from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useIwanPolling } from '@/hooks/useIwanPolling';
+import {
+  useIwanEvidenceRealtime,
+  type EvidenceLogItem,
+} from '@/hooks/useIwanEvidenceRealtime';
 import { fetchIwanData } from '@/lib/iwanPolling';
-import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -98,53 +101,34 @@ interface IwanPolicyResponse {
 const TABLE_EDGE_PADDING =
   '[&_th:first-child]:pl-4 [&_td:first-child]:pl-4 [&_th:last-child]:pr-4 [&_td:last-child]:pr-4';
 
-interface EvidenceLogItem {
-  id: string;
-  deviceId: string;
-  roomId: string;
-  deviceLabel: string;
-  seatNumber: number;
-  roomName: string;
-  windowTitle: string;
-  screenshotUrl: string;
-  screenshotStoragePath: string;
-  detectedAt: string;
-}
-
 interface RoomOption {
   id: string;
   name: string;
-}
-
-function mapEvidenceRow(row: Record<string, any>): EvidenceLogItem {
-  return {
-    id: String(row.id ?? ''),
-    deviceId: String(row.device_id ?? row.deviceId ?? ''),
-    roomId: String(row.room_id ?? row.roomId ?? ''),
-    deviceLabel: String(row.device_label ?? row.deviceLabel ?? ''),
-    seatNumber: Number(row.seat_number ?? row.seatNumber ?? 0),
-    roomName: String(row.room_name ?? row.roomName ?? ''),
-    windowTitle: String(row.window_title ?? row.windowTitle ?? ''),
-    screenshotUrl: String(row.screenshot_url ?? row.screenshotUrl ?? ''),
-    screenshotStoragePath: String(row.screenshot_storage_path ?? row.screenshotStoragePath ?? ''),
-    detectedAt: String(row.detected_at ?? row.detectedAt ?? ''),
-  };
 }
 
 function IwanEvidenceContent() {
   const searchParams = useSearchParams();
   const initialRoomParam = searchParams.get('roomId') || 'ALL';
 
-  const [logs, setLogs] = React.useState<EvidenceLogItem[]>([]);
   const [rooms, setRooms] = React.useState<RoomOption[]>([]);
   const [selectedRoomFilter, setSelectedRoomFilter] = React.useState<string>(initialRoomParam);
   const [searchQuery, setSearchQuery] = React.useState<string>('');
   const [currentPage, setCurrentPage] = React.useState<number>(1);
   const [pageSize, setPageSize] = React.useState<number>(10);
-  const [isLoading, setIsLoading] = React.useState(true);
-  const [loadError, setLoadError] = React.useState<string | null>(null);
   const [realtimeEnabled, setRealtimeEnabled] = React.useState(true);
-  const [lastUpdated, setLastUpdated] = React.useState(0);
+
+  const {
+    logs,
+    setLogs,
+    isLoading,
+    loadError,
+    lastUpdated,
+    loadEvidenceLogs,
+  } = useIwanEvidenceRealtime({
+    roomId: selectedRoomFilter,
+    limit: 50,
+    enabled: realtimeEnabled,
+  });
 
   const [selectedEvidence, setSelectedEvidence] = React.useState<EvidenceLogItem | null>(null);
   const [deletingEvidence, setDeletingEvidence] = React.useState<EvidenceLogItem | null>(null);
@@ -162,67 +146,6 @@ function IwanEvidenceContent() {
   const [isPolicyOpen, setIsPolicyOpen] = React.useState(false);
   const [isSavingPolicy, setIsSavingPolicy] = React.useState(false);
 
-  const logsRequest = React.useRef<AbortController | null>(null);
-
-  const loadEvidenceLogs = React.useCallback(
-    async (signal?: AbortSignal) => {
-      logsRequest.current?.abort();
-      const controller = new AbortController();
-      logsRequest.current = controller;
-      const requestSignal = signal
-        ? AbortSignal.any([signal, controller.signal])
-        : controller.signal;
-
-      try {
-        // Query directly from Supabase to avoid unnecessary Cloudflare Workers requests
-        const supabase = createClient();
-        let query = supabase
-          .from('iwan_evidence_logs')
-          .select('*')
-          .order('detected_at', { ascending: false })
-          .limit(50);
-
-        if (selectedRoomFilter !== 'ALL') {
-          query = query.eq('room_id', selectedRoomFilter);
-        }
-
-        const { data: rows, error: sbError } = await query;
-        if (!sbError && rows) {
-          if (!requestSignal.aborted) {
-            setLogs(rows.map((r) => mapEvidenceRow(r as Record<string, any>)));
-            setLoadError(null);
-            setLastUpdated(Date.now());
-          }
-          return;
-        }
-
-        // Fallback to Hono API if Supabase RLS policy is not yet applied
-        const apiQuery =
-          selectedRoomFilter === 'ALL'
-            ? '?limit=50'
-            : `?roomId=${encodeURIComponent(selectedRoomFilter)}&limit=50`;
-        const data = await fetchIwanData<EvidenceLogItem[]>(
-          `/api/iwan/evidence${apiQuery}`,
-          requestSignal,
-        );
-        if (!requestSignal.aborted) {
-          setLogs(data);
-          setLoadError(null);
-          setLastUpdated(Date.now());
-        }
-      } catch (error: any) {
-        if (!requestSignal.aborted) {
-          setLoadError(error?.message || 'Gagal memuat daftar bukti insiden dari server.');
-          throw error;
-        }
-      } finally {
-        if (logsRequest.current === controller) logsRequest.current = null;
-        if (!requestSignal.aborted) setIsLoading(false);
-      }
-    },
-    [selectedRoomFilter],
-  );
-
   const loadRoomOptions = React.useCallback(async (signal?: AbortSignal) => {
     const data = await fetchIwanData<RoomOption[]>('/api/iwan/rooms?view=options', signal);
     if (!signal?.aborted) setRooms(data);
@@ -237,7 +160,6 @@ function IwanEvidenceContent() {
   }, []);
 
   const fetchData = React.useCallback(async () => {
-    setIsLoading(true);
     try {
       await Promise.all([loadEvidenceLogs(), loadRoomOptions(), loadPolicy()]);
     } catch {
@@ -253,93 +175,6 @@ function IwanEvidenceContent() {
   useIwanPolling(pollLogs, 0, 'Gagal memuat log kecurangan');
   useIwanPolling(loadRoomOptions, 0, 'Gagal memuat daftar ruangan');
   useIwanPolling(loadPolicy, 0, 'Gagal memuat daftar kata kunci kecurangan');
-
-  // Supabase Realtime subscription (0 CF Workers requests)
-  React.useEffect(() => {
-    if (!realtimeEnabled) return;
-    let disposed = false;
-    const supabase = createClient();
-    let activeChannel: ReturnType<typeof supabase.channel> | null = null;
-
-    const subscribeRealtime = async () => {
-      // Ensure Realtime WebSocket carries the authenticated user JWT before subscribing,
-      // otherwise it joins as `anon` and RLS `TO authenticated` blocks all events.
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      if (disposed) return;
-
-      if (session?.access_token) {
-        await supabase.realtime.setAuth(session.access_token);
-      }
-      if (disposed) return;
-
-      const uniqueSuffix = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-      const channelName =
-        selectedRoomFilter === 'ALL'
-          ? `iwan_evidence_logs_all_${uniqueSuffix}`
-          : `iwan_evidence_logs_${selectedRoomFilter}_${uniqueSuffix}`;
-      const filter =
-        selectedRoomFilter === 'ALL' ? undefined : `room_id=eq.${selectedRoomFilter}`;
-
-      activeChannel = supabase
-        .channel(channelName)
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'iwan_evidence_logs',
-            ...(filter ? { filter } : {}),
-          },
-          (payload) => {
-            if (payload.eventType === 'INSERT' && payload.new) {
-              const newItem = mapEvidenceRow(payload.new as Record<string, any>);
-              setLogs((prev) => {
-                if (prev.some((item) => item.id === newItem.id)) return prev;
-                return [newItem, ...prev].slice(0, 50);
-              });
-              setLastUpdated(Date.now());
-            } else if (payload.eventType === 'UPDATE' && payload.new) {
-              const updated = mapEvidenceRow(payload.new as Record<string, any>);
-              setLogs((prev) => prev.map((item) => (item.id === updated.id ? updated : item)));
-              setLastUpdated(Date.now());
-            } else if (payload.eventType === 'DELETE' && payload.old) {
-              const deletedId = (payload.old as { id?: string }).id;
-              if (deletedId) {
-                setLogs((prev) => prev.filter((item) => item.id !== deletedId));
-                setLastUpdated(Date.now());
-              }
-            }
-          },
-        )
-        .subscribe((status, err) => {
-          if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-            console.warn('[IwanEvidence] Realtime status:', status, err?.message);
-          }
-        });
-    };
-
-    void subscribeRealtime();
-
-    const {
-      data: { subscription: authSubscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session?.access_token) {
-        void supabase.realtime.setAuth(session.access_token);
-      }
-    });
-
-    return () => {
-      disposed = true;
-      authSubscription.unsubscribe();
-      if (activeChannel) {
-        void supabase.removeChannel(activeChannel);
-      }
-    };
-  }, [realtimeEnabled, selectedRoomFilter]);
-
-  React.useEffect(() => () => logsRequest.current?.abort(), []);
 
   async function handleConfirmDelete() {
     if (!deletingEvidence) return;
@@ -486,8 +321,8 @@ function IwanEvidenceContent() {
   }
 
   function formatRelativeTime(dateStr: string) {
-    const reference = lastUpdated || Date.now();
-    const diffSeconds = Math.max(0, Math.round((reference - new Date(dateStr).getTime()) / 1000));
+    if (!lastUpdated) return new Date(dateStr).toLocaleString('id-ID');
+    const diffSeconds = Math.max(0, Math.round((lastUpdated - new Date(dateStr).getTime()) / 1000));
     if (diffSeconds < 15) return 'Baru saja';
     if (diffSeconds < 60) return `${diffSeconds} detik lalu`;
     const diffMinutes = Math.floor(diffSeconds / 60);
