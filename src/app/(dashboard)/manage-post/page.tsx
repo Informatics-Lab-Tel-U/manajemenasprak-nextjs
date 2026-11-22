@@ -43,11 +43,11 @@ export default async function ManagePostPage() {
   }
 
   return (
-    <div className="container mx-auto max-w-[2000px] 2xl:px-8 relative">
+    <div className="container mx-auto max-w-[2000px] 2xl:px-8 relative space-y-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
         <div>
-          <h1 className="text-2xl 2xl:text-3xl font-bold tracking-tight">Semua Post</h1>
-          <p className="text-sm 2xl:text-base text-muted-foreground mt-1">Manajemen konten artikel dan pengumuman lab.</p>
+          <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-foreground">Semua Post</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">Manajemen konten artikel dan pengumuman lab.</p>
         </div>
         <div className="flex flex-wrap gap-2 md:gap-3 items-center w-full md:w-auto">
           <TemplateSelectionModal />

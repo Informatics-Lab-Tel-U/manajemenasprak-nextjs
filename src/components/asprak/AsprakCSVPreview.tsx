@@ -22,6 +22,7 @@ import {
 import { exportSpreadsheet } from '@/lib/spreadsheet';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { NavButton } from '@/components/ui/nav-button';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -337,7 +338,7 @@ export default function AsprakCSVPreview({
                         </span>
                       ) : (
                         <div className="inline-flex items-center gap-1">
-                          <input
+                          <Input
                             type="text"
                             value={row.kode}
                             onChange={(e) => {
@@ -346,9 +347,7 @@ export default function AsprakCSVPreview({
                             }}
                             maxLength={3}
                             className={`
-                            w-[52px] text-center font-mono font-bold text-xs px-1.5 py-0.5 rounded-md
-                            border outline-none transition-all
-                            focus:ring-2 focus:ring-primary/40
+                            h-7 w-[52px] text-center font-mono font-semibold text-xs px-1.5 py-0.5 rounded-md
                             ${
                               !row.kode
                                 ? 'border-amber-500/50 bg-amber-500/5 text-amber-400 placeholder:text-amber-400/50'

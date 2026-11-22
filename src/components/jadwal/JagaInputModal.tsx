@@ -18,6 +18,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { fetchAllAsprak } from '@/lib/fetchers/asprakFetcher';
@@ -349,20 +350,18 @@ export default function JagaInputModal({
 
             {!editData?.id && (
               <div className="flex items-center space-x-2 p-3 rounded-lg border border-primary/20 bg-primary/5 mt-2">
-                <input
-                  type="checkbox"
+                <Checkbox
                   id="bulk"
-                  className="w-4 h-4 rounded border-primary text-primary focus:ring-primary"
                   checked={applyToAllModuls}
-                  onChange={(e) => setApplyToAllModuls(e.target.checked)}
+                  onCheckedChange={(checked) => setApplyToAllModuls(checked === true)}
                 />
                 <div className="grid gap-1.5 leading-none">
-                  <label
+                  <Label
                     htmlFor="bulk"
-                    className="text-xs font-bold leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                    className="text-xs font-semibold leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
                   >
                     Terapkan ke semua modul (1-16)
-                  </label>
+                  </Label>
                   <p className="text-[10px] text-muted-foreground">
                     Status jaga asisten ini akan dicatat untuk seluruh modul pada term ini.
                   </p>

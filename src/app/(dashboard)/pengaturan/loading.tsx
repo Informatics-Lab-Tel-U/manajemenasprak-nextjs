@@ -2,7 +2,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 export default function PengaturanLoading() {
   return (
-    <div className="container mx-auto max-w-[2000px] 2xl:px-8">
+    <div className="container mx-auto max-w-[2000px] 2xl:px-8 space-y-6">
       {/* Page Header */}
       <header className="mb-10 pb-8 border-b border-border/50">
         <Skeleton className="h-8 w-48 mb-2" />

@@ -185,10 +185,10 @@ export default function IwanAdminAccessPage() {
   rooms.forEach((r) => roomMap.set(r.id, r.name));
 
   return (
-    <div className="container mx-auto max-w-[2000px] 2xl:px-8">
+    <div className="container mx-auto max-w-[2000px] 2xl:px-8 space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-        <h1 className="text-2xl 2xl:text-3xl font-bold tracking-tight">Akses Admin</h1>
+        <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-foreground">Akses Admin</h1>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={fetchData}>
             <RefreshCw className="h-4 w-4 mr-1.5" />
@@ -267,7 +267,7 @@ export default function IwanAdminAccessPage() {
           {generatedCodeResult && (
             <div className="py-4">
               <div className="bg-muted/40 border border-dashed rounded-lg p-6">
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+                <p className="text-xs font-semibold text-muted-foreground mb-2">
                   {generatedCodeResult.label}
                 </p>
                 <div className="font-mono text-5xl font-black tracking-[0.25em] text-primary select-all">
@@ -323,16 +323,18 @@ export default function IwanAdminAccessPage() {
                     <TableCell>
                       <Badge variant="outline" className="gap-1.5 px-1.5">
                         {tok.pair_code}
-                        <button
+                        <Button
                           type="button"
+                          variant="ghost"
+                          size="icon"
                           onClick={() => handleCopy(tok.pair_code)}
-                          className="text-muted-foreground hover:text-foreground transition-colors"
+                          className="h-4 w-4 p-0 text-muted-foreground hover:text-foreground"
                           aria-label={`Salin kode ${tok.pair_code}`}
                         >
                           {copiedCode === tok.pair_code
                             ? <Check className="h-3.5 w-3.5 text-emerald-500" />
                             : <Copy className="h-3.5 w-3.5" />}
-                        </button>
+                        </Button>
                       </Badge>
                     </TableCell>
                     <TableCell>

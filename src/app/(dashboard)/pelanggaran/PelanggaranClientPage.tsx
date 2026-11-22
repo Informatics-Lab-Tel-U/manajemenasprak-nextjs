@@ -60,7 +60,7 @@ export default function PelanggaranClientPage({
   );
 
   return (
-    <div className="container mx-auto max-w-[2000px] 2xl:px-8">
+    <div className="container mx-auto max-w-[2000px] 2xl:px-8 space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
         <div>

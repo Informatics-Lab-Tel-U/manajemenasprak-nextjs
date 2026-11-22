@@ -87,7 +87,7 @@ export default function StepPreviewFinalAsprak({ term }: StepPreviewFinalAsprakP
   };
 
   return (
-    <Card className="border shadow-sm w-full">
+    <Card className="bg-transparent border-border shadow-none w-full">
       <CardHeader>
         <CardTitle className="text-xl">Langkah 3: Preview Final</CardTitle>
         <CardDescription>
@@ -128,7 +128,7 @@ export default function StepPreviewFinalAsprak({ term }: StepPreviewFinalAsprakP
                         <TableCell className="font-medium">{r.nama_lengkap}</TableCell>
                         <TableCell>
                           {r.role === 'ASLAB' ? (
-                            <Badge className="bg-slate-900 text-white hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200 font-bold px-2 py-0.5">
+                            <Badge className="bg-slate-900 text-white hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200 font-semibold px-2 py-0.5">
                               ASLAB {!HIDE_ASLAB_YEAR && getAslabTerm(r.angkatan)}
                             </Badge>
                           ) : (
@@ -200,7 +200,7 @@ export default function StepPreviewFinalAsprak({ term }: StepPreviewFinalAsprakP
             disabled={saving || (validatedAsprakRows.length === 0 && validatedPlottingRows.length === 0)}
             loading={saving}
             loadingText="Menyimpan Data..."
-            className="min-w-[160px] bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm"
+            className="min-w-[160px] bg-primary text-primary-foreground hover:bg-primary/90 shadow-none"
           >
             Simpan Keseluruhan
           </NavButton>

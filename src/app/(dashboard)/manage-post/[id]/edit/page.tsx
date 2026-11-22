@@ -30,12 +30,12 @@ export default async function EditPostPage({ params }: { params: Promise<{ id: s
           <ChevronLeft className="h-5 w-5" />
         </Link>
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Edit Post</h1>
+          <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-foreground">Edit Post</h1>
           <p className="text-muted-foreground">Perbarui artikel atau pengumuman.</p>
         </div>
       </div>
       
-      <div className="w-full bg-card p-6 rounded-lg border">
+      <div className="w-full bg-transparent p-6 rounded-lg border border-border">
         <PostForm initialData={post} categories={categories || []} tags={tags || []} />
       </div>
     </div>

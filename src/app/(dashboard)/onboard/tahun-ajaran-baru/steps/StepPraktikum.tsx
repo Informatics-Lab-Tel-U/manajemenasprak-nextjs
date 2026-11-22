@@ -310,7 +310,7 @@ export default function PraktikumStep() {
   };
 
   return (
-    <Card className="border shadow-sm">
+    <Card className="bg-transparent border-border shadow-none">
       <CardHeader>
         <CardTitle className="text-xl">Langkah 1: Master Praktikum</CardTitle>
         <CardDescription>
@@ -513,7 +513,7 @@ export default function PraktikumStep() {
             disabled={loading || previewRows.length === 0 || previewRows.filter(r => r.selected && r.status !== 'error').length === 0} 
             loading={loading}
             loadingText="Menyimpan..."
-            className="min-w-[160px] bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm"
+            className="min-w-[160px] bg-primary text-primary-foreground hover:bg-primary/90 shadow-none"
           >
             Selanjutnya
           </NavButton>

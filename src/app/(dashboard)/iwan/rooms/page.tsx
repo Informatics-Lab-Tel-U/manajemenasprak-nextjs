@@ -376,10 +376,10 @@ export default function IwanRoomsPage() {
   const onlineDeviceCount = devices.filter((d) => d.computedStatus !== 'offline').length;
 
   return (
-    <div className="container mx-auto max-w-[2000px] 2xl:px-8">
+    <div className="container mx-auto max-w-[2000px] 2xl:px-8 space-y-6">
       {/* Header */}
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <h1 className="text-2xl font-bold tracking-tight 2xl:text-3xl">Ruangan &amp; Sesi</h1>
+        <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-foreground">Ruangan &amp; Sesi</h1>
 
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2">

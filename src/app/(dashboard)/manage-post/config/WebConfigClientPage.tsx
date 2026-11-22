@@ -46,10 +46,10 @@ export default function WebConfigClientPage({
     <div className="flex flex-col gap-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
         <div>
-          <h1 className="text-2xl 2xl:text-3xl font-bold tracking-tight">
+          <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-foreground">
             Konfigurasi Web
           </h1>
-          <p className="text-sm 2xl:text-base text-muted-foreground mt-1">
+          <p className="text-sm text-muted-foreground mt-0.5">
             Atur konten dan data yang akan diekspos ke website publik (Informatics Blog).
           </p>
         </div>
@@ -63,7 +63,7 @@ export default function WebConfigClientPage({
         </AlertDescription>
       </Alert>
 
-      <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
+      <div className="bg-transparent rounded-xl border border-border shadow-none overflow-hidden">
         <div className="p-6 border-b border-border bg-muted/20">
           <h2 className="text-lg font-semibold">Tahun Ajaran Aktif (Jadwal Praktikum)</h2>
           <p className="text-sm text-muted-foreground mt-1">

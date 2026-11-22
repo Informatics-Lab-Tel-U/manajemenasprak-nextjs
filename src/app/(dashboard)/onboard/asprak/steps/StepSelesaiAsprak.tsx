@@ -32,14 +32,14 @@ export default function StepSelesaiAsprak({ term }: StepSelesaiAsprakProps) {
   };
 
   return (
-    <Card className="border shadow-sm bg-card">
+    <Card className="border border-border shadow-none bg-transparent">
       <CardContent className="flex flex-col items-center text-center pt-8 pb-8 px-6 space-y-6">
         <div className="flex justify-center">
           <CheckCircle2 className="w-16 h-16 text-primary" strokeWidth={1.5} />
         </div>
         
         <div className="space-y-3 max-w-xl">
-          <h2 className="text-3xl font-bold tracking-tight">Setup Data Asprak Selesai!</h2>
+          <h2 className="text-3xl font-semibold tracking-tight">Setup Data Asprak Selesai</h2>
           <p className="text-muted-foreground text-[15px] leading-relaxed">
             Data asisten praktikum untuk angkatan <strong className="text-foreground font-medium">{term}</strong> berhasil diimpor dan kode asprak berhasil dibuat.
           </p>
@@ -47,7 +47,7 @@ export default function StepSelesaiAsprak({ term }: StepSelesaiAsprakProps) {
 
         <div className="w-full max-w-lg rounded-xl border bg-muted/30 p-4 mt-2 text-left transition-colors hover:bg-muted/50">
           <div className="flex gap-4">
-            <div className="bg-background shadow-sm border p-2.5 rounded-lg h-fit">
+            <div className="bg-background shadow-none border p-2.5 rounded-lg h-fit">
               <Users className="w-5 h-5 text-muted-foreground" />
             </div>
             <div className="space-y-1">

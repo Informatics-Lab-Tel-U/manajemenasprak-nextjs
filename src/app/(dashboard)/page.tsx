@@ -25,7 +25,7 @@ export default async function Home() {
   }
 
   return (
-    <div className="container mx-auto max-w-[2000px] 2xl:px-8">
+    <div className="container mx-auto max-w-[2000px] 2xl:px-8 space-y-6">
       <DashboardClient
         initialTerms={initialTerms}
         activeModul={activeModul}

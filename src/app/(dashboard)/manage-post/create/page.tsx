@@ -27,12 +27,12 @@ export default async function CreatePostPage({ searchParams }: { searchParams: P
           <ChevronLeft className="h-5 w-5" />
         </Link>
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Buat Post Baru</h1>
+          <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-foreground">Buat Post Baru</h1>
           <p className="text-muted-foreground">Tulis artikel atau pengumuman baru.</p>
         </div>
       </div>
       
-      <div className="w-full bg-card p-6 rounded-lg border">
+      <div className="w-full bg-transparent p-6 rounded-lg border border-border">
         <PostForm categories={categories || []} tags={tags || []} initialData={initialData} />
       </div>
     </div>

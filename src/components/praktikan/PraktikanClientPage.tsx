@@ -332,12 +332,12 @@ export default function PraktikanClientPage() {
   };
 
   return (
-    <div className="container mx-auto max-w-[2000px] 2xl:px-8" style={{ position: 'relative' }}>
+    <div className="container mx-auto max-w-[2000px] 2xl:px-8 space-y-6" style={{ position: 'relative' }}>
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
         <div>
-          <h1 className="text-2xl 2xl:text-3xl font-bold tracking-tight">Data Praktikan</h1>
-          <p className="text-sm 2xl:text-base text-muted-foreground mt-1">Kelola daftar mahasiswa praktikan secara terpusat</p>
+          <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-foreground">Data Praktikan</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">Kelola daftar mahasiswa praktikan secara terpusat</p>
         </div>
         <div className="flex flex-wrap gap-2 md:gap-3 items-center w-full md:w-auto">
           <Button

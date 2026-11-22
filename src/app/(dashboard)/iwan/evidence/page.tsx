@@ -66,6 +66,28 @@ const DEFAULT_FORBIDDEN_PATTERNS = [
   'deepseek',
 ];
 
+const PRESET_SUGGESTIONS = [
+  { label: 'ChatGPT', value: 'chatgpt' },
+  { label: 'Claude', value: 'claude.ai' },
+  { label: 'Gemini', value: 'gemini.google.com' },
+  { label: 'DeepSeek', value: 'deepseek' },
+  { label: 'Canva', value: 'canva.com' },
+  { label: 'Midjourney', value: 'midjourney.com' },
+  { label: 'Perplexity', value: 'perplexity.ai' },
+  { label: 'Copilot', value: 'copilot.microsoft.com' },
+  { label: 'Ideogram', value: 'ideogram.ai' },
+  { label: 'QuillBot', value: 'quillbot.com' },
+  { label: 'v0', value: 'v0.dev' },
+];
+
+function cleanDomainInput(raw: string): string {
+  let cleaned = raw.trim().toLowerCase();
+  cleaned = cleaned.replace(/^[a-z]+:\/\//i, '');
+  cleaned = cleaned.replace(/^www\./i, '');
+  cleaned = cleaned.split('/')[0].split('?')[0].split('#')[0].trim();
+  return cleaned;
+}
+
 interface IwanPolicyResponse {
   forbiddenPatterns: string[];
   updatedAt: string;
@@ -222,12 +244,27 @@ function IwanEvidenceContent() {
     }
   }
 
+  function handleAddPreset(presetVal: string) {
+    const currentLines = draftPatternsText
+      .split(/\r?\n/)
+      .map((l) => cleanDomainInput(l))
+      .filter(Boolean);
+    const cleanedPreset = cleanDomainInput(presetVal);
+    if (!currentLines.includes(cleanedPreset)) {
+      const updated = [...currentLines, cleanedPreset].join('\n');
+      setDraftPatternsText(updated);
+      toast.info(`Preset "${cleanedPreset}" ditambahkan`);
+    } else {
+      toast.info(`"${cleanedPreset}" sudah ada di daftar`);
+    }
+  }
+
   async function handleSavePolicy() {
     const parsedPatterns = Array.from(
       new Set(
         draftPatternsText
           .split(/\r?\n/)
-          .map((line) => line.trim().toLowerCase())
+          .map((line) => cleanDomainInput(line))
           .filter(Boolean),
       ),
     );
@@ -296,10 +333,10 @@ function IwanEvidenceContent() {
   );
 
   return (
-    <div className="container mx-auto max-w-[2000px] 2xl:px-8">
+    <div className="container mx-auto max-w-[2000px] 2xl:px-8 space-y-6">
       {/* Header */}
       <div className="mb-6 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
-        <h1 className="text-2xl font-bold tracking-tight 2xl:text-3xl">Log Kecurangan</h1>
+        <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-foreground">Log Kecurangan</h1>
 
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2">
@@ -667,18 +704,49 @@ function IwanEvidenceContent() {
           <DialogHeader>
             <DialogTitle>Kata Kunci Kecurangan</DialogTitle>
           </DialogHeader>
-          <div className="min-w-0 space-y-2 py-1">
-            <Label htmlFor="forbidden-patterns-textarea" className="text-xs text-muted-foreground">
-              Satu kata kunci atau domain per baris (pisahkan dengan Enter)
-            </Label>
-            <Textarea
-              id="forbidden-patterns-textarea"
-              rows={8}
-              value={draftPatternsText}
-              onChange={(e) => setDraftPatternsText(e.target.value)}
-              placeholder={'chatgpt\nchat.openai.com\nclaude.ai\ngemini.google.com'}
-              className="h-48 max-h-48 w-full resize-none overflow-x-hidden overflow-y-auto break-all [field-sizing:fixed]"
-            />
+          <div className="min-w-0 space-y-3 py-1">
+            <div className="space-y-1.5">
+              <span className="text-xs font-medium text-muted-foreground">
+                Preset AI &amp; Domain Cepat (klik untuk menambahkan):
+              </span>
+              <div className="flex flex-wrap gap-1.5">
+                {PRESET_SUGGESTIONS.map((preset) => {
+                  const cleanedTarget = cleanDomainInput(preset.value);
+                  const isAdded = draftPatternsText
+                    .split(/\r?\n/)
+                    .some((l) => cleanDomainInput(l) === cleanedTarget);
+                  return (
+                    <Badge
+                      key={preset.value}
+                      variant={isAdded ? 'secondary' : 'outline'}
+                      className={`cursor-pointer transition-colors text-xs ${
+                        isAdded
+                          ? 'opacity-60 cursor-default'
+                          : 'hover:bg-primary hover:text-primary-foreground'
+                      }`}
+                      onClick={() => !isAdded && handleAddPreset(preset.value)}
+                    >
+                      {isAdded ? '✓ ' : '+ '}
+                      {preset.label}
+                    </Badge>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <Label htmlFor="forbidden-patterns-textarea" className="text-xs text-muted-foreground">
+                Satu kata kunci atau domain per baris (URL otomatis dibersihkan saat simpan)
+              </Label>
+              <Textarea
+                id="forbidden-patterns-textarea"
+                rows={7}
+                value={draftPatternsText}
+                onChange={(e) => setDraftPatternsText(e.target.value)}
+                placeholder={'chatgpt\nclaude.ai\ngemini.google.com\ncanva.com'}
+                className="h-44 max-h-44 w-full resize-none overflow-x-hidden overflow-y-auto break-all [field-sizing:fixed]"
+              />
+            </div>
           </div>
           <DialogFooter className="flex-wrap justify-between gap-2 sm:justify-between">
             <Button
@@ -748,7 +816,7 @@ export default function IwanEvidencePage() {
   return (
     <React.Suspense
       fallback={
-        <div className="container mx-auto max-w-[2000px] 2xl:px-8">
+        <div className="container mx-auto max-w-[2000px] 2xl:px-8 space-y-6">
           <div className="h-36 flex items-center justify-center text-sm text-muted-foreground">
             Memuat halaman log kecurangan...
           </div>

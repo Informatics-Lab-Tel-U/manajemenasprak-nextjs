@@ -46,10 +46,10 @@ const PanduanClientPageComponent = function PanduanClientPage({ role }: PanduanC
   const isKoor = role === 'ASPRAK_KOOR';
 
   return (
-    <div className="container mx-auto max-w-[2000px] 2xl:px-8 relative space-y-8">
+    <div className="container mx-auto max-w-[2000px] 2xl:px-8 relative space-y-6">
       <header className="mb-10 pb-8 border-b border-border/50">
-        <h1 className="text-2xl 2xl:text-3xl font-bold tracking-tight">Panduan Sistem</h1>
-        <p className="text-sm 2xl:text-base text-muted-foreground mt-1">
+        <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-foreground">Panduan Sistem</h1>
+        <p className="text-sm text-muted-foreground mt-0.5">
           Dokumentasi lengkap pengoperasian Sistem Manajemen Asisten Praktikum.
         </p>
       </header>
@@ -65,7 +65,7 @@ const PanduanClientPageComponent = function PanduanClientPage({ role }: PanduanC
             {!isKoor && (
               <>
                 {/* 1. Alur Penambahan Data */}
-                <AccordionItem value="alur" className="border rounded-xl px-4 bg-card/30">
+                <AccordionItem value="alur" className="border border-border rounded-xl px-4 bg-transparent">
                   <AccordionTrigger className="hover:no-underline py-4">
                     <div className="flex items-center gap-3">
                       <GitGraph size={20} className="text-muted-foreground" />
@@ -109,7 +109,7 @@ const PanduanClientPageComponent = function PanduanClientPage({ role }: PanduanC
                 </AccordionItem>
 
                 {/* 2. Data Praktikum */}
-                <AccordionItem value="praktikum" className="border rounded-xl px-4 bg-card/30">
+                <AccordionItem value="praktikum" className="border border-border rounded-xl px-4 bg-transparent">
                   <AccordionTrigger className="hover:no-underline py-4">
                     <div className="flex items-center gap-3">
                       <BookOpen size={20} className="text-muted-foreground" />
@@ -149,7 +149,7 @@ const PanduanClientPageComponent = function PanduanClientPage({ role }: PanduanC
                 </AccordionItem>
 
                 {/* 3. Mata Kuliah */}
-                <AccordionItem value="matakuliah" className="border rounded-xl px-4 bg-card/30">
+                <AccordionItem value="matakuliah" className="border border-border rounded-xl px-4 bg-transparent">
                   <AccordionTrigger className="hover:no-underline py-4">
                     <div className="flex items-center gap-3 text-muted-foreground">
                       <Library size={20} />
@@ -189,7 +189,7 @@ const PanduanClientPageComponent = function PanduanClientPage({ role }: PanduanC
                 </AccordionItem>
 
                 {/* 4. Jadwal */}
-                <AccordionItem value="jadwal" className="border rounded-xl px-4 bg-card/30">
+                <AccordionItem value="jadwal" className="border border-border rounded-xl px-4 bg-transparent">
                   <AccordionTrigger className="hover:no-underline py-4">
                     <div className="flex items-center gap-3 text-muted-foreground">
                       <Calendar size={20} />
@@ -250,7 +250,7 @@ const PanduanClientPageComponent = function PanduanClientPage({ role }: PanduanC
                 </AccordionItem>
 
                 {/* 5. Data Asprak */}
-                <AccordionItem value="asprak" className="border rounded-xl px-4 bg-card/30">
+                <AccordionItem value="asprak" className="border border-border rounded-xl px-4 bg-transparent">
                   <AccordionTrigger className="hover:no-underline py-4">
                     <div className="flex items-center gap-3 text-muted-foreground">
                       <Users size={20} />
@@ -295,7 +295,7 @@ const PanduanClientPageComponent = function PanduanClientPage({ role }: PanduanC
                 </AccordionItem>
 
                 {/* 6. Plotting */}
-                <AccordionItem value="plotting" className="border rounded-xl px-4 bg-card/30">
+                <AccordionItem value="plotting" className="border border-border rounded-xl px-4 bg-transparent">
                   <AccordionTrigger className="hover:no-underline py-4">
                     <div className="flex items-center gap-3 text-muted-foreground">
                       <Users size={20} />
@@ -324,7 +324,7 @@ const PanduanClientPageComponent = function PanduanClientPage({ role }: PanduanC
                 </AccordionItem>
 
                 {/* 7. Penjagaan (Jadwal Jaga & Presensi RFID) */}
-                <AccordionItem value="penjagaan" className="border rounded-xl px-4 bg-card/30">
+                <AccordionItem value="penjagaan" className="border border-border rounded-xl px-4 bg-transparent">
                   <AccordionTrigger className="hover:no-underline py-4">
                     <div className="flex items-center gap-3 text-muted-foreground">
                       <Shield size={20} />
@@ -385,7 +385,7 @@ const PanduanClientPageComponent = function PanduanClientPage({ role }: PanduanC
 
                       {/* 1. Jadwal Senin s/d Kamis */}
                       <div className="space-y-2 pt-1">
-                        <span className="text-xs font-semibold text-foreground/80 uppercase tracking-wider">
+                        <span className="text-xs font-semibold text-foreground/80">
                           1. Jadwal Senin s/d Kamis
                         </span>
                         <div className="rounded-md border overflow-hidden">
@@ -443,7 +443,7 @@ const PanduanClientPageComponent = function PanduanClientPage({ role }: PanduanC
 
                       {/* 2. Jadwal Jumat */}
                       <div className="space-y-2 pt-2">
-                        <span className="text-xs font-semibold text-foreground/80 uppercase tracking-wider">
+                        <span className="text-xs font-semibold text-foreground/80">
                           2. Jadwal Jumat (Penyesuaian Sholat Jumat)
                         </span>
                         <div className="rounded-md border overflow-hidden">
@@ -501,7 +501,7 @@ const PanduanClientPageComponent = function PanduanClientPage({ role }: PanduanC
 
                       {/* 3. Jadwal Sabtu */}
                       <div className="space-y-2 pt-2">
-                        <span className="text-xs font-semibold text-foreground/80 uppercase tracking-wider">
+                        <span className="text-xs font-semibold text-foreground/80">
                           3. Jadwal Sabtu
                         </span>
                         <div className="rounded-md border overflow-hidden">
@@ -594,9 +594,9 @@ const PanduanClientPageComponent = function PanduanClientPage({ role }: PanduanC
                         </li>
                         <li>
                           <strong>Warna Role:</strong> Kode berwarna{' '}
-                          <span className="text-blue-600 font-bold">Biru</span> adalah{' '}
+                          <span className="text-blue-600 font-semibold">Biru</span> adalah{' '}
                           <strong>ASLAB</strong>, sedangkan{' '}
-                          <span className="text-slate-600 font-bold">Abu-abu</span> adalah{' '}
+                          <span className="text-slate-600 font-semibold">Abu-abu</span> adalah{' '}
                           <strong>ASPRAK</strong>.
                         </li>
                         <li>
@@ -611,7 +611,7 @@ const PanduanClientPageComponent = function PanduanClientPage({ role }: PanduanC
             )}
 
             {/* 7. Pelanggaran */}
-            <AccordionItem value="pelanggaran" className="border rounded-xl px-4 bg-card/30">
+            <AccordionItem value="pelanggaran" className="border border-border rounded-xl px-4 bg-transparent">
               <AccordionTrigger className="hover:no-underline py-4">
                 <div className="flex items-center gap-3">
                   <AlertTriangle size={20} className="text-muted-foreground" />
@@ -816,7 +816,7 @@ const PanduanClientPageComponent = function PanduanClientPage({ role }: PanduanC
             {!isKoor && (
               <>
                 {/* 8. Role & Akses */}
-                <AccordionItem value="role-akses" className="border rounded-xl px-4 bg-card/30">
+                <AccordionItem value="role-akses" className="border border-border rounded-xl px-4 bg-transparent">
                   <AccordionTrigger className="hover:no-underline py-4">
                     <div className="flex items-center gap-3 text-muted-foreground">
                       <ShieldCheck size={20} />
@@ -841,14 +841,14 @@ const PanduanClientPageComponent = function PanduanClientPage({ role }: PanduanC
                         </TableHeader>
                         <TableBody>
                           {[
-                            ['Dashboard', '✓', '✓', '—'],
-                            ['Praktikum & MK', '✓', '✓', '—'],
-                            ['Jadwal', '✓', '✓', '—'],
-                            ['Data Asprak', '✓', '✓', '—'],
-                            ['Plotting', '✓', '✓', '—'],
+                            ['Dashboard', '✓', '✓', '-'],
+                            ['Praktikum & MK', '✓', '✓', '-'],
+                            ['Jadwal', '✓', '✓', '-'],
+                            ['Data Asprak', '✓', '✓', '-'],
+                            ['Plotting', '✓', '✓', '-'],
                             ['Pelanggaran', 'Semua', 'Semua', 'Assignment saja'],
-                            ['Manajemen Akun', '✓', '—', '—'],
-                            ['Audit Log', '✓', '✓', '—'],
+                            ['Manajemen Akun', '✓', '-', '-'],
+                            ['Audit Log', '✓', '✓', '-'],
                             ['Export Excel', '✓', '✓', '✓ (terbatas)'],
                           ].map(([feature, admin, aslab, koor]) => (
                             <TableRow key={feature}>
@@ -897,7 +897,7 @@ const PanduanClientPageComponent = function PanduanClientPage({ role }: PanduanC
                 </AccordionItem>
 
                 {/* 9. Manajemen Akun */}
-                <AccordionItem value="manajemen-akun" className="border rounded-xl px-4 bg-card/30">
+                <AccordionItem value="manajemen-akun" className="border border-border rounded-xl px-4 bg-transparent">
                   <AccordionTrigger className="hover:no-underline py-4">
                     <div className="flex items-center gap-3 text-muted-foreground">
                       <Eye size={20} />
@@ -939,7 +939,7 @@ const PanduanClientPageComponent = function PanduanClientPage({ role }: PanduanC
                 </AccordionItem>
 
                 {/* 10. Database Manager */}
-                <AccordionItem value="db-manager" className="border rounded-xl px-4 bg-card/30">
+                <AccordionItem value="db-manager" className="border border-border rounded-xl px-4 bg-transparent">
                   <AccordionTrigger className="hover:no-underline py-4">
                     <div className="flex items-center gap-3 text-muted-foreground">
                       <Settings size={20} />
@@ -993,11 +993,11 @@ export default React.memo(PanduanClientPageComponent);
 function StepCard({ number, title, desc }: { number: number; title: string; desc: string }) {
   return (
     <div className="flex items-start gap-3 p-1">
-      <div className="flex items-center justify-center w-7 h-7 border-2 border-primary/20 rounded-lg text-primary font-bold text-xs shrink-0">
+      <div className="flex items-center justify-center w-7 h-7 border-2 border-primary/20 rounded-lg text-primary font-semibold text-xs shrink-0">
         0{number}
       </div>
       <div>
-        <h4 className="font-bold text-sm text-foreground/90">{title}</h4>
+        <h4 className="font-semibold text-sm text-foreground/90">{title}</h4>
         <p className="text-[11px] text-muted-foreground font-medium">{desc}</p>
       </div>
     </div>

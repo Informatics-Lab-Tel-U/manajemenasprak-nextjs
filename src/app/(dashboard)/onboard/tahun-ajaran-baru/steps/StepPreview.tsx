@@ -67,7 +67,7 @@ export default function PreviewStep() {
   };
 
   return (
-    <Card className="border shadow-sm">
+    <Card className="bg-transparent border-border shadow-none">
       <CardHeader>
         <CardTitle className="text-xl">Langkah 3: Preview & Simpan Permanen</CardTitle>
         <CardDescription>
@@ -82,7 +82,7 @@ export default function PreviewStep() {
               <div key={prak.tempId} className="border rounded-lg p-4 bg-muted/5">
                 <div className="flex justify-between items-center mb-3">
                   <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 rounded bg-muted flex items-center justify-center text-xs font-bold text-muted-foreground">{pIdx + 1}</div>
+                    <div className="w-6 h-6 rounded bg-muted flex items-center justify-center text-xs font-semibold tabular-nums text-muted-foreground">{pIdx + 1}</div>
                     <h3 className="font-semibold text-lg">{prak.nama} <span className="text-sm font-normal text-muted-foreground">({prak.tahun_ajaran})</span></h3>
                   </div>
                 </div>
@@ -109,7 +109,7 @@ export default function PreviewStep() {
         <Button variant="outline" onClick={() => setCurrentStep('matkul')} disabled={loading} className="shrink-0 min-w-[140px]">
           <ArrowLeft className="mr-2 h-4 w-4" /> Sebelumnya
         </Button>
-        <Button onClick={handleSaveAll} disabled={loading} className="shrink-0 min-w-[160px] bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm">
+        <Button onClick={handleSaveAll} disabled={loading} className="shrink-0 min-w-[160px] bg-primary text-primary-foreground hover:bg-primary/90 shadow-none">
           {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
           {loading ? 'Menyimpan...' : 'Simpan Permanen'}
         </Button>

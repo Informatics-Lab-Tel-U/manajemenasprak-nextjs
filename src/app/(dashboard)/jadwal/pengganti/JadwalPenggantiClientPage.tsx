@@ -206,49 +206,52 @@ export default function JadwalPenggantiClientPage({
   };
 
   return (
-    <div className="container mx-auto max-w-[2000px] 2xl:px-8 animate-in fade-in duration-500" style={{ position: 'relative' }}>
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+    <div className="container mx-auto max-w-[2000px] 2xl:px-8 space-y-6" style={{ position: 'relative' }}>
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h1 className="text-2xl 2xl:text-3xl font-bold tracking-tight">Jadwal Pengganti</h1>
-          <p className="text-sm 2xl:text-base text-muted-foreground mt-1">
+          <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-foreground">Jadwal Pengganti</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">
             Kelola semua jadwal pengganti praktikum
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+        <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
           <Button
             variant="outline"
+            size="sm"
             onClick={() => setShowExportModal(true)}
-            className="flex-1 md:flex-none min-w-0 md:whitespace-nowrap"
+            className="flex-1 md:flex-none min-w-0 md:whitespace-nowrap min-h-11 sm:min-h-9"
           >
-            <Download size={18} className="flex-shrink-0" />
-            <span className="hidden sm:inline ml-1">Export Excel</span>
+            <Download className="h-4 w-4 shrink-0" />
+            <span className="hidden sm:inline ml-1.5">Export Excel</span>
           </Button>
-          <Button onClick={handleAdd} className="flex-1 sm:flex-none min-w-0 md:whitespace-nowrap">
-            <Plus size={18} className="flex-shrink-0" />
-            <span className="hidden sm:inline ml-2">Tambah Pengganti</span>
+          <Button
+            size="sm"
+            onClick={handleAdd}
+            className="flex-1 sm:flex-none min-w-0 md:whitespace-nowrap min-h-11 sm:min-h-9"
+          >
+            <Plus className="h-4 w-4 shrink-0" />
+            <span className="hidden sm:inline ml-1.5">Tambah Pengganti</span>
           </Button>
         </div>
       </div>
 
-      <div className="w-full">
-        <div className="card glass p-6 flex flex-col gap-6 border border-border/50">
-          <JadwalPenggantiFilters
-            searchQuery={searchQuery}
-            onSearchChange={setSearchQuery}
-            options={filterOptions}
-            mataKuliahFilter={mataKuliahFilter}
-            onMataKuliahFilterChange={setMataKuliahFilter}
-            modulFilter={modulFilter}
-            onModulFilterChange={setModulFilter}
-          />
-          <JadwalPenggantiTable
-            data={filteredRows}
-            loading={loading}
-            onEdit={handleEdit}
-            onDelete={handleDelete}
-          />
-        </div>
+      <div className="space-y-4">
+        <JadwalPenggantiFilters
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          options={filterOptions}
+          mataKuliahFilter={mataKuliahFilter}
+          onMataKuliahFilterChange={setMataKuliahFilter}
+          modulFilter={modulFilter}
+          onModulFilterChange={setModulFilter}
+        />
+        <JadwalPenggantiTable
+          data={filteredRows}
+          loading={loading}
+          onEdit={handleEdit}
+          onDelete={handleDelete}
+        />
       </div>
 
       <JadwalPenggantiModal

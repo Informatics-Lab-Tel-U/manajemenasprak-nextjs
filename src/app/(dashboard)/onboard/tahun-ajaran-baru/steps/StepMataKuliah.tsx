@@ -137,7 +137,7 @@ export default function MatkulStep() {
     try {
       const matrix = await parseSpreadsheet(file);
       if (matrix.length < 2) {
-        setUploadError('File kosong — tidak ada data yang ditemukan.');
+        setUploadError('File kosong - tidak ada data yang ditemukan.');
         return;
       }
       
@@ -342,7 +342,7 @@ export default function MatkulStep() {
   };
 
   return (
-    <Card className="border shadow-sm w-full">
+    <Card className="bg-transparent border-border shadow-none w-full">
       <CardHeader>
         <CardTitle className="text-xl">Langkah 2: Mata Kuliah</CardTitle>
         <CardDescription>
@@ -590,7 +590,7 @@ export default function MatkulStep() {
             disabled={loading || previewRows.length === 0 || previewRows.filter(r => r.selected).length === 0} 
             loading={loading}
             loadingText="Menyimpan..."
-            className="min-w-[160px] bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm"
+            className="min-w-[160px] bg-primary text-primary-foreground hover:bg-primary/90 shadow-none"
           >
             Selanjutnya
           </NavButton>

@@ -5,7 +5,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 function PraktikanLoading() {
   return (
-    <div className="container mx-auto max-w-[2000px] 2xl:px-8 relative space-y-8">
+    <div className="container mx-auto max-w-[2000px] 2xl:px-8 relative space-y-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div className="space-y-2">
           <Skeleton className="h-8 w-48" />

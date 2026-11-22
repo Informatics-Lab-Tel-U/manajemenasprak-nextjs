@@ -20,6 +20,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
@@ -35,6 +36,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import { PraktikanRecord } from './types';
 
@@ -552,13 +554,13 @@ export default function PraktikanImportCSVModal({
             </div>
 
             <div className="space-y-2 shrink-0">
-              <label htmlFor="paste-data" className="text-sm font-medium">Paste dari Excel / CSV</label>
-              <textarea
+              <Label htmlFor="paste-data" className="text-sm font-medium">Paste dari Excel / CSV</Label>
+              <Textarea
                 id="paste-data"
                 value={pasteValue}
                 onChange={(event) => setPasteValue(event.target.value)}
                 placeholder={'Nama\tKode Asprak\nAQIL MUJAHID\tRGG\nRAJA ASYRAF\t'}
-                className="min-h-[160px] w-full resize-y rounded-xl border border-input bg-background px-4 py-3 font-mono text-sm outline-none transition-[color,box-shadow] placeholder:text-muted-foreground focus-visible:border-primary focus-visible:ring-[3px] focus-visible:ring-primary/20"
+                className="min-h-[160px] w-full resize-y rounded-xl px-4 py-3 font-mono text-sm"
               />
               <Button variant="outline" onClick={handlePastePreview} className="w-full mt-2 h-auto flex gap-2 justify-center py-2 shrink-0">
                 <FileSpreadsheet size={16} />

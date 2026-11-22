@@ -372,11 +372,11 @@ export default function DatabaseClientPage({
   };
 
   return (
-    <div className="container mx-auto max-w-[2000px] 2xl:px-8">
+    <div className="container mx-auto max-w-[2000px] 2xl:px-8 space-y-6">
       {/* Page Header */}
-      <header className="mb-10 pb-8 border-b border-border/50">
-        <h1 className="text-2xl 2xl:text-3xl font-bold tracking-tight">Pengaturan</h1>
-        <p className="text-sm 2xl:text-base text-muted-foreground mt-1">
+      <header className="pb-6 border-b border-border/50">
+        <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-foreground">Pengaturan</h1>
+        <p className="text-sm text-muted-foreground mt-0.5">
           Kelola impor, ekspor, dan pembersihan data sistem.
         </p>
       </header>

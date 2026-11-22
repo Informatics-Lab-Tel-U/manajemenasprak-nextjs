@@ -7,7 +7,7 @@ export const metadata = {
 
 export default async function MonitoringPage() {
   return (
-    <div className="container mx-auto max-w-[2000px] 2xl:px-8">
+    <div className="container mx-auto max-w-[2000px] 2xl:px-8 space-y-6">
       <MonitoringSummaryCards initialData={[]} />
       <ClientHeartbeatChart />
     </div>

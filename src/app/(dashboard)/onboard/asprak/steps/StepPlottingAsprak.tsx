@@ -186,7 +186,7 @@ export default function StepPlottingAsprak({ term }: StepPlottingAsprakProps) {
 
   if (step === 'preview') {
     return (
-      <Card className="border shadow-sm w-full">
+      <Card className="bg-transparent border-border shadow-none w-full">
         <CardHeader>
           <CardTitle className="text-xl">Langkah 2: Preview Plotting</CardTitle>
           <CardDescription>
@@ -241,7 +241,7 @@ export default function StepPlottingAsprak({ term }: StepPlottingAsprakProps) {
   }
 
   return (
-    <Card className="border shadow-sm w-full">
+    <Card className="bg-transparent border-border shadow-none w-full">
       <CardHeader>
         <CardTitle className="text-xl">Langkah 2: Plotting</CardTitle>
         <CardDescription>
@@ -275,7 +275,7 @@ export default function StepPlottingAsprak({ term }: StepPlottingAsprakProps) {
               'border-2 border-dashed rounded-lg p-12 text-center transition-all',
               isDragActive
                 ? 'border-primary bg-primary/5 cursor-copy'
-                : 'border-border bg-card hover:border-primary/50 hover:bg-muted/30 cursor-pointer'
+                : 'border-border bg-transparent hover:border-primary/50 hover:bg-muted/30 cursor-pointer'
             )}
           >
             <input {...getInputProps()} />

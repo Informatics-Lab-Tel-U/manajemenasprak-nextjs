@@ -64,9 +64,9 @@ export default function PresensiGeneratorClient() {
   return (
     <div className="w-full space-y-6">
       {/* Step 1: File & Praktikum Config */}
-      <Card className="bg-card shadow-sm border-border/60">
+      <Card className="bg-transparent shadow-none border-border">
         <CardHeader>
-          <CardTitle className="text-lg font-bold">1. Konfigurasi File & Praktikum</CardTitle>
+          <CardTitle className="text-lg font-semibold">1. Konfigurasi File & Praktikum</CardTitle>
 
         </CardHeader>
         <CardContent className="grid gap-6 sm:grid-cols-2">
@@ -188,11 +188,11 @@ export default function PresensiGeneratorClient() {
 
       {/* Step 2: Per-Class Customization */}
       {state.kelasNames.length > 0 && (
-        <Card className="bg-card shadow-sm border-border/60">
+        <Card className="bg-transparent shadow-none border-border">
           <CardHeader>
             <div className="flex justify-between items-center">
               <div>
-                <CardTitle className="text-lg font-bold">2. Pengaturan Spesifik per Kelas</CardTitle>
+                <CardTitle className="text-lg font-semibold">2. Pengaturan Spesifik per Kelas</CardTitle>
 
               </div>
               <Badge variant="outline" className="font-mono text-xs">
@@ -299,11 +299,11 @@ export default function PresensiGeneratorClient() {
       )}
 
       {/* Step 3: Assessment Options & Generate */}
-      <Card className="bg-card shadow-sm border-border/60">
+      <Card className="bg-transparent shadow-none border-border">
         <CardHeader>
           <div className="flex justify-between items-center">
             <div>
-              <CardTitle className="text-lg font-bold">3. Kolom Penilaian & Rekapitulasi</CardTitle>
+              <CardTitle className="text-lg font-semibold">3. Kolom Penilaian & Rekapitulasi</CardTitle>
 
             </div>
             <Badge variant={state.isWeightValid ? 'default' : 'outline'} className={`font-mono text-xs ${!state.isWeightValid ? 'border-destructive/40 text-destructive bg-destructive/10' : ''}`}>

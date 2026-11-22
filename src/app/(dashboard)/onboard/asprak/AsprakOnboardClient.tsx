@@ -89,7 +89,7 @@ export default function AsprakOnboardClient({
   if (!mounted) return null;
 
   return (
-    <div className="container mx-auto max-w-[2000px] relative space-y-8 2xl:px-8">
+    <div className="container mx-auto max-w-[2000px] relative space-y-6 2xl:px-8">
       <header className="mb-6 flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4">
         <div className="flex items-start gap-4">
           <Button variant="ghost" size="icon" asChild className="shrink-0 mt-1">
@@ -98,13 +98,13 @@ export default function AsprakOnboardClient({
             </Link>
           </Button>
           <div>
-            <h1 className="text-3xl 2xl:text-4xl font-bold tracking-tight">Setup Data Asprak</h1>
-            <p className="text-sm 2xl:text-base text-muted-foreground mt-2">
+            <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-foreground">Setup Data Asprak</h1>
+            <p className="text-sm text-muted-foreground mt-0.5">
               Ikuti alur ini untuk mengunggah dan memvalidasi data asisten praktikum secara berurutan.
             </p>
             <div className="flex flex-wrap items-center gap-2 mt-3">
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary border border-primary/20">
-                Target Tahun Ajaran: <strong className="font-bold">{term}</strong>
+                Target Tahun Ajaran: <strong className="font-semibold">{term}</strong>
               </span>
               {isAlreadyDone ? (
                 <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
@@ -138,7 +138,7 @@ export default function AsprakOnboardClient({
         }}
         className="flex flex-col w-full items-start gap-8"
       >
-        <StepperNav className="w-full bg-card p-4 rounded-xl border shadow-sm">
+        <StepperNav className="w-full bg-transparent p-4 rounded-xl border border-border shadow-none">
           {steps.map((step, index) => (
             <StepperItem
               key={step.id}

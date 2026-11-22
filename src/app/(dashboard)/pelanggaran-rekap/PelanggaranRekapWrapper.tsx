@@ -11,7 +11,7 @@ interface Props {
 
 function RekapLoading() {
   return (
-    <div className="container mx-auto max-w-[2000px] 2xl:px-8 space-y-8">
+    <div className="container mx-auto max-w-[2000px] 2xl:px-8 space-y-6">
       {/* Header Skeleton */}
       <div className="flex flex-col gap-2">
         <Skeleton className="h-9 w-64 2xl:h-10" />
@@ -19,7 +19,7 @@ function RekapLoading() {
       </div>
 
       {/* Filter Skeleton, mengikuti Accordion filter */}
-      <div className="rounded-xl border bg-card/30 px-4 py-4">
+      <div className="rounded-xl border border-border bg-transparent px-4 py-4">
         <div className="flex items-center gap-3">
           <Skeleton className="h-5 w-5" />
           <div className="space-y-2">

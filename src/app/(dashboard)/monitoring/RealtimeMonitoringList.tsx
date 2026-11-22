@@ -13,7 +13,7 @@ const ResponseTimeChart = dynamic(
   () => import('@/components/monitoring/ResponseTimeChart').then((mod) => mod.ResponseTimeChart),
   {
     ssr: false,
-    loading: () => <div className="h-10 w-full animate-pulse bg-muted/40 rounded"></div>,
+    loading: () => <div className="h-10 w-full bg-muted/40 rounded"></div>,
   }
 );
 
@@ -52,10 +52,10 @@ export default function RealtimeMonitoringList({ initialData }: { initialData: L
         const isSpike = lastResponseTime !== null && lastResponseTime > 800;
 
         return (
-          <Card key={data.lab_id} className={`overflow-hidden transition-colors ${isOnline ? 'border-green-500/50 shadow-sm' : 'opacity-70'}`}>
+          <Card key={data.lab_id} className={`overflow-hidden bg-transparent shadow-none transition-colors ${isOnline ? 'border-green-500/50' : 'border-border opacity-70'}`}>
             <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-              <CardTitle className="text-xl font-bold">{data.lab_id}</CardTitle>
-              <Activity className={`h-5 w-5 ${isOnline ? 'text-green-500 animate-pulse' : 'text-muted-foreground'}`} />
+              <CardTitle className="text-xl font-semibold">{data.lab_id}</CardTitle>
+              <Activity className={`h-5 w-5 ${isOnline ? 'text-green-500' : 'text-muted-foreground'}`} />
             </CardHeader>
             <CardContent>
               <div className="flex flex-col gap-3 mt-2">
@@ -95,7 +95,7 @@ export default function RealtimeMonitoringList({ initialData }: { initialData: L
                           </div>
                         )}
                         <div
-                          className="text-sm font-bold bg-muted px-2 py-1 rounded truncate max-w-[150px] sm:max-w-[200px]"
+                          className="text-sm font-semibold bg-muted px-2 py-1 rounded truncate max-w-[150px] sm:max-w-[200px]"
                           title={hasBoth ? parts.slice(1).join(' | ') : data.kelas}
                         >
                           {hasBoth ? parts.slice(1).join(' | ') : data.kelas}
@@ -104,7 +104,7 @@ export default function RealtimeMonitoringList({ initialData }: { initialData: L
                     );
                   })() : (
                     <span
-                      className="text-sm font-bold bg-muted px-2 py-1 rounded truncate max-w-[150px] sm:max-w-[200px] text-right"
+                      className="text-sm font-semibold bg-muted px-2 py-1 rounded truncate max-w-[150px] sm:max-w-[200px] text-right"
                       title="-"
                     >
                       -

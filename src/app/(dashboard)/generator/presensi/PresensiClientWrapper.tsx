@@ -8,7 +8,7 @@ const PresensiGeneratorClient = dynamic(() => import('./PresensiGeneratorClient'
   ssr: false,
   loading: () => (
     <div className="w-full space-y-6">
-      <Card className="bg-card shadow-sm border-border/60">
+      <Card className="bg-transparent shadow-none border-border">
         <CardHeader>
           <Skeleton className="h-6 w-60" />
           <Skeleton className="h-4 w-96 mt-2" />

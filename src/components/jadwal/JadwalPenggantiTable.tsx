@@ -38,6 +38,9 @@ interface JadwalPenggantiTableProps {
   onDelete: (id: string) => void;
 }
 
+const TABLE_EDGE_PADDING =
+  '[&_th:first-child]:pl-4 [&_td:first-child]:pl-4 [&_th:last-child]:pr-4 [&_td:last-child]:pr-4';
+
 const DAY_ORDER: Record<string, number> = {
   Senin: 1,
   Selasa: 2,
@@ -77,8 +80,8 @@ export default function JadwalPenggantiTable({
           const item = row.original;
           return (
             <div className="flex flex-col">
-              <span className="font-medium">{item.jadwal?.mata_kuliah?.nama_lengkap}</span>
-              <span className="text-[10px] text-muted-foreground uppercase tracking-wider">
+              <span className="font-medium text-foreground">{item.jadwal?.mata_kuliah?.nama_lengkap}</span>
+              <span className="text-xs text-muted-foreground">
                 {item.jadwal?.mata_kuliah?.praktikum?.nama}
               </span>
             </div>
@@ -89,7 +92,7 @@ export default function JadwalPenggantiTable({
         id: 'kelas',
         header: 'Kelas',
         cell: ({ row }) => (
-          <Badge variant="outline" className="bg-background">
+          <Badge variant="outline">
             {row.original.jadwal?.kelas}
           </Badge>
         ),
@@ -107,7 +110,7 @@ export default function JadwalPenggantiTable({
           </Button>
         ),
         cell: ({ row }) => (
-          <Badge className="bg-secondary text-secondary-foreground hover:bg-secondary/80 border-none">
+          <Badge variant="secondary" className="tabular-nums">
             Modul {row.original.modul}
           </Badge>
         ),
@@ -145,13 +148,13 @@ export default function JadwalPenggantiTable({
         ),
         cell: ({ row }) => (
           <div className="flex flex-col gap-0.5">
-            <span className="text-sm font-semibold text-foreground">
+            <span className="text-sm font-semibold text-foreground tabular-nums">
               {formatTime(row.original.jam)}
             </span>
-            <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground uppercase font-medium">
-              <span>SESI {row.original.sesi}</span>
-              <span className="text-muted-foreground/50">•</span>
-              <span className="text-muted-foreground/80">{row.original.ruangan}</span>
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground tabular-nums">
+              <span>Sesi {row.original.sesi}</span>
+              <span className="text-muted-foreground/50">-</span>
+              <span>{row.original.ruangan}</span>
             </div>
           </div>
         ),
@@ -168,16 +171,18 @@ export default function JadwalPenggantiTable({
                 size="icon"
                 onClick={() => onEdit(item)}
                 className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted"
+                aria-label="Edit jadwal pengganti"
               >
-                <Edit size={16} />
+                <Edit className="h-4 w-4" />
               </Button>
               <Button
                 variant="ghost"
                 size="icon"
                 onClick={() => onDelete(item.id)}
-                className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-50"
+                className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                aria-label="Hapus jadwal pengganti"
               >
-                <Trash2 size={16} />
+                <Trash2 className="h-4 w-4" />
               </Button>
             </div>
           );
@@ -207,42 +212,29 @@ export default function JadwalPenggantiTable({
   if (loading) {
     return (
       <div className="space-y-4">
-        <div className="rounded-md border overflow-hidden">
-          <Table>
-            <TableHeader>
-            <TableRow>
-              {Array.from({ length: 6 }).map((_, i) => (
-                <TableHead key={i}>
-                  <Skeleton className="h-6 w-full" />
-                </TableHead>
-              ))}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {Array.from({ length: 10 }).map((_, i) => (
-              <TableRow key={i}>
-                {Array.from({ length: 6 }).map((_, j) => (
-                  <TableCell key={j}>
-                    <Skeleton className="h-6 w-full" />
-                  </TableCell>
+        <div className="overflow-hidden rounded-md border">
+          <Table className={`2xl:text-base ${TABLE_EDGE_PADDING}`}>
+            <TableHeader className="bg-muted">
+              <TableRow>
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <TableHead key={i}>
+                    <Skeleton className="h-5 w-full" />
+                  </TableHead>
                 ))}
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-        </div>
-      </div>
-    );
-  }
-
-  if (data.length === 0) {
-    return (
-      <div className="space-y-4">
-        <div className="rounded-md border p-32 text-center text-muted-foreground">
-          <div className="flex flex-col items-center justify-center gap-2">
-            <FilterX size={40} className="opacity-20" />
-            <p>Tidak ada jadwal pengganti ditemukan untuk term ini.</p>
-          </div>
+            </TableHeader>
+            <TableBody>
+              {Array.from({ length: 10 }).map((_, i) => (
+                <TableRow key={i}>
+                  {Array.from({ length: 6 }).map((_, j) => (
+                    <TableCell key={j}>
+                      <Skeleton className="h-5 w-full" />
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         </div>
       </div>
     );
@@ -250,10 +242,9 @@ export default function JadwalPenggantiTable({
 
   return (
     <div className="space-y-4">
-      <div className="rounded-md border overflow-hidden">
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
+      <div className="overflow-hidden rounded-md border">
+        <Table className={`2xl:text-base ${TABLE_EDGE_PADDING}`}>
+          <TableHeader className="bg-muted">
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
                 {headerGroup.headers.map((header) => (
@@ -267,20 +258,30 @@ export default function JadwalPenggantiTable({
             ))}
           </TableHeader>
           <TableBody>
-            {table.getRowModel().rows.map((row) => (
-              <TableRow key={row.id} className="hover:bg-muted/20 transition-colors group">
-                {row.getVisibleCells().map((cell) => (
-                  <TableCell key={cell.id}>
-                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                  </TableCell>
-                ))}
+            {table.getRowModel().rows.length ? (
+              table.getRowModel().rows.map((row) => (
+                <TableRow key={row.id} className="hover:bg-muted/20 transition-colors">
+                  {row.getVisibleCells().map((cell) => (
+                    <TableCell key={cell.id}>
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell colSpan={columns.length} className="h-32 text-center text-muted-foreground">
+                  <div className="flex flex-col items-center gap-2">
+                    <FilterX className="h-8 w-8 opacity-20" />
+                    <p>Tidak ada jadwal pengganti ditemukan untuk term ini.</p>
+                  </div>
+                </TableCell>
               </TableRow>
-            ))}
+            )}
           </TableBody>
         </Table>
       </div>
-      </div>
-      
+
       {/* Pagination Controls */}
       <div className="flex flex-col gap-4 md:gap-0 md:flex-row md:items-center md:justify-between">
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
@@ -291,7 +292,7 @@ export default function JadwalPenggantiTable({
               table.setPageSize(Number(value));
             }}
           >
-            <SelectTrigger className="h-8 w-full sm:w-[70px]">
+            <SelectTrigger size="sm" className="w-full sm:w-[70px]">
               <SelectValue placeholder={table.getState().pagination.pageSize} />
             </SelectTrigger>
             <SelectContent side="top">
@@ -307,7 +308,7 @@ export default function JadwalPenggantiTable({
         </div>
 
         <div className="flex flex-col gap-3 sm:gap-0 sm:flex-row sm:items-center sm:justify-end">
-          <div className="flex w-full sm:w-auto sm:min-w-[120px] items-center justify-center text-sm font-medium order-3 sm:order-none">
+          <div className="flex w-full sm:w-auto sm:min-w-[120px] items-center justify-center text-sm font-medium tabular-nums order-3 sm:order-none">
             Halaman {table.getState().pagination.pageIndex + 1} dari {table.getPageCount() || 1}
           </div>
           <div className="flex gap-2 justify-between sm:justify-end sm:gap-2 order-2 sm:order-none sm:ml-4">

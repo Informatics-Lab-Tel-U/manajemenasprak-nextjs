@@ -115,7 +115,7 @@ const MemberListSection: React.FC<MemberListSectionProps> = ({
               </div>
               {uploadingId === member.id && (
                 <div className="absolute inset-0 bg-background/80 flex items-center justify-center">
-                  <span className="text-xs font-medium animate-pulse">Uploading...</span>
+                  <span className="text-xs font-medium">Uploading...</span>
                 </div>
               )}
             </div>
@@ -253,7 +253,7 @@ export default function AslabTeamManager({ initialData }: AslabTeamManagerProps)
     });
   };
   return (
-    <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
+    <div className="bg-transparent rounded-xl border border-border shadow-none overflow-hidden">
       <input
         type="file"
         accept="image/*"

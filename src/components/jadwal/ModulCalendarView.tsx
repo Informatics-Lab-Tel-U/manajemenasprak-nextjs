@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import {
   startOfMonth,
   endOfMonth,
@@ -17,7 +17,7 @@ import { id } from 'date-fns/locale';
 import { Calendar as CalendarIcon } from 'lucide-react';
 import { ModulScheduleEntryDto } from '@/lib/fetchers/modulScheduleFetcher';
 import { cn } from '@/lib/utils';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { Badge } from '@/components/ui/badge';
 import {
   Card,
   CardHeader,
@@ -25,28 +25,41 @@ import {
   CardDescription,
   CardContent,
 } from '@/components/ui/card';
-import { COURSE_COLORS } from '@/utils/colorUtils';
 
 interface ModulCalendarViewProps {
   rows: ModulScheduleEntryDto[];
+  activeModul?: number | null;
+  onSelectModul?: (modul: number) => void;
+  expanded?: boolean;
 }
 
 const DAY_NAMES = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
 
-export function ModulCalendarView({ rows }: ModulCalendarViewProps) {
-  // A module runs for 7 days starting from tanggal_mulai
-  const moduleRanges = useMemo(() => {
-    return rows.reduce((acc: { modul: number; start: Date; end: Date }[], r) => {
-      if (r.tanggal_mulai) {
-        const start = parseISO(r.tanggal_mulai);
-        acc.push({
-          modul: r.modul,
-          start,
-          end: addDays(start, 6), // 7 days inclusive
-        });
+export function ModulCalendarView({
+  rows,
+  activeModul = null,
+  onSelectModul,
+  expanded = false,
+}: ModulCalendarViewProps) {
+  const { moduleRanges, dayToModulMap } = useMemo(() => {
+    const ranges: { modul: number; start: Date; end: Date }[] = [];
+    const map = new Map<string, number>();
+
+    for (const r of rows) {
+      if (!r.tanggal_mulai) continue;
+      const start = parseISO(r.tanggal_mulai);
+      if (Number.isNaN(start.getTime())) continue;
+
+      const end = addDays(start, 6);
+      ranges.push({ modul: r.modul, start, end });
+
+      for (let offset = 0; offset < 7; offset += 1) {
+        map.set(format(addDays(start, offset), 'yyyy-MM-dd'), r.modul);
       }
-      return acc;
-    }, []).sort((a, b) => a.start.getTime() - b.start.getTime());
+    }
+
+    ranges.sort((a, b) => a.start.getTime() - b.start.getTime());
+    return { moduleRanges: ranges, dayToModulMap: map };
   }, [rows]);
 
   const monthsToRender = useMemo(() => {
@@ -57,7 +70,7 @@ export function ModulCalendarView({ rows }: ModulCalendarViewProps) {
 
     let current = startOfMonth(minDate);
     const end = startOfMonth(maxDate);
-    const months = [];
+    const months: Date[] = [];
 
     while (current <= end) {
       months.push(current);
@@ -67,27 +80,31 @@ export function ModulCalendarView({ rows }: ModulCalendarViewProps) {
     return months;
   }, [moduleRanges]);
 
-  const getModuleForDay = (date: Date) => {
-    for (const range of moduleRanges) {
-      if (date >= range.start && date <= range.end) {
-        return range.modul;
-      }
-    }
-    return null;
-  };
+  const dateRangeLabel = useMemo(() => {
+    if (moduleRanges.length === 0) return 'Visualisasi timeline modul praktikum';
+    const first = moduleRanges[0].start;
+    const last = moduleRanges[moduleRanges.length - 1].end;
+    return `${format(first, 'dd MMM yyyy', { locale: id })} - ${format(last, 'dd MMM yyyy', { locale: id })}`;
+  }, [moduleRanges]);
 
   if (monthsToRender.length === 0) {
     return (
-      <Card className="flex flex-col shadow-sm lg:h-[600px] max-h-[80vh]">
-        <CardHeader className="pb-4 shrink-0">
-          <CardTitle className="text-lg">Pratinjau Kalender</CardTitle>
-          <CardDescription>Visualisasi timeline modul praktikum</CardDescription>
+      <Card className="bg-transparent border-border shadow-none">
+        <CardHeader className="flex flex-row items-start justify-between gap-4 pb-4 border-b border-border">
+          <div>
+            <CardTitle className="text-base font-semibold">Pratinjau Kalender</CardTitle>
+            <CardDescription>{dateRangeLabel}</CardDescription>
+          </div>
+          <Badge variant="outline" className="tabular-nums font-medium shrink-0">
+            0/16 Modul
+          </Badge>
         </CardHeader>
-        <CardContent className="flex-1 flex flex-col items-center justify-center p-8 border-t border-border/50 text-center text-muted-foreground">
-          <CalendarIcon className="h-10 w-10 stroke-1 mb-3 opacity-30" />
-          <p className="text-sm font-medium">Belum ada modul yang dijadwalkan</p>
-          <p className="text-xs text-muted-foreground mt-1 max-w-[280px]">
-            Tentukan tanggal mulai modul di panel kiri untuk melihat visualisasi kalender.
+        <CardContent className="flex flex-col items-center justify-center py-16 px-6 text-center">
+          <CalendarIcon className="h-9 w-9 stroke-1 text-muted-foreground/50 mb-3" aria-hidden="true" />
+          <p className="text-sm font-medium text-foreground">Belum ada modul yang dijadwalkan</p>
+          <p className="text-xs text-muted-foreground mt-1 max-w-sm">
+            Pilih tanggal mulai pada Daftar Modul di sebelah kiri, lalu gunakan Kalibrasi Tanggal
+            untuk mengisi modul berikutnya secara otomatis.
           </p>
         </CardContent>
       </Card>
@@ -95,76 +112,102 @@ export function ModulCalendarView({ rows }: ModulCalendarViewProps) {
   }
 
   return (
-    <Card className="flex flex-col shadow-sm lg:h-[600px] max-h-[80vh] overflow-hidden">
-      <CardHeader className="pb-4 shrink-0">
-        <CardTitle className="text-lg">Pratinjau Kalender</CardTitle>
-        <CardDescription>Visualisasi timeline modul praktikum</CardDescription>
+    <Card className="bg-transparent border-border shadow-none">
+      <CardHeader className="flex flex-row items-start justify-between gap-4 pb-4 border-b border-border">
+        <div>
+          <CardTitle className="text-base font-semibold">Pratinjau Kalender</CardTitle>
+          <CardDescription className="tabular-nums">{dateRangeLabel}</CardDescription>
+        </div>
+        <Badge variant="outline" className="tabular-nums font-medium shrink-0">
+          {moduleRanges.length}/16 Modul
+        </Badge>
       </CardHeader>
-      <CardContent className="p-0 flex-1 overflow-hidden flex flex-col border-t border-border/50">
-        <ScrollArea className="flex-1 h-full">
-          <div className="p-5 sm:p-6 space-y-8">
-            {monthsToRender.map((month) => {
-              const start = startOfWeek(month, { weekStartsOn: 1 });
-              const end = endOfWeek(endOfMonth(month), { weekStartsOn: 1 });
-              const days = eachDayOfInterval({ start, end });
+      <CardContent className="p-5 sm:p-6">
+        <div
+          className={cn(
+            'grid grid-cols-1 gap-6',
+            expanded ? 'md:grid-cols-2 xl:grid-cols-3' : 'xl:grid-cols-2'
+          )}
+        >
+          {monthsToRender.map((month) => {
+            const start = startOfWeek(month, { weekStartsOn: 1 });
+            const end = endOfWeek(endOfMonth(month), { weekStartsOn: 1 });
+            const days = eachDayOfInterval({ start, end });
 
-              return (
-                <div key={month.toISOString()} className="space-y-3">
-                  <div className="flex items-center gap-3 pb-2 border-b border-border/40">
-                    <h3 className="font-semibold text-sm sm:text-base capitalize">
-                      {format(month, 'MMMM yyyy', { locale: id })}
-                    </h3>
-                  </div>
+            return (
+              <div key={month.toISOString()} className="space-y-3">
+                <h3 className="font-semibold text-sm capitalize text-foreground pb-2 border-b border-border/60 tabular-nums">
+                  {format(month, 'MMMM yyyy', { locale: id })}
+                </h3>
 
-                  <div className="grid grid-cols-7 gap-1 sm:gap-1.5">
-                    {DAY_NAMES.map((day) => (
-                      <div
-                        key={day}
-                        className="text-center font-medium text-[11px] sm:text-xs text-muted-foreground pb-1 uppercase tracking-wider"
-                      >
-                        {day}
-                      </div>
-                    ))}
+                <div className="grid grid-cols-7 gap-1">
+                  {DAY_NAMES.map((day) => (
+                    <div
+                      key={day}
+                      className="text-center font-medium text-xs text-muted-foreground pb-1"
+                    >
+                      {day}
+                    </div>
+                  ))}
 
-                    {days.map((day) => {
-                      const isCurrentMonth = isSameMonth(day, month);
+                  {days.map((day) => {
+                    if (!isSameMonth(day, month)) {
+                      return <div key={day.toISOString()} className="h-10" />;
+                    }
 
-                      if (!isCurrentMonth) {
-                        return <div key={day.toISOString()} className="aspect-square p-1" />;
-                      }
+                    const dateKey = format(day, 'yyyy-MM-dd');
+                    const modulNum = dayToModulMap.get(dateKey) ?? null;
 
-                      const modulNum = getModuleForDay(day);
-                      const hexColor = modulNum
-                        ? COURSE_COLORS[(modulNum - 1) % COURSE_COLORS.length]
-                        : undefined;
-
+                    if (modulNum === null) {
                       return (
                         <div
                           key={day.toISOString()}
-                          className={cn(
-                            'aspect-square p-1 flex flex-col items-center justify-center rounded-md relative text-xs sm:text-sm transition-all',
-                            modulNum
-                              ? 'text-white shadow-xs font-semibold hover:scale-105 hover:z-10 hover:shadow-md cursor-default'
-                              : 'bg-transparent text-foreground hover:bg-muted/50'
-                          )}
-                          style={modulNum ? { backgroundColor: hexColor } : {}}
-                          title={modulNum ? `Modul ${modulNum}` : undefined}
+                          className="h-10 rounded-md flex items-center justify-center text-xs text-muted-foreground tabular-nums"
                         >
-                          <span className="leading-none">{format(day, 'd')}</span>
-                          {modulNum !== null && (
-                            <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-tight mt-0.5 opacity-90 leading-none">
-                              M{modulNum}
-                            </span>
-                          )}
+                          {format(day, 'd')}
                         </div>
                       );
-                    })}
-                  </div>
+                    }
+
+                    const isFocused = activeModul === modulNum;
+                    const isDimmed = activeModul !== null && activeModul !== modulNum;
+                    const isOddWeek = modulNum % 2 === 1;
+
+                    return (
+                      <button
+                        key={day.toISOString()}
+                        type="button"
+                        onClick={() => onSelectModul?.(modulNum)}
+                        className={cn(
+                          'h-10 rounded-md border flex flex-col items-center justify-center text-xs font-semibold tabular-nums transition-colors cursor-pointer',
+                          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
+                          isFocused
+                            ? 'bg-primary text-primary-foreground border-primary'
+                            : isOddWeek
+                              ? 'bg-muted border-border text-foreground hover:bg-accent'
+                              : 'bg-background border-foreground/25 text-foreground hover:bg-accent',
+                          isDimmed && 'opacity-45'
+                        )}
+                        title={`Modul ${modulNum} - ${format(day, 'd MMM yyyy', { locale: id })}`}
+                        aria-label={`Modul ${modulNum}, ${format(day, 'd MMMM yyyy', { locale: id })}`}
+                      >
+                        <span className="leading-none">{format(day, 'd')}</span>
+                        <span
+                          className={cn(
+                            'text-[10px] font-medium leading-none mt-0.5 tabular-nums',
+                            isFocused ? 'text-primary-foreground/85' : 'text-muted-foreground'
+                          )}
+                        >
+                          M{modulNum}
+                        </span>
+                      </button>
+                    );
+                  })}
                 </div>
-              );
-            })}
-          </div>
-        </ScrollArea>
+              </div>
+            );
+          })}
+        </div>
       </CardContent>
     </Card>
   );

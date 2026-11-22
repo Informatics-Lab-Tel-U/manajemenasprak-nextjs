@@ -254,7 +254,7 @@ export default function StepDataAsprak({
   };
 
   return (
-    <Card className="border shadow-sm w-full">
+    <Card className="bg-transparent border-border shadow-none w-full">
       <CardHeader>
         <CardTitle className="text-xl">Langkah 1: Data Asprak</CardTitle>
         <CardDescription>
@@ -289,7 +289,7 @@ export default function StepDataAsprak({
                 'border-2 border-dashed rounded-lg p-12 text-center transition-all',
                 isDragActive
                   ? 'border-primary bg-primary/5 cursor-copy'
-                  : 'border-border bg-card hover:border-primary/50 hover:bg-muted/30 cursor-pointer'
+                  : 'border-border bg-transparent hover:border-primary/50 hover:bg-muted/30 cursor-pointer'
               )}
             >
               <input {...getInputProps()} />
@@ -420,7 +420,7 @@ export default function StepDataAsprak({
             disabled={saving || previewRows.filter(r => r.selected && (r.status === 'ok' || r.status === 'warning')).length === 0}
             loading={saving}
             loadingText="Menyiapkan..."
-            className="min-w-[160px] bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm"
+            className="min-w-[160px] bg-primary text-primary-foreground hover:bg-primary/90 shadow-none"
           >
             Selanjutnya
           </NavButton>

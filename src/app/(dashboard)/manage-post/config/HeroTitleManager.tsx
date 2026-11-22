@@ -82,7 +82,7 @@ export default function HeroTitleManager({ initialData }: HeroTitleManagerProps)
   };
 
   return (
-    <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
+    <div className="bg-transparent rounded-xl border border-border shadow-none overflow-hidden">
       <div className="p-6 border-b border-border bg-muted/20 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 className="text-lg font-semibold">Teks Judul Beranda</h2>

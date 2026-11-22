@@ -69,7 +69,7 @@ export default function StepPreviewJadwal({ term }: StepPreviewJadwalProps) {
   };
 
   return (
-    <Card className="border shadow-sm w-full">
+    <Card className="bg-transparent border-border shadow-none w-full">
       <CardHeader>
         <CardTitle className="text-xl">Langkah 2: Preview & Validasi Data</CardTitle>
         <CardDescription>

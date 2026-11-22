@@ -212,10 +212,10 @@ export default function IwanDevicesPage() {
   const onlineCount = devices.filter((d) => d.computedStatus !== 'offline').length;
 
   return (
-    <div className="container mx-auto max-w-[2000px] 2xl:px-8">
+    <div className="container mx-auto max-w-[2000px] 2xl:px-8 space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-        <h1 className="text-2xl 2xl:text-3xl font-bold tracking-tight">Pemetaan PC</h1>
+        <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-foreground">Pemetaan PC</h1>
         <div className="flex flex-wrap items-center gap-2">
           <Button
             type="button"
@@ -313,16 +313,18 @@ export default function IwanDevicesPage() {
                     <TableCell>
                       <Badge variant="outline" className="gap-1.5 px-1.5 font-mono">
                         {dev.macAddress}
-                        <button
+                        <Button
                           type="button"
+                          variant="ghost"
+                          size="icon"
                           onClick={() => handleCopy(dev.macAddress)}
-                          className="text-muted-foreground hover:text-foreground transition-colors"
+                          className="h-4 w-4 p-0 text-muted-foreground hover:text-foreground"
                           aria-label={`Salin MAC ${dev.macAddress}`}
                         >
                           {copiedMac === dev.macAddress
                             ? <Check className="h-3.5 w-3.5 text-emerald-500" />
                             : <Copy className="h-3.5 w-3.5" />}
-                        </button>
+                        </Button>
                       </Badge>
                     </TableCell>
                     <TableCell className="font-mono text-xs">{dev.localIp}:{dev.port}</TableCell>

@@ -263,7 +263,7 @@ export default function HeroImageManager({ initialData }: HeroImageManagerProps)
   };
 
   return (
-    <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
+    <div className="bg-transparent rounded-xl border border-border shadow-none overflow-hidden">
       <input
         type="file"
         accept="image/*"
@@ -298,7 +298,7 @@ export default function HeroImageManager({ initialData }: HeroImageManagerProps)
               <div
                 key={item.id}
                 className={`p-4 md:p-5 rounded-xl border transition-all ${
-                  dragActiveIdx === index ? 'border-primary ring-2 ring-primary/40 bg-primary/5' : 'border-border bg-card'
+                  dragActiveIdx === index ? 'border-primary ring-2 ring-primary/40 bg-primary/5' : 'border-border bg-transparent'
                 }`}
                 onDragEnter={(e) => handleDrag(e, index)}
                 onDragLeave={(e) => handleDrag(e, index)}
@@ -334,7 +334,7 @@ export default function HeroImageManager({ initialData }: HeroImageManagerProps)
                       </div>
                     )}
 
-                    <div className="absolute top-2 left-2 bg-black/70 backdrop-blur-xs text-white text-[11px] px-2 py-0.5 rounded-md font-mono">
+                    <div className="absolute top-2 left-2 bg-black/80 text-white text-[11px] px-2 py-0.5 rounded-md font-mono">
                       #{index + 1}
                     </div>
                   </div>

@@ -570,10 +570,10 @@ export function CaslabPlottingClient() {
       {/* Header — Exactly matching PraktikanClientPage */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
         <div>
-          <h1 className="text-2xl 2xl:text-3xl font-bold tracking-tight">
+          <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-foreground">
             Plotting Kursi Caslab
           </h1>
-          <p className="text-sm 2xl:text-base text-muted-foreground mt-1">
+          <p className="text-sm text-muted-foreground mt-0.5">
             Plotting dan penataan kursi ujian calon asisten laboratorium.
           </p>
         </div>

@@ -135,7 +135,7 @@ export default function StepUploadJadwal({ term, mataKuliahList }: StepUploadJad
 
 
   return (
-    <Card className="border shadow-sm w-full">
+    <Card className="bg-transparent border-border shadow-none w-full">
       <CardHeader>
         <CardTitle className="text-xl">Langkah 1: Upload Data</CardTitle>
         <CardDescription>
@@ -233,7 +233,7 @@ export default function StepUploadJadwal({ term, mataKuliahList }: StepUploadJad
                 <Button
                   variant="outline"
                   size="sm"
-                  className="h-8 text-xs gap-1.5 bg-background shadow-sm hover:bg-muted"
+                  className="h-8 text-xs gap-1.5 bg-background shadow-none hover:bg-muted"
                   onClick={() => handleDownloadTemplate('csv')}
                   disabled={isLoading}
                 >
@@ -243,7 +243,7 @@ export default function StepUploadJadwal({ term, mataKuliahList }: StepUploadJad
                 <Button
                   variant="outline"
                   size="sm"
-                  className="h-8 text-xs gap-1.5 bg-background shadow-sm hover:bg-muted"
+                  className="h-8 text-xs gap-1.5 bg-background shadow-none hover:bg-muted"
                   onClick={() => handleDownloadTemplate('xlsx')}
                   disabled={isLoading}
                 >

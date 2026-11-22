@@ -10,8 +10,8 @@ export default function PresensiPage() {
       <header className="mb-6">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
-            <h1 className="text-2xl 2xl:text-3xl font-bold tracking-tight">Generator Presensi</h1>
-            <p className="text-sm 2xl:text-base text-muted-foreground mt-1">
+            <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-foreground">Generator Presensi</h1>
+            <p className="text-sm text-muted-foreground mt-0.5">
               Buat template absensi asisten praktikum dalam format Excel secara otomatis.
             </p>
           </div>

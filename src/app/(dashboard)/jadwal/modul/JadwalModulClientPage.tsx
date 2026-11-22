@@ -1,13 +1,41 @@
-/* eslint-disable react-doctor/exhaustive-deps */
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { Calendar as CalendarIcon, X } from 'lucide-react';
+import { useState, useEffect, useMemo } from 'react';
+import {
+  AlertCircle,
+  Calendar as CalendarIcon,
+  PanelLeftClose,
+  PanelLeftOpen,
+  RotateCcw,
+  X,
+} from 'lucide-react';
+import { format, addDays, getDay } from 'date-fns';
+import { id } from 'date-fns/locale';
+import { toast } from 'sonner';
+
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { cn } from '@/lib/utils';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Select,
   SelectContent,
@@ -15,166 +43,189 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-  DialogFooter,
-} from '@/components/ui/dialog';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Spinner } from '@/components/ui/spinner';
+import { ModulCalendarView } from '@/components/jadwal/ModulCalendarView';
+import { cn } from '@/lib/utils';
 import { useTermStore } from '@/store/useTermStore';
 import {
   fetchModulSchedule,
   saveModulSchedule,
   type ModulScheduleEntryDto,
 } from '@/lib/fetchers/modulScheduleFetcher';
-import { toast } from 'sonner';
-import { format, addDays, getDay } from 'date-fns';
-import { id } from 'date-fns/locale';
-import { ModulCalendarView } from '@/components/jadwal/ModulCalendarView';
-import { COURSE_COLORS } from '@/utils/colorUtils';
 
-const addDaysSafe = (dateStr: string, days: number): string => {
-  try {
-    const [y, m, d] = dateStr.split('-').map(Number);
-    const date = new Date(y, m - 1, d);
-    const newDate = addDays(date, days);
-    return format(newDate, 'yyyy-MM-dd');
-  } catch {
-    return dateStr;
-  }
-};
-
-const getDayName = (dateStr: string | null): string => {
-  if (!dateStr) return '';
-  try {
-    const [y, m, d] = dateStr.split('-').map(Number);
-    const date = new Date(y, m - 1, d);
-    return format(date, 'EEEE', { locale: id });
-  } catch {
-    return '';
-  }
-};
-
-const isMonday = (dateStr: string | null): boolean => {
-  if (!dateStr) return true;
-  try {
-    const [y, m, d] = dateStr.split('-').map(Number);
-    const date = new Date(y, m - 1, d);
-    return getDay(date) === 1; // 1 is Monday
-  } catch {
-    return false;
-  }
-};
+const createEmptyRows = (): ModulScheduleEntryDto[] =>
+  Array.from({ length: 16 }, (_, idx) => ({
+    modul: idx + 1,
+    tanggal_mulai: null,
+  }));
 
 const parseDate = (dateStr: string | null): Date | undefined => {
   if (!dateStr) return undefined;
-  try {
-    const [y, m, d] = dateStr.split('-').map(Number);
-    if (!y || !m || !d) return undefined;
-    return new Date(y, m - 1, d);
-  } catch {
-    return undefined;
-  }
+  const parts = dateStr.split('-').map(Number);
+  if (parts.length !== 3 || parts.some(Number.isNaN)) return undefined;
+  const [y, m, d] = parts;
+  if (!y || !m || !d) return undefined;
+  return new Date(y, m - 1, d);
 };
+
+const addDaysSafe = (dateStr: string, days: number): string => {
+  const parsed = parseDate(dateStr);
+  if (!parsed) return dateStr;
+  return format(addDays(parsed, days), 'yyyy-MM-dd');
+};
+
+const getDayName = (dateStr: string | null): string => {
+  const parsed = parseDate(dateStr);
+  if (!parsed) return '';
+  return format(parsed, 'EEEE', { locale: id });
+};
+
+const isMonday = (dateStr: string | null): boolean => {
+  const parsed = parseDate(dateStr);
+  if (!parsed) return true;
+  return getDay(parsed) === 1;
+};
+
+const serializeRows = (entries: ModulScheduleEntryDto[]): string =>
+  JSON.stringify(entries.map((r) => [r.modul, r.tanggal_mulai ?? null]));
 
 export default function JadwalModulClientPage() {
   const { activeTerm } = useTermStore();
   const term = activeTerm || '';
+
   const [rows, setRows] = useState<ModulScheduleEntryDto[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [initialLoading, setInitialLoading] = useState(true);
+  const [savedSnapshot, setSavedSnapshot] = useState<string>(() =>
+    serializeRows(createEmptyRows())
+  );
+  const [saving, setSaving] = useState(false);
+  const [loadedTerm, setLoadedTerm] = useState<string | null>(null);
+  const [refreshTick, setRefreshTick] = useState(0);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [isGenerateDialogOpen, setIsGenerateDialogOpen] = useState(false);
   const [startModul, setStartModul] = useState<string>('1');
+  const [openPopoverModul, setOpenPopoverModul] = useState<number | null>(null);
+  const [activeModul, setActiveModul] = useState<number | null>(null);
+  const [showModulList, setShowModulList] = useState(false);
 
-
-
-  const loadRows = useCallback(async (t: string) => {
-    if (!t) return;
-    setLoading(true);
-    setInitialLoading(true);
-    try {
-      const res = await fetchModulSchedule(t);
-      if (res.ok && res.data) {
-        setRows(res.data);
-      } else {
-        setRows(
-          Array.from({ length: 16 }, (_, idx) => ({
-            modul: idx + 1,
-            tanggal_mulai: null,
-          }))
-        );
-        if (res.error) toast.error(res.error);
-      }
-    } catch (err: any) {
-      toast.error(err.message || 'Gagal memuat tanggal modul');
-    } finally {
-      setLoading(false);
-      setInitialLoading(false);
-    }
-  }, []);
+  const initialLoading = Boolean(term) && loadedTerm !== term;
 
   useEffect(() => {
-    if (term) {
-      loadRows(term);
-    }
-  }, [term, loadRows]);
+    if (!term) return;
+    let cancelled = false;
+
+    void (async () => {
+      try {
+        const res = await fetchModulSchedule(term);
+        if (cancelled) return;
+        if (res.ok && res.data) {
+          setRows(res.data);
+          setSavedSnapshot(serializeRows(res.data));
+          setLoadError(null);
+        } else {
+          const empty = createEmptyRows();
+          setRows(empty);
+          setSavedSnapshot(serializeRows(empty));
+          const errMsg = res.error || 'Gagal memuat tanggal modul';
+          setLoadError(errMsg);
+          toast.error(errMsg);
+        }
+      } catch (err: unknown) {
+        if (cancelled) return;
+        const errMsg = err instanceof Error ? err.message : 'Gagal memuat tanggal modul';
+        setLoadError(errMsg);
+        toast.error(errMsg);
+      } finally {
+        if (!cancelled) {
+          setLoadedTerm(term);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [term, refreshTick]);
+
+  const handleRetry = () => {
+    setLoadError(null);
+    setLoadedTerm(null);
+    setRefreshTick((n) => n + 1);
+  };
 
   const handleChangeDate = (modul: number, tanggal: string) => {
     setRows((prev) =>
-      prev.map((row) => (row.modul === modul ? { ...row, tanggal_mulai: tanggal || null } : row))
+      prev.map((row) =>
+        row.modul === modul ? { ...row, tanggal_mulai: tanggal || null } : row
+      )
     );
   };
 
+  const validationMap = useMemo(() => {
+    const map = new Map<number, { valid: boolean; error?: string }>();
+    let lastValidDate: { modul: number; dateStr: string } | null = null;
 
-
-  const isSequentiallyValid = (
-    modul: number,
-    dateStr: string | null
-  ): { valid: boolean; error?: string } => {
-    if (!dateStr) return { valid: true };
-
-    // Find previous module with a date
-    const prevRowsWithDate = rows.filter((r) => r.modul < modul && r.tanggal_mulai);
-    if (prevRowsWithDate.length > 0) {
-      const lastPrev = prevRowsWithDate[prevRowsWithDate.length - 1];
-      if (lastPrev.tanggal_mulai && dateStr < lastPrev.tanggal_mulai) {
-        return { valid: false, error: `Sebelum M${lastPrev.modul}` };
+    for (const row of rows) {
+      if (!row.tanggal_mulai) {
+        map.set(row.modul, { valid: true });
+        continue;
       }
+
+      if (lastValidDate && row.tanggal_mulai < lastValidDate.dateStr) {
+        map.set(row.modul, {
+          valid: false,
+          error: `Sebelum M${lastValidDate.modul}`,
+        });
+      } else if (!isMonday(row.tanggal_mulai)) {
+        map.set(row.modul, { valid: false, error: 'Bukan Senin' });
+      } else {
+        map.set(row.modul, { valid: true });
+      }
+
+      lastValidDate = { modul: row.modul, dateStr: row.tanggal_mulai };
     }
 
-    if (!isMonday(dateStr)) {
-      return { valid: false, error: 'Bukan Senin' };
-    }
+    return map;
+  }, [rows]);
 
-    return { valid: true };
-  };
+  const invalidCount = useMemo(
+    () => Array.from(validationMap.values()).filter((v) => !v.valid).length,
+    [validationMap]
+  );
+  const hasInvalidDates = invalidCount > 0;
 
-  const hasInvalidDates = rows.some((row) => {
-    const { valid } = isSequentiallyValid(row.modul, row.tanggal_mulai);
-    return !valid;
-  });
+  const filledCount = useMemo(
+    () => rows.filter((r) => Boolean(r.tanggal_mulai)).length,
+    [rows]
+  );
+
+  const hasUnsavedChanges = useMemo(
+    () => rows.length > 0 && serializeRows(rows) !== savedSnapshot,
+    [rows, savedSnapshot]
+  );
+
+  const selectedAnchor = useMemo(() => {
+    const startM = parseInt(startModul, 10);
+    const entry = rows.find((r) => r.modul === startM);
+    const dateStr = entry?.tanggal_mulai ?? null;
+    const status = validationMap.get(startM) ?? { valid: true };
+    return { modul: startM, dateStr, status };
+  }, [rows, startModul, validationMap]);
 
   const handleGenerate = () => {
-    const startM = parseInt(startModul, 10);
-    const byModul = new Map<number, string | null>(rows.map((r) => [r.modul, r.tanggal_mulai]));
-    const anchor = byModul.get(startM);
+    const { modul: startM, dateStr: anchor, status } = selectedAnchor;
 
     if (!anchor) {
       toast.error(`Isi tanggal pada Modul ${startM} terlebih dahulu sebagai acuan.`);
       return;
     }
-
-    const { valid, error } = isSequentiallyValid(startM, anchor);
-    if (!valid) {
-      toast.error(`Tanggal Modul ${startM} tidak valid: ${error}.`);
+    if (!status.valid) {
+      toast.error(`Tanggal Modul ${startM} tidak valid: ${status.error}.`);
       return;
     }
 
-    let lastDate: string = anchor;
+    const byModul = new Map<number, string | null>(rows.map((r) => [r.modul, r.tanggal_mulai]));
+    let lastDate = anchor;
     for (let m = startM + 1; m <= 16; m += 1) {
       lastDate = addDaysSafe(lastDate, 7);
       byModul.set(m, lastDate);
@@ -190,6 +241,15 @@ export default function JadwalModulClientPage() {
     toast.success(`Berhasil generate tanggal dari Modul ${startM}`);
   };
 
+  const handleReset = () => {
+    try {
+      const parsed = JSON.parse(savedSnapshot) as [number, string | null][];
+      setRows(parsed.map(([modul, tanggal_mulai]) => ({ modul, tanggal_mulai })));
+    } catch {
+      void handleRetry();
+    }
+  };
+
   const handleSave = async () => {
     if (!term) {
       toast.error('Pilih tahun ajaran terlebih dahulu');
@@ -200,238 +260,427 @@ export default function JadwalModulClientPage() {
       return;
     }
 
-    setLoading(true);
+    setSaving(true);
     try {
       const res = await saveModulSchedule(term, rows);
       if (res.ok) {
+        setSavedSnapshot(serializeRows(rows));
         toast.success('Tanggal mulai modul berhasil disimpan');
       } else {
         toast.error(res.error || 'Gagal menyimpan tanggal modul');
       }
-    } catch (err: any) {
-      toast.error(err.message || 'Gagal menyimpan tanggal modul');
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Gagal menyimpan tanggal modul');
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   };
 
+  const handleCalendarSelectModul = (modul: number) => {
+    setActiveModul(modul);
+    if (!showModulList) {
+      setShowModulList(true);
+    }
+    setTimeout(() => {
+      const el = document.getElementById(`modul-row-${modul}`);
+      el?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }, 50);
+  };
+
+  const getFallbackMonth = (index: number): Date | undefined => {
+    for (let i = index - 1; i >= 0; i -= 1) {
+      const prevDate = parseDate(rows[i].tanggal_mulai);
+      if (prevDate) {
+        return addDays(prevDate, (index - i) * 7);
+      }
+    }
+    return undefined;
+  };
+
   return (
-    <div className="container mx-auto max-w-[2000px] 2xl:px-8 relative space-y-8">
+    <div className="container mx-auto max-w-[2000px] 2xl:px-8 relative space-y-6">
+      {/* Header Top Bar */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 w-full md:w-auto">
-          <div>
-            <h1 className="text-2xl 2xl:text-3xl font-bold tracking-tight">Tanggal Modul</h1>
-            <p className="text-sm 2xl:text-base text-muted-foreground mt-1">Atur tanggal mulai praktikum untuk setiap modul (1-16).</p>
-          </div>
+        <div>
+          <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-foreground">
+            Tanggal Modul
+          </h1>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            Atur tanggal mulai praktikum untuk setiap modul (1-16).
+          </p>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2 w-full md:w-auto justify-start md:justify-end">
+          {hasUnsavedChanges && (
+            <Badge
+              variant="outline"
+              className="border-amber-500/40 text-amber-600 dark:text-amber-400"
+            >
+              Belum disimpan
+            </Badge>
+          )}
+
+          {hasUnsavedChanges && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleReset}
+              disabled={saving || initialLoading}
+              className="min-h-11 sm:min-h-8"
+            >
+              <RotateCcw className="h-3.5 w-3.5 mr-1.5" aria-hidden="true" />
+              Reset
+            </Button>
+          )}
+
+          <Button
+            variant={showModulList ? 'secondary' : 'outline'}
+            size="sm"
+            onClick={() => setShowModulList((prev) => !prev)}
+            disabled={initialLoading || !term}
+            aria-expanded={showModulList}
+            className="min-h-11 sm:min-h-8 tabular-nums"
+          >
+            {showModulList ? (
+              <PanelLeftClose className="h-3.5 w-3.5 mr-1.5" aria-hidden="true" />
+            ) : (
+              <PanelLeftOpen className="h-3.5 w-3.5 mr-1.5" aria-hidden="true" />
+            )}
+            {showModulList ? 'Sembunyikan Daftar' : `Atur Modul (${filledCount}/16)`}
+          </Button>
+
+          <Dialog open={isGenerateDialogOpen} onOpenChange={setIsGenerateDialogOpen}>
+            <DialogTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={saving || initialLoading || !term || rows.length === 0}
+                className="min-h-11 sm:min-h-8"
+              >
+                Kalibrasi Tanggal
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[420px]">
+              <DialogHeader>
+                <DialogTitle>Kalibrasi Tanggal</DialogTitle>
+                <DialogDescription>
+                  Isi jadwal modul berikutnya otomatis setiap 7 hari sekali dari satu modul acuan.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="py-2 space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="startModul" className="text-sm font-medium">
+                    Mulai dari Modul
+                  </Label>
+                  <Select value={startModul} onValueChange={setStartModul}>
+                    <SelectTrigger id="startModul" className="w-full">
+                      <SelectValue placeholder="Pilih Modul" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {rows.map((r) => (
+                        <SelectItem key={r.modul} value={r.modul.toString()}>
+                          Modul {r.modul}
+                          {r.tanggal_mulai && parseDate(r.tanggal_mulai)
+                            ? ` (${format(parseDate(r.tanggal_mulai)!, 'dd MMM yyyy', { locale: id })})`
+                            : ' (belum diisi)'}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+
+                  {selectedAnchor.dateStr && parseDate(selectedAnchor.dateStr) ? (
+                    selectedAnchor.status.valid ? (
+                      <p className="text-xs text-muted-foreground tabular-nums">
+                        Acuan: Modul {selectedAnchor.modul} (
+                        {format(parseDate(selectedAnchor.dateStr)!, 'dd MMM yyyy', { locale: id })}
+                        ). Sistem akan mengisi Modul {Math.min(selectedAnchor.modul + 1, 16)} s.d.
+                        16 dengan interval 7 hari.
+                      </p>
+                    ) : (
+                      <p className="text-xs text-destructive">
+                        Tanggal acuan Modul {selectedAnchor.modul} tidak valid (
+                        {selectedAnchor.status.error}). Perbaiki terlebih dahulu sebelum kalibrasi.
+                      </p>
+                    )
+                  ) : (
+                    <p className="text-xs text-muted-foreground">
+                      Modul {selectedAnchor.modul} belum memiliki tanggal. Pilih tanggal pada Modul{' '}
+                      {selectedAnchor.modul} terlebih dahulu agar dapat dijadikan acuan.
+                    </p>
+                  )}
+                </div>
+              </div>
+              <DialogFooter className="gap-2 sm:gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsGenerateDialogOpen(false)}
+                >
+                  Batal
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={handleGenerate}
+                  disabled={!selectedAnchor.dateStr || !selectedAnchor.status.valid}
+                >
+                  Kalibrasi
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          <Button
+            size="sm"
+            onClick={handleSave}
+            disabled={saving || initialLoading || !term || hasInvalidDates || !hasUnsavedChanges}
+            className="min-h-11 sm:min-h-8"
+          >
+            {saving && <Spinner className="mr-1.5" />}
+            {saving ? 'Menyimpan...' : 'Simpan Perubahan'}
+          </Button>
         </div>
       </div>
 
-      {initialLoading ? (
-        <div className="grid grid-cols-1 lg:grid-cols-[400px_1fr] xl:grid-cols-[460px_1fr] gap-6 items-start">
-          {/* Left Panel Skeleton */}
-          <Card className="flex flex-col shadow-sm lg:h-[600px] max-h-[80vh]">
-            <CardHeader className="pb-4 shrink-0">
-              <Skeleton className="h-6 w-32 mb-2" />
+      {/* State Alerts */}
+      {loadError && (
+        <Alert variant="destructive" className="bg-transparent">
+          <AlertCircle className="h-4 w-4" aria-hidden="true" />
+          <AlertDescription className="flex flex-wrap items-center justify-between gap-2 w-full">
+            <span>{loadError}</span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleRetry}
+              disabled={initialLoading || !term}
+            >
+              Coba Lagi
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {!initialLoading && hasInvalidDates && (
+        <Alert variant="destructive" className="bg-transparent">
+          <AlertCircle className="h-4 w-4" aria-hidden="true" />
+          <AlertDescription>
+            Terdapat {invalidCount} modul dengan tanggal tidak valid (bukan hari Senin atau urutan
+            sebelum modul sebelumnya). Perbaiki tanggal berwarna merah untuk menyimpan.
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {!term && !initialLoading ? (
+        <Card className="bg-transparent border-border shadow-none">
+          <CardContent className="flex flex-col items-center justify-center py-16 px-6 text-center">
+            <CalendarIcon
+              className="h-9 w-9 stroke-1 text-muted-foreground/50 mb-3"
+              aria-hidden="true"
+            />
+            <p className="text-sm font-medium text-foreground">Tahun ajaran belum dipilih</p>
+            <p className="text-xs text-muted-foreground mt-1 max-w-sm">
+              Pilih tahun ajaran aktif pada pemilih di bagian atas halaman untuk mengatur jadwal
+              modul.
+            </p>
+          </CardContent>
+        </Card>
+      ) : initialLoading ? (
+        <Card className="bg-transparent border-border shadow-none">
+          <CardHeader className="flex flex-row items-start justify-between gap-4 pb-4 border-b border-border">
+            <div className="space-y-1.5">
+              <Skeleton className="h-5 w-36" />
               <Skeleton className="h-4 w-48" />
-            </CardHeader>
-            <CardContent className="p-0 flex-1 overflow-hidden flex flex-col">
-              <div className="divide-y divide-border/50 flex-1 overflow-y-auto border-t border-border/50">
-                {Array.from({ length: 16 }).map((_, i) => (
-                  <div key={i} className="flex flex-row items-center justify-between px-4 sm:px-5 py-3 sm:py-2 gap-2 sm:gap-4">
-                    <Skeleton className="h-5 w-20 shrink-0" />
-                    <div className="flex items-center justify-end gap-2 sm:gap-3 shrink-0">
-                      <Skeleton className="h-8 w-[140px] rounded-md" />
-                      <Skeleton className="h-6 w-12 rounded-sm" />
-                      <Skeleton className="h-4 w-4 rounded-sm" />
-                    </div>
+            </div>
+            <Skeleton className="h-5 w-20 rounded-full" />
+          </CardHeader>
+          <CardContent className="p-5 sm:p-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="space-y-3">
+                  <Skeleton className="h-5 w-32" />
+                  <div className="grid grid-cols-7 gap-1">
+                    {Array.from({ length: 7 }).map((__, j) => (
+                      <Skeleton key={j} className="h-4 w-full mb-1" />
+                    ))}
+                    {Array.from({ length: 35 }).map((__, j) => (
+                      <Skeleton key={j} className="h-10 w-full rounded-md" />
+                    ))}
                   </div>
-                ))}
-              </div>
-            </CardContent>
-            <CardFooter className="p-4 pt-4 flex items-center justify-between gap-3 border-t border-border/50 bg-muted/10 shrink-0">
-              <Skeleton className="h-9 w-24 rounded-md" />
-              <Skeleton className="h-9 w-32 rounded-md" />
-            </CardFooter>
-          </Card>
-
-          {/* Right Panel Skeleton */}
-          <div className="rounded-lg border border-border bg-card/50 shadow-sm p-6 space-y-10 min-h-[500px]">
-            {Array.from({ length: 2 }).map((_, i) => (
-              <div key={i} className="space-y-4">
-                <div className="flex items-center gap-4">
-                  <Skeleton className="h-7 w-40" />
-                  <div className="flex-1 h-px bg-border/50"></div>
                 </div>
-                <div className="grid grid-cols-7 gap-1 sm:gap-2">
-                  {Array.from({ length: 7 }).map((_, j) => (
-                    <Skeleton key={j} className="h-4 w-full mb-2" />
-                  ))}
-                  {Array.from({ length: 30 }).map((_, j) => (
-                    <Skeleton key={j} className="aspect-square w-full rounded-md" />
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-[400px_1fr] xl:grid-cols-[460px_1fr] gap-6 items-start">
-          {/* Left Panel: Controls */}
-          <Card className="flex flex-col shadow-sm lg:sticky lg:top-[88px] lg:h-[600px] max-h-[80vh]">
-            <CardHeader className="pb-4 shrink-0">
-              <CardTitle className="text-lg">Daftar Modul</CardTitle>
-              <CardDescription>Pilih hari Senin untuk awal setiap modul</CardDescription>
-            </CardHeader>
-            <CardContent className="p-0 flex-1 overflow-hidden flex flex-col">
-              <div className="divide-y divide-border/50 flex-1 overflow-y-auto border-t border-border/50">
-                {rows.map((row) => {
-                  const dayName = getDayName(row.tanggal_mulai);
-                  const { valid, error } = isSequentiallyValid(row.modul, row.tanggal_mulai);
+        <div
+          className={cn(
+            'grid grid-cols-1 gap-6 items-start',
+            showModulList && 'lg:grid-cols-[420px_1fr] xl:grid-cols-[460px_1fr]'
+          )}
+        >
+          {/* Left Panel: Daftar Modul (hidden by default to focus on calendar) */}
+          {showModulList && (
+            <Card className="flex flex-col bg-transparent border-border shadow-none lg:sticky lg:top-20 overflow-hidden">
+              <CardHeader className="flex flex-row items-center justify-between gap-2 pb-3 border-b border-border shrink-0">
+                <div>
+                  <CardTitle className="text-base font-semibold">Daftar Modul</CardTitle>
+                  <CardDescription>Setiap modul dimulai hari Senin (durasi 7 hari).</CardDescription>
+                </div>
+                <Badge variant="secondary" className="tabular-nums font-medium shrink-0">
+                  {filledCount}/16 terisi
+                </Badge>
+              </CardHeader>
+              <CardContent className="p-0">
+                <ScrollArea className="lg:max-h-[calc(100vh-220px)]">
+                  <div className="divide-y divide-border/60">
+                    {rows.map((row, idx) => {
+                      const parsedDate = parseDate(row.tanggal_mulai);
+                      const dayName = getDayName(row.tanggal_mulai);
+                      const validation = validationMap.get(row.modul) ?? { valid: true };
+                      const isFocused = activeModul === row.modul;
+                      const rangeSummary =
+                        parsedDate && validation.valid
+                          ? `${format(parsedDate, 'dd MMM', { locale: id })} - ${format(
+                              addDays(parsedDate, 6),
+                              'dd MMM',
+                              { locale: id }
+                            )}`
+                          : null;
 
-                  return (
-                    <div
-                      key={row.modul}
-                      className="flex flex-row items-center justify-between px-4 sm:px-5 py-3 sm:py-2 text-sm hover:bg-muted/30 transition-colors group gap-2 sm:gap-4"
-                    >
-                      <div className="font-semibold text-foreground shrink-0">Modul {row.modul}</div>
-                      <div className="flex items-center justify-end gap-2 sm:gap-3 shrink-0">
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              disabled={loading || !term}
-                              className={cn(
-                                'h-8 justify-start text-left font-normal text-xs px-2.5 min-w-[130px] max-w-[150px]',
-                                !row.tanggal_mulai && 'text-muted-foreground',
-                                !valid && 'border-destructive text-destructive focus-visible:ring-destructive'
-                              )}
-                            >
-                              <CalendarIcon className="mr-1.5 h-3.5 w-3.5 shrink-0 opacity-70" />
-                              <span className="truncate">
-                                {row.tanggal_mulai && parseDate(row.tanggal_mulai) ? (
-                                  format(parseDate(row.tanggal_mulai)!, 'dd/MM/yyyy')
-                                ) : (
-                                  'Pilih tanggal'
-                                )}
-                              </span>
-                            </Button>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0" align="end">
-                            <Calendar
-                              mode="single"
-                              selected={parseDate(row.tanggal_mulai)}
-                              onSelect={(d) => {
-                                handleChangeDate(row.modul, d ? format(d, 'yyyy-MM-dd') : '');
-                              }}
-                            />
-                            {row.tanggal_mulai && (
-                              <div className="p-2 border-t border-border flex justify-end">
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-7 text-xs text-destructive hover:text-destructive gap-1 px-2"
-                                  onClick={() => handleChangeDate(row.modul, '')}
-                                >
-                                  <X className="h-3 w-3" />
-                                  Hapus
-                                </Button>
-                              </div>
-                            )}
-                          </PopoverContent>
-                        </Popover>
-                        {row.tanggal_mulai && (
-                          <>
+                      return (
+                        <div
+                          key={row.modul}
+                          id={`modul-row-${row.modul}`}
+                          onMouseEnter={() => row.tanggal_mulai && setActiveModul(row.modul)}
+                          onMouseLeave={() => setActiveModul((prev) => (prev === row.modul ? null : prev))}
+                          onFocus={() => row.tanggal_mulai && setActiveModul(row.modul)}
+                          onBlur={() => setActiveModul((prev) => (prev === row.modul ? null : prev))}
+                          className={cn(
+                            'flex items-center justify-between gap-3 px-4 sm:px-5 py-2.5 text-sm transition-colors hover:bg-muted/30',
+                            isFocused && 'bg-muted/40'
+                          )}
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0">
                             <span
-                              className={`text-xs font-medium px-2 py-1 rounded-sm ${valid
-                                ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400'
-                                : 'bg-destructive/10 text-destructive'
-                                }`}
-                            >
-                              {dayName}
-                              {!valid && ` (${error})`}
-                            </span>
-                            <div
-                              className="w-4 h-4 rounded-sm border border-border/50 shrink-0"
-                              style={{ backgroundColor: COURSE_COLORS[(row.modul - 1) % COURSE_COLORS.length] }}
-                              title={`Warna Modul ${row.modul}`}
+                              className={cn(
+                                'w-2 h-2 rounded-full shrink-0',
+                                row.tanggal_mulai
+                                  ? validation.valid
+                                    ? 'bg-foreground/70'
+                                    : 'bg-destructive'
+                                  : 'border border-muted-foreground/40'
+                              )}
+                              aria-hidden="true"
                             />
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </CardContent>
+                            <div className="min-w-0">
+                              <div className="font-medium text-foreground tabular-nums leading-tight">
+                                Modul {row.modul}
+                              </div>
+                              {row.tanggal_mulai ? (
+                                validation.valid ? (
+                                  <p className="text-xs text-muted-foreground tabular-nums truncate mt-0.5">
+                                    {dayName}, {rangeSummary}
+                                  </p>
+                                ) : (
+                                  <p className="text-xs text-destructive truncate mt-0.5">
+                                    {dayName} ({validation.error})
+                                  </p>
+                                )
+                              ) : (
+                                <p className="text-xs text-muted-foreground mt-0.5">Belum diatur</p>
+                              )}
+                            </div>
+                          </div>
 
-            <CardFooter className="p-4 pt-4 flex items-center justify-between gap-3 border-t border-border/50 bg-muted/10 shrink-0">
-              <Dialog open={isGenerateDialogOpen} onOpenChange={setIsGenerateDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={loading || !term || rows.length === 0}
-                  >
-                    Kalibrasi Tanggal
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-[400px]">
-                  <DialogHeader>
-                    <DialogTitle>Kalibrasi Tanggal</DialogTitle>
-                  </DialogHeader>
-                  <div className="py-2 space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="startModul" className="text-sm font-medium">
-                        Mulai dari Modul
-                      </Label>
-                      <Select value={startModul} onValueChange={setStartModul}>
-                        <SelectTrigger className="w-full">
-                          <SelectValue placeholder="Pilih Modul" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {rows.map((r) => (
-                            <SelectItem key={r.modul} value={r.modul.toString()}>
-                              Modul {r.modul}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <p className="text-xs text-muted-foreground">
-                        Sistem akan mengisi modul-modul berikutnya dengan interval{' '}
-                        <strong>7 hari</strong> sekali dimulai dari modul yang dipilih.
-                      </p>
-                    </div>
+                          <div className="flex items-center gap-1 shrink-0">
+                            <Popover
+                              open={openPopoverModul === row.modul}
+                              onOpenChange={(open) => setOpenPopoverModul(open ? row.modul : null)}
+                            >
+                              <PopoverTrigger asChild>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  disabled={saving || !term}
+                                  className={cn(
+                                    'h-9 sm:h-8 min-w-[138px] justify-start text-left font-normal text-xs px-2.5 tabular-nums',
+                                    !row.tanggal_mulai && 'text-muted-foreground',
+                                    !validation.valid &&
+                                      'border-destructive text-destructive focus-visible:ring-destructive'
+                                  )}
+                                >
+                                  <CalendarIcon
+                                    className="mr-1.5 h-3.5 w-3.5 shrink-0 opacity-70"
+                                    aria-hidden="true"
+                                  />
+                                  <span className="truncate">
+                                    {parsedDate
+                                      ? format(parsedDate, 'dd MMM yyyy', { locale: id })
+                                      : 'Pilih tanggal'}
+                                  </span>
+                                </Button>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-auto p-0" align="end">
+                                <Calendar
+                                  mode="single"
+                                  weekStartsOn={1}
+                                  defaultMonth={parsedDate ?? getFallbackMonth(idx)}
+                                  selected={parsedDate}
+                                  disabled={(date) => getDay(date) !== 1}
+                                  onSelect={(d) => {
+                                    handleChangeDate(row.modul, d ? format(d, 'yyyy-MM-dd') : '');
+                                    setOpenPopoverModul(null);
+                                  }}
+                                />
+                                {row.tanggal_mulai && (
+                                  <div className="p-2 border-t border-border flex justify-end">
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-7 text-xs text-destructive hover:text-destructive gap-1 px-2"
+                                      onClick={() => {
+                                        handleChangeDate(row.modul, '');
+                                        setOpenPopoverModul(null);
+                                      }}
+                                    >
+                                      <X className="h-3 w-3" aria-hidden="true" />
+                                      Hapus Tanggal
+                                    </Button>
+                                  </div>
+                                )}
+                              </PopoverContent>
+                            </Popover>
+
+                            {row.tanggal_mulai && (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleChangeDate(row.modul, '')}
+                                disabled={saving}
+                                className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                                aria-label={`Hapus tanggal Modul ${row.modul}`}
+                              >
+                                <X className="h-3.5 w-3.5" />
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
-                  <DialogFooter className="gap-2 sm:gap-0">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setIsGenerateDialogOpen(false)}
-                    >
-                      Batal
-                    </Button>
-                    <Button size="sm" onClick={handleGenerate}>
-                      Kalibrasi
-                    </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
-
-              <Button
-                size="sm"
-                className="px-6"
-                onClick={handleSave}
-                disabled={loading || !term || hasInvalidDates}
-              >
-                Simpan Perubahan
-              </Button>
-            </CardFooter>
-          </Card>
+                </ScrollArea>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Right Panel: Calendar Visualizer */}
-          <section className="h-full">
-            <ModulCalendarView rows={rows} />
+          <section className="min-w-0">
+            <ModulCalendarView
+              rows={rows}
+              activeModul={activeModul}
+              onSelectModul={handleCalendarSelectModul}
+              expanded={!showModulList}
+            />
           </section>
         </div>
       )}

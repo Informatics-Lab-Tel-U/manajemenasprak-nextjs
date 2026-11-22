@@ -3,11 +3,11 @@ import { MataKuliahCardSkeleton } from '@/components/mata-kuliah/MataKuliahList'
 
 export default function MataKuliahLoading() {
   return (
-    <div className="container mx-auto max-w-[2000px] 2xl:px-8 relative space-y-8">
+    <div className="container mx-auto max-w-[2000px] 2xl:px-8 relative space-y-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div className="space-y-2">
-          <h1 className="text-2xl 2xl:text-3xl font-bold tracking-tight">Mata Kuliah</h1>
-          <p className="text-sm 2xl:text-base text-muted-foreground mt-1">
+          <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-foreground">Mata Kuliah</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">
             Kelola data mata kuliah, koordinator, dan varian prodi per tahun ajaran.
           </p>
         </div>
@@ -28,7 +28,7 @@ export default function MataKuliahLoading() {
               <Skeleton className="h-5 w-32" />
               <Skeleton className="h-5 w-14 rounded-full" />
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 min-[2000px]:grid-cols-6 gap-4 2xl:gap-6 animate-pulse">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 min-[2000px]:grid-cols-6 gap-4 2xl:gap-6">
               {Array.from({ length: 6 }).map((_, j) => (
                 <MataKuliahCardSkeleton key={j} />
               ))}

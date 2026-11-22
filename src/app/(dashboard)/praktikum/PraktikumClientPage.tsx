@@ -115,12 +115,12 @@ export default function PraktikumClientPage({
   const isLoading = loadingList;
 
   return (
-    <div className="container mx-auto max-w-[2000px] relative space-y-8 2xl:px-8">
+    <div className="container mx-auto max-w-[2000px] relative space-y-6 2xl:px-8">
       <header className="mb-6">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
-            <h1 className="text-2xl 2xl:text-3xl font-bold tracking-tight">Data Praktikum</h1>
-            <p className="text-sm 2xl:text-base text-muted-foreground mt-1">
+            <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-foreground">Data Praktikum</h1>
+            <p className="text-sm text-muted-foreground mt-0.5">
               Kelola data praktikum dan penugasan per angkatan
             </p>
           </div>

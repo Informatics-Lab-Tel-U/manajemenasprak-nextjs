@@ -120,7 +120,7 @@ export default function PelanggaranRekapClient({ initialTahunAjaranList, userRol
   const columns = React.useMemo<ColumnDef<any>[]>(
     () => [
       {
-        accessorFn: (row) => row.jadwal?.mata_kuliah?.praktikum?.nama ?? '—',
+        accessorFn: (row) => row.jadwal?.mata_kuliah?.praktikum?.nama ?? '-',
         id: 'mk',
         header: ({ column }) => <SortHeader column={column} label="MK" />,
         cell: ({ row }) => (
@@ -143,7 +143,7 @@ export default function PelanggaranRekapClient({ initialTahunAjaranList, userRol
         ),
       },
       {
-        accessorFn: (row) => row.jadwal?.kelas ?? '—',
+        accessorFn: (row) => row.jadwal?.kelas ?? '-',
         id: 'kelas',
         header: 'Kelas',
         cell: ({ row }) => <span className="text-sm">{row.getValue('kelas')}</span>,
@@ -160,10 +160,10 @@ export default function PelanggaranRekapClient({ initialTahunAjaranList, userRol
       {
         accessorKey: 'modul',
         header: 'Modul',
-        cell: ({ row }) => <span className="text-sm">{row.getValue('modul') ?? '—'}</span>,
+        cell: ({ row }) => <span className="text-sm">{row.getValue('modul') ?? '-'}</span>,
       },
       {
-        accessorFn: (row) => row.jadwal?.jam ?? '—',
+        accessorFn: (row) => row.jadwal?.jam ?? '-',
         id: 'jam',
         header: 'Jam',
         cell: ({ row }) => (
@@ -194,12 +194,12 @@ export default function PelanggaranRekapClient({ initialTahunAjaranList, userRol
   if (!mounted) return null;
 
   return (
-    <div className="container mx-auto max-w-[2000px] 2xl:px-8 relative space-y-8">
+    <div className="container mx-auto max-w-[2000px] 2xl:px-8 relative space-y-6">
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
         <div>
-          <h1 className="text-2xl 2xl:text-3xl font-bold tracking-tight">Rekap Pelanggaran</h1>
-          <p className="text-sm 2xl:text-base text-muted-foreground mt-1">
+          <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-foreground">Rekap Pelanggaran</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">
             Agregasi data pelanggaran asisten praktikum lintas praktikum
           </p>
         </div>
@@ -214,7 +214,7 @@ export default function PelanggaranRekapClient({ initialTahunAjaranList, userRol
 
       {/* Filters Accordion */}
       <Accordion type="single" collapsible defaultValue="filter" className="w-full">
-        <AccordionItem value="filter" className="border rounded-xl px-4 bg-card/30">
+        <AccordionItem value="filter" className="border border-border rounded-xl px-4 bg-transparent">
           <AccordionTrigger className="hover:no-underline py-4">
             <div className="flex items-center gap-3">
               <Filter size={20} className="text-muted-foreground" />
