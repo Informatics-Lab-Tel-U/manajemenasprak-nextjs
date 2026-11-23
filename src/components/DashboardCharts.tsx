@@ -1163,7 +1163,7 @@ export default function DashboardCharts({
             <div
               ref={evidenceListRef}
               className={`${
-                isEvidenceDocked ? 'flex-1 max-h-[420px] lg:max-h-[520px]' : 'max-h-[300px]'
+                isEvidenceDocked ? 'flex-1 min-h-0 max-h-[300px] lg:max-h-none' : 'max-h-[300px]'
               } overflow-y-auto scrollbar-thin space-y-2 pr-1`}
             >
               {isEvidenceLoading ? (
@@ -1353,13 +1353,17 @@ export default function DashboardCharts({
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-12 items-stretch">
           {layout.evidencePlacement === 'left' ? (
             <>
-              <div className="lg:col-span-4 xl:col-span-3 min-w-0">{evidenceCardNode}</div>
+              <div className="lg:col-span-4 xl:col-span-3 min-w-0 lg:relative">
+                <div className="lg:absolute lg:inset-0 flex flex-col min-h-0">{evidenceCardNode}</div>
+              </div>
               <div className="lg:col-span-8 xl:col-span-9 min-w-0">{jadwalCardNode}</div>
             </>
           ) : (
             <>
               <div className="lg:col-span-8 xl:col-span-9 min-w-0">{jadwalCardNode}</div>
-              <div className="lg:col-span-4 xl:col-span-3 min-w-0">{evidenceCardNode}</div>
+              <div className="lg:col-span-4 xl:col-span-3 min-w-0 lg:relative">
+                <div className="lg:absolute lg:inset-0 flex flex-col min-h-0">{evidenceCardNode}</div>
+              </div>
             </>
           )}
         </div>
