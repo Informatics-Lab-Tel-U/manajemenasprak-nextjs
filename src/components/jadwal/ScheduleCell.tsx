@@ -12,7 +12,6 @@ interface ScheduleCellProps {
   showAsprakCount?: boolean;
   isOnlineActive?: boolean;
   isEditMode?: boolean;
-  compact?: boolean;
   onDuplicate?: () => void;
   onDragStart?: (e: React.DragEvent) => void;
 }
@@ -57,7 +56,6 @@ export const ScheduleCell: React.FC<ScheduleCellProps> = ({
   showAsprakCount = false,
   isOnlineActive = false,
   isEditMode = false,
-  compact = false,
   onDuplicate,
   onDragStart,
 }) => {
@@ -89,9 +87,7 @@ export const ScheduleCell: React.FC<ScheduleCellProps> = ({
       } : undefined}
       draggable={isEditMode}
       onDragStart={isEditMode ? onDragStart : undefined}
-      className={`relative w-full flex-1 flex flex-col items-center justify-center transition-all overflow-hidden origin-center ${
-        compact ? 'p-0.5 min-h-[54px]' : 'p-1 min-h-[60px] 2xl:min-h-[80px]'
-      } ${
+      className={`relative w-full flex-1 flex flex-col items-center justify-center p-1 transition-all overflow-hidden origin-center min-h-[60px] 2xl:min-h-[80px] ${
         handleClick
           ? 'cursor-pointer hover:brightness-110 hover:scale-105 hover:z-20 hover:shadow-lg'
           : ''
@@ -113,26 +109,14 @@ export const ScheduleCell: React.FC<ScheduleCellProps> = ({
       )}
 
       <div className="w-full min-w-0 text-center leading-tight relative z-10">
-        <div
-          className={`font-bold text-white drop-shadow-md truncate w-full ${
-            compact ? 'text-xs px-0.5' : 'text-[10px] sm:text-xs 2xl:text-sm px-1'
-          }`}
-        >
+        <div className="font-bold text-[10px] sm:text-xs 2xl:text-sm text-white drop-shadow-md truncate w-full px-1">
           {jadwal.mata_kuliah?.praktikum?.nama || jadwal.mata_kuliah?.nama_lengkap || 'Unknown'}
         </div>
-        <div
-          className={`text-white/90 truncate px-0.5 ${
-            compact ? 'text-[11px]' : 'text-[9px] sm:text-[10px] 2xl:text-xs'
-          }`}
-        >
+        <div className="text-[9px] sm:text-[10px] 2xl:text-xs text-white/90 truncate px-0.5">
           {jadwal.kelas}
         </div>
         {showAsprakCount && (
-          <div
-            className={`text-white/80 truncate ${
-              compact ? 'text-[10px] px-0.5' : 'text-[8px] sm:text-[9px] 2xl:text-[10px] px-1'
-            }`}
-          >
+          <div className="text-[8px] sm:text-[9px] 2xl:text-[10px] text-white/80 truncate px-1">
             {jadwal.total_asprak || 0} asprak
           </div>
         )}

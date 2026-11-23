@@ -425,16 +425,16 @@ export default function DashboardCharts({
   );
 
   const tableClass = isEvidenceDocked
-    ? 'w-full lg:table-fixed border-collapse text-xs'
+    ? 'w-full lg:table-fixed border-collapse text-sm'
     : 'w-full border-collapse text-sm';
   const thPenjagaanClass = isEvidenceDocked
-    ? 'p-1.5 border-r-0 text-center font-bold w-[92px] xl:w-[104px] text-[10px] uppercase text-muted-foreground bg-transparent leading-tight'
+    ? 'p-2 border-r-0 text-center font-bold w-[96px] xl:w-[108px] text-xs uppercase text-muted-foreground bg-transparent leading-tight'
     : 'p-2 border-r-0 text-center font-bold min-w-[120px] text-xs uppercase text-muted-foreground bg-transparent leading-tight';
   const thSesiClass = isEvidenceDocked
-    ? 'p-1.5 border-r border-l border-border text-center font-bold w-[60px] xl:w-[66px] whitespace-nowrap text-[10px] uppercase text-muted-foreground'
+    ? 'p-2 border-r border-l border-border text-center font-bold w-[64px] xl:w-[70px] whitespace-nowrap text-xs 2xl:text-sm uppercase text-muted-foreground'
     : 'p-2 border-r border-l border-border text-center font-bold min-w-[60px] text-xs 2xl:text-sm uppercase text-muted-foreground';
   const thRoomClass = isEvidenceDocked
-    ? 'p-1 border-r border-border text-center font-bold min-w-0 truncate text-[10px] xl:text-xs'
+    ? 'p-2 border-r border-border text-center font-bold min-w-0 truncate text-xs 2xl:text-sm'
     : 'p-2 border-r border-border text-center font-bold min-w-[120px] whitespace-nowrap text-xs 2xl:text-sm';
 
   const jadwalCardNode = (
@@ -689,11 +689,7 @@ export default function DashboardCharts({
                           key={session.rowKey}
                           className="hover:bg-muted/20 transition-colors border-b border-border/50"
                         >
-                          <td
-                            className={`border-r-0 p-0 align-top ${
-                              isEvidenceDocked ? 'h-[54px]' : 'h-[60px] 2xl:h-[80px]'
-                            }`}
-                          >
+                          <td className="border-r-0 p-0 align-top h-[60px] 2xl:h-[80px]">
                             {shiftJaga.length > 0 ? (
                               <TooltipProvider>
                                 <div className="flex h-full flex-col gap-px bg-border">
@@ -793,17 +789,11 @@ export default function DashboardCharts({
                               </div>
                             )}
                           </td>
-                          <td
-                            className={`border-r border-l border-border text-center font-medium text-muted-foreground whitespace-nowrap ${
-                              isEvidenceDocked ? 'p-1 text-[10px]' : 'p-2 text-xs 2xl:text-sm'
-                            }`}
-                          >
+                          <td className="p-2 border-r border-l border-border text-center font-medium text-muted-foreground text-xs 2xl:text-sm whitespace-nowrap">
                             {session.sesi ? (
                               <div className="font-bold">Sesi {session.sesi}</div>
                             ) : null}
-                            <div className={isEvidenceDocked ? 'text-[10px] opacity-90' : 'text-xs opacity-90'}>
-                              {session.jam}
-                            </div>
+                            <div className="text-xs opacity-90">{session.jam}</div>
                           </td>
                           {uniqueRooms.map((room) => {
                             const rawCellJadwals = scheduleMatrix[session.rowKey]?.[room] || [];
@@ -843,15 +833,11 @@ export default function DashboardCharts({
                                 key={`${session.rowKey}-${room}`}
                                 className={
                                   isEvidenceDocked
-                                    ? 'p-0 border-r border-border h-[54px] relative align-top'
+                                    ? 'p-0 border-r border-border h-[60px] relative align-top'
                                     : 'p-0 border-r border-border h-[60px] w-[120px] relative align-top'
                                 }
                               >
-                                <div
-                                  className={`flex flex-col w-full h-full ${
-                                    isEvidenceDocked ? 'min-h-[54px]' : 'min-h-[60px]'
-                                  }`}
-                                >
+                                <div className="flex flex-col w-full h-full min-h-[60px]">
                                   {jadwals.map((jadwal) => {
                                     let isClassActive = false;
                                     if (isRoomOnline) {
@@ -884,7 +870,6 @@ export default function DashboardCharts({
                                         jadwal={jadwal}
                                         showAsprakCount={true}
                                         isOnlineActive={isClassActive}
-                                        compact={isEvidenceDocked}
                                       />
                                     );
                                   })}
