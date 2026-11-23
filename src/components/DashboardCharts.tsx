@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { Cell, Pie, PieChart } from 'recharts';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
-import { Search, X } from 'lucide-react';
+import { Search, X, GripVertical } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -36,6 +36,45 @@ import { getCourseColor } from '@/utils/colorUtils';
 import { getJagaShiftsByDay } from '@/utils/jagaUtils';
 
 const MAX_JAGA_CODES = 6;
+const DASHBOARD_LAYOUT_STORAGE_KEY = 'manas:beranda-layout-v1';
+
+type EvidencePlacement = 'bottom' | 'left' | 'right';
+type BottomCardId = 'asprak' | 'evidence' | 'jadwal-dist';
+type DraggableCardId = 'jadwal' | BottomCardId;
+
+interface DashboardLayoutState {
+  evidencePlacement: EvidencePlacement;
+  bottomOrder: BottomCardId[];
+}
+
+const DEFAULT_DASHBOARD_LAYOUT: DashboardLayoutState = {
+  evidencePlacement: 'bottom',
+  bottomOrder: ['asprak', 'evidence', 'jadwal-dist'],
+};
+
+function normalizeLayoutState(raw: unknown): DashboardLayoutState {
+  if (!raw || typeof raw !== 'object') return DEFAULT_DASHBOARD_LAYOUT;
+  const obj = raw as Partial<DashboardLayoutState>;
+  const placement: EvidencePlacement =
+    obj.evidencePlacement === 'left' || obj.evidencePlacement === 'right' || obj.evidencePlacement === 'bottom'
+      ? obj.evidencePlacement
+      : 'bottom';
+  const validIds: BottomCardId[] = ['asprak', 'evidence', 'jadwal-dist'];
+  const seen = new Set<BottomCardId>();
+  const order: BottomCardId[] = [];
+  if (Array.isArray(obj.bottomOrder)) {
+    for (const item of obj.bottomOrder) {
+      if (validIds.includes(item as BottomCardId) && !seen.has(item as BottomCardId)) {
+        seen.add(item as BottomCardId);
+        order.push(item as BottomCardId);
+      }
+    }
+  }
+  for (const id of validIds) {
+    if (!seen.has(id)) order.push(id);
+  }
+  return { evidencePlacement: placement, bottomOrder: order };
+}
 
 const MONO_CHART_SHADES = [
   'var(--foreground)',
@@ -150,6 +189,7 @@ export default function DashboardCharts({
   activeModul,
   userRole: _userRole,
   evidenceRealtime,
+  isEditingLayout = false,
 }: {
   asprakByAngkatan: { name: string; count: number }[];
   jadwalByDay: { name: string; count: number }[];
@@ -161,9 +201,73 @@ export default function DashboardCharts({
   activeModul: number;
   userRole?: string;
   evidenceRealtime?: ReturnType<typeof useIwanEvidenceRealtime>;
+  isEditingLayout?: boolean;
 }) {
   const [programType, setProgramType] = useState<'REGULER' | 'PJJ'>('REGULER');
   const [searchQuery, setSearchQuery] = useState('');
+  const [layout, setLayout] = useState<DashboardLayoutState>(() => {
+    if (typeof window === 'undefined') return DEFAULT_DASHBOARD_LAYOUT;
+    try {
+      const saved = window.localStorage.getItem(DASHBOARD_LAYOUT_STORAGE_KEY);
+      return saved ? normalizeLayoutState(JSON.parse(saved)) : DEFAULT_DASHBOARD_LAYOUT;
+    } catch {
+      return DEFAULT_DASHBOARD_LAYOUT;
+    }
+  });
+  const [draggingCard, setDraggingCard] = useState<DraggableCardId | null>(null);
+  const [dropTarget, setDropTarget] = useState<string | null>(null);
+
+  const jadwalCardRef = useRef<HTMLDivElement | null>(null);
+  const asprakCardRef = useRef<HTMLDivElement | null>(null);
+  const evidenceCardRef = useRef<HTMLDivElement | null>(null);
+  const jadwalDistCardRef = useRef<HTMLDivElement | null>(null);
+
+  const updateLayout = (updater: (prev: DashboardLayoutState) => DashboardLayoutState) => {
+    setLayout((prev) => {
+      const next = updater(prev);
+      try {
+        window.localStorage.setItem(DASHBOARD_LAYOUT_STORAGE_KEY, JSON.stringify(next));
+      } catch {
+        // ignore storage errors
+      }
+      return next;
+    });
+  };
+
+  const startCardDrag = (
+    e: React.DragEvent,
+    cardId: DraggableCardId,
+    cardEl: HTMLDivElement | null
+  ) => {
+    if (!isEditingLayout) return;
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', cardId);
+    if (cardEl) {
+      e.dataTransfer.setDragImage(cardEl, 24, 24);
+    }
+    setDraggingCard(cardId);
+  };
+
+  const endCardDrag = () => {
+    setDraggingCard(null);
+    setDropTarget(null);
+  };
+
+  const reorderBottomCard = (sourceId: BottomCardId, targetId: BottomCardId) => {
+    if (sourceId === targetId) return;
+    updateLayout((prev) => {
+      const nextOrder = [...prev.bottomOrder];
+      const fromIdx = nextOrder.indexOf(sourceId);
+      const toIdx = nextOrder.indexOf(targetId);
+      if (fromIdx === -1 || toIdx === -1) return prev;
+      [nextOrder[fromIdx], nextOrder[toIdx]] = [nextOrder[toIdx], nextOrder[fromIdx]];
+      return {
+        ...prev,
+        evidencePlacement: sourceId === 'evidence' ? 'bottom' : prev.evidencePlacement,
+        bottomOrder: nextOrder,
+      };
+    });
+  };
 
   const dataAsprak = useMemo(() => {
     return [...asprakByAngkatan]
@@ -315,22 +419,110 @@ export default function DashboardCharts({
     timeZone: 'Asia/Jakarta',
   });
 
-  return (
-    <div className="space-y-6">
-      {/* Row 2: Full-Width Matriks Jadwal Hari Ini */}
+  const isEvidenceDocked = layout.evidencePlacement === 'left' || layout.evidencePlacement === 'right';
+  const visibleBottomCards = layout.bottomOrder.filter(
+    (cardId) => !(isEvidenceDocked && cardId === 'evidence')
+  );
+
+  const tableClass = isEvidenceDocked
+    ? 'w-full lg:table-fixed border-collapse text-xs'
+    : 'w-full border-collapse text-sm';
+  const thPenjagaanClass = isEvidenceDocked
+    ? 'p-1.5 border-r-0 text-center font-bold w-[92px] xl:w-[104px] text-[10px] uppercase text-muted-foreground bg-transparent leading-tight'
+    : 'p-2 border-r-0 text-center font-bold min-w-[120px] text-xs uppercase text-muted-foreground bg-transparent leading-tight';
+  const thSesiClass = isEvidenceDocked
+    ? 'p-1.5 border-r border-l border-border text-center font-bold w-[60px] xl:w-[66px] whitespace-nowrap text-[10px] uppercase text-muted-foreground'
+    : 'p-2 border-r border-l border-border text-center font-bold min-w-[60px] text-xs 2xl:text-sm uppercase text-muted-foreground';
+  const thRoomClass = isEvidenceDocked
+    ? 'p-1 border-r border-border text-center font-bold min-w-0 truncate text-[10px] xl:text-xs'
+    : 'p-2 border-r border-border text-center font-bold min-w-[120px] whitespace-nowrap text-xs 2xl:text-sm';
+
+  const jadwalCardNode = (
       <Card
+        ref={jadwalCardRef}
         aria-busy={loading || undefined}
-        className="bg-transparent border border-border shadow-none py-5 gap-4"
+        onDragOver={(e) => {
+          if (draggingCard === 'evidence') {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            const rect = e.currentTarget.getBoundingClientRect();
+            const isLeftHalf = e.clientX - rect.left < rect.width / 2;
+            setDropTarget(isLeftHalf ? 'jadwal-left' : 'jadwal-right');
+          }
+        }}
+        onDragLeave={(e) => {
+          if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
+            if (dropTarget === 'jadwal-left' || dropTarget === 'jadwal-right') {
+              setDropTarget(null);
+            }
+          }
+        }}
+        onDrop={(e) => {
+          if (draggingCard === 'evidence') {
+            e.preventDefault();
+            const rect = e.currentTarget.getBoundingClientRect();
+            const isLeftHalf = e.clientX - rect.left < rect.width / 2;
+            updateLayout((prev) => ({
+              ...prev,
+              evidencePlacement: isLeftHalf ? 'left' : 'right',
+            }));
+            endCardDrag();
+          }
+        }}
+        className={`relative h-full bg-transparent border shadow-none py-5 gap-4 transition-colors ${
+          draggingCard === 'jadwal'
+            ? 'opacity-60 border-foreground/40'
+            : dropTarget === 'jadwal-left' || dropTarget === 'jadwal-right'
+              ? 'border-foreground/50'
+              : 'border-border'
+        }`}
       >
+        {draggingCard === 'evidence' && (
+          <div className="pointer-events-none absolute inset-2 z-10 grid grid-cols-2 gap-2">
+            <div
+              className={`flex items-center justify-center rounded-lg border border-dashed text-xs font-medium transition-colors ${
+                dropTarget === 'jadwal-left'
+                  ? 'border-foreground bg-accent/60 text-foreground'
+                  : 'border-border/80 bg-background/60 text-muted-foreground'
+              }`}
+            >
+              Taruh di Kiri Jadwal
+            </div>
+            <div
+              className={`flex items-center justify-center rounded-lg border border-dashed text-xs font-medium transition-colors ${
+                dropTarget === 'jadwal-right'
+                  ? 'border-foreground bg-accent/60 text-foreground'
+                  : 'border-border/80 bg-background/60 text-muted-foreground'
+              }`}
+            >
+              Taruh di Kanan Jadwal
+            </div>
+          </div>
+        )}
         <CardHeader className="flex flex-col gap-4 px-5 lg:flex-row lg:items-center lg:justify-between">
-          <div className="min-w-0 space-y-1">
-            <CardTitle className="text-base font-semibold">
-              Jadwal Hari Ini ({todayWeekdayName})
-            </CardTitle>
-            <CardDescription className="text-xs">
-              Modul {activeModul} · {term ? `Term ${term}` : 'Semua term'} ·{' '}
-              {processedJadwalList.length} kelas ({programType === 'REGULER' ? 'Reguler' : 'PJJ'})
-            </CardDescription>
+          <div className="flex items-start gap-2 min-w-0">
+            {isEditingLayout && (
+              <button
+                type="button"
+                draggable
+                onDragStart={(e) => startCardDrag(e, 'jadwal', jadwalCardRef.current)}
+                onDragEnd={endCardDrag}
+                title="Geser posisi kartu Jadwal"
+                aria-label="Geser posisi kartu Jadwal"
+                className="mt-0.5 inline-flex size-6 shrink-0 cursor-grab items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground active:cursor-grabbing focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <GripVertical className="size-4" aria-hidden="true" />
+              </button>
+            )}
+            <div className="min-w-0 space-y-1">
+              <CardTitle className="text-base font-semibold">
+                Jadwal Hari Ini ({todayWeekdayName})
+              </CardTitle>
+              <CardDescription className="text-xs">
+                Modul {activeModul} · {term ? `Term ${term}` : 'Semua term'} ·{' '}
+                {processedJadwalList.length} kelas ({programType === 'REGULER' ? 'Reguler' : 'PJJ'})
+              </CardDescription>
+            </div>
           </div>
 
           <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center w-full lg:w-auto">
@@ -383,18 +575,18 @@ export default function DashboardCharts({
           ) : loading ? (
             <div className="overflow-x-auto rounded-lg border border-border bg-transparent">
               <span className="sr-only">Memuat matriks jadwal hari ini</span>
-              <table className="w-full border-collapse text-sm">
+              <table className={tableClass}>
                 <thead>
                   <tr className="bg-muted/30 border-b border-border">
-                    <th className="p-2 border-r-0 min-w-[120px]">
+                    <th className={thPenjagaanClass}>
                       <Skeleton className="h-6 w-16 mx-auto" />
                     </th>
-                    <th className="p-2 border-r border-l border-border min-w-[60px]">
+                    <th className={thSesiClass}>
                       <Skeleton className="h-4 w-8 mx-auto" />
                     </th>
                     {uniqueRooms.map((room) => (
-                      <th key={room} className="p-2 border-r border-border min-w-[120px]">
-                        <Skeleton className="h-4 w-16 mx-auto" />
+                      <th key={room} className={thRoomClass}>
+                        <Skeleton className="h-4 w-12 mx-auto" />
                       </th>
                     ))}
                   </tr>
@@ -451,23 +643,23 @@ export default function DashboardCharts({
           ) : (
             <>
               <div className="overflow-x-auto rounded-lg border border-border bg-transparent">
-                <table className="w-full border-collapse text-sm">
+                <table className={tableClass}>
                   <thead>
                     <tr className="bg-muted/30 border-b border-border">
-                      <th className="p-2 border-r-0 text-center font-bold min-w-[120px] text-xs uppercase text-muted-foreground bg-transparent leading-tight">
+                      <th className={thPenjagaanClass}>
                         Penjagaan
                         <br />
                         <span className="text-blue-700 dark:text-blue-300">
                           (Modul {activeModul})
                         </span>
                       </th>
-                      <th className="p-2 border-r border-l border-border text-center font-bold min-w-[60px] text-xs 2xl:text-sm uppercase text-muted-foreground">
+                      <th className={thSesiClass}>
                         Sesi
                       </th>
                       {uniqueRooms.map((room) => (
                         <th
                           key={room}
-                          className="p-2 border-r border-border text-center font-bold min-w-[120px] whitespace-nowrap text-xs 2xl:text-sm"
+                          className={thRoomClass}
                         >
                           {room}
                         </th>
@@ -497,7 +689,11 @@ export default function DashboardCharts({
                           key={session.rowKey}
                           className="hover:bg-muted/20 transition-colors border-b border-border/50"
                         >
-                          <td className="border-r-0 p-0 align-top h-[60px] 2xl:h-[80px]">
+                          <td
+                            className={`border-r-0 p-0 align-top ${
+                              isEvidenceDocked ? 'h-[54px]' : 'h-[60px] 2xl:h-[80px]'
+                            }`}
+                          >
                             {shiftJaga.length > 0 ? (
                               <TooltipProvider>
                                 <div className="flex h-full flex-col gap-px bg-border">
@@ -597,11 +793,17 @@ export default function DashboardCharts({
                               </div>
                             )}
                           </td>
-                          <td className="p-2 border-r border-l border-border text-center font-medium text-muted-foreground text-xs 2xl:text-sm">
+                          <td
+                            className={`border-r border-l border-border text-center font-medium text-muted-foreground whitespace-nowrap ${
+                              isEvidenceDocked ? 'p-1 text-[10px]' : 'p-2 text-xs 2xl:text-sm'
+                            }`}
+                          >
                             {session.sesi ? (
                               <div className="font-bold">Sesi {session.sesi}</div>
                             ) : null}
-                            <div className="text-xs opacity-90">{session.jam}</div>
+                            <div className={isEvidenceDocked ? 'text-[10px] opacity-90' : 'text-xs opacity-90'}>
+                              {session.jam}
+                            </div>
                           </td>
                           {uniqueRooms.map((room) => {
                             const rawCellJadwals = scheduleMatrix[session.rowKey]?.[room] || [];
@@ -639,9 +841,17 @@ export default function DashboardCharts({
                             return (
                               <td
                                 key={`${session.rowKey}-${room}`}
-                                className="p-0 border-r border-border h-[60px] w-[120px] relative align-top"
+                                className={
+                                  isEvidenceDocked
+                                    ? 'p-0 border-r border-border h-[54px] relative align-top'
+                                    : 'p-0 border-r border-border h-[60px] w-[120px] relative align-top'
+                                }
                               >
-                                <div className="flex flex-col w-full h-full min-h-[60px]">
+                                <div
+                                  className={`flex flex-col w-full h-full ${
+                                    isEvidenceDocked ? 'min-h-[54px]' : 'min-h-[60px]'
+                                  }`}
+                                >
                                   {jadwals.map((jadwal) => {
                                     let isClassActive = false;
                                     if (isRoomOnline) {
@@ -674,6 +884,7 @@ export default function DashboardCharts({
                                         jadwal={jadwal}
                                         showAsprakCount={true}
                                         isOnlineActive={isClassActive}
+                                        compact={isEvidenceDocked}
                                       />
                                     );
                                   })}
@@ -719,20 +930,65 @@ export default function DashboardCharts({
           )}
         </CardContent>
       </Card>
+  );
 
-      {/* Row 3: 3-Column Analytics & Realtime Room Status */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        {/* Left: Asprak per Angkatan (Monochrome Donut) */}
+  const bottomDropProps = (targetId: BottomCardId) => ({
+    onDragOver: (e: React.DragEvent) => {
+      if (draggingCard && draggingCard !== 'jadwal' && draggingCard !== targetId) {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        setDropTarget(`bottom-${targetId}`);
+      }
+    },
+    onDragLeave: (e: React.DragEvent) => {
+      if (!e.currentTarget.contains(e.relatedTarget as Node | null) && dropTarget === `bottom-${targetId}`) {
+        setDropTarget(null);
+      }
+    },
+    onDrop: (e: React.DragEvent) => {
+      if (draggingCard && draggingCard !== 'jadwal' && draggingCard !== targetId) {
+        e.preventDefault();
+        reorderBottomCard(draggingCard, targetId);
+        endCardDrag();
+      }
+    },
+  });
+
+  const asprakCardNode = (
         <Card
+          key="asprak"
+          ref={asprakCardRef}
           aria-busy={loading || undefined}
-          className="flex flex-col bg-transparent border border-border shadow-none py-5 gap-4"
+          {...bottomDropProps('asprak')}
+          className={`flex flex-col bg-transparent border shadow-none py-5 gap-4 transition-colors ${
+            draggingCard === 'asprak'
+              ? 'opacity-60 border-foreground/40'
+              : dropTarget === 'bottom-asprak'
+                ? 'border-foreground/50 bg-accent/20'
+                : 'border-border'
+          }`}
         >
           <CardHeader className="flex flex-row items-start justify-between gap-2 px-5">
-            <div className="min-w-0 space-y-1">
-              <CardTitle className="text-base font-semibold">Asprak per Angkatan</CardTitle>
-              <CardDescription className="text-xs">
-                Komposisi asisten aktif berdasarkan angkatan
-              </CardDescription>
+            <div className="flex items-start gap-2 min-w-0">
+              {isEditingLayout && (
+                <button
+                  type="button"
+                  draggable
+                  onDragStart={(e) => startCardDrag(e, 'asprak', asprakCardRef.current)}
+                  onDragEnd={endCardDrag}
+                  title="Geser posisi kartu Asprak per Angkatan"
+                  aria-label="Geser posisi kartu Asprak per Angkatan"
+                  className="mt-0.5 inline-flex size-6 shrink-0 cursor-grab items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground active:cursor-grabbing focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <GripVertical className="size-4" aria-hidden="true" />
+                </button>
+              )}
+              <div className="min-w-0 space-y-1">
+                <CardTitle className="text-base font-semibold">Asprak per Angkatan</CardTitle>
+                <CardDescription className="text-xs">
+                  Komposisi asisten aktif berdasarkan angkatan
+                </CardDescription>
+              </div>
             </div>
             <Button
               asChild
@@ -831,18 +1087,80 @@ export default function DashboardCharts({
             )}
           </CardContent>
         </Card>
+  );
 
-        {/* Center: Log Kecurangan Realtime (List Card) */}
+  const evidenceCardNode = (
         <Card
+          key="evidence"
+          ref={evidenceCardRef}
           aria-busy={isEvidenceLoading || undefined}
-          className="flex flex-col bg-transparent border border-border shadow-none py-5 gap-4"
+          onDragOver={(e) => {
+            if (isEvidenceDocked && draggingCard === 'jadwal') {
+              e.preventDefault();
+              e.dataTransfer.dropEffect = 'move';
+              setDropTarget('swap-docked');
+              return;
+            }
+            if (!isEvidenceDocked && draggingCard && draggingCard !== 'jadwal' && draggingCard !== 'evidence') {
+              e.preventDefault();
+              e.dataTransfer.dropEffect = 'move';
+              setDropTarget('bottom-evidence');
+            }
+          }}
+          onDragLeave={(e) => {
+            if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
+              if (dropTarget === 'swap-docked' || dropTarget === 'bottom-evidence') {
+                setDropTarget(null);
+              }
+            }
+          }}
+          onDrop={(e) => {
+            if (isEvidenceDocked && draggingCard === 'jadwal') {
+              e.preventDefault();
+              updateLayout((prev) => ({
+                ...prev,
+                evidencePlacement: prev.evidencePlacement === 'left' ? 'right' : 'left',
+              }));
+              endCardDrag();
+              return;
+            }
+            if (!isEvidenceDocked && draggingCard && draggingCard !== 'jadwal' && draggingCard !== 'evidence') {
+              e.preventDefault();
+              reorderBottomCard(draggingCard, 'evidence');
+              endCardDrag();
+            }
+          }}
+          className={`flex flex-col bg-transparent border shadow-none py-5 gap-4 transition-colors ${
+            isEvidenceDocked ? 'h-full' : ''
+          } ${
+            draggingCard === 'evidence'
+              ? 'opacity-60 border-foreground/40'
+              : dropTarget === 'swap-docked' || dropTarget === 'bottom-evidence'
+                ? 'border-foreground/50 bg-accent/20'
+                : 'border-border'
+          }`}
         >
           <CardHeader className="flex flex-row items-start justify-between gap-3 px-5">
-            <div className="min-w-0 space-y-1">
-              <CardTitle className="text-base font-semibold">Log Kecurangan</CardTitle>
-              <CardDescription className="text-xs">
-                Deteksi aktivitas terlarang secara realtime
-              </CardDescription>
+            <div className="flex items-start gap-2 min-w-0">
+              {isEditingLayout && (
+                <button
+                  type="button"
+                  draggable
+                  onDragStart={(e) => startCardDrag(e, 'evidence', evidenceCardRef.current)}
+                  onDragEnd={endCardDrag}
+                  title="Geser posisi Log Kecurangan"
+                  aria-label="Geser posisi Log Kecurangan"
+                  className="mt-0.5 inline-flex size-6 shrink-0 cursor-grab items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground active:cursor-grabbing focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <GripVertical className="size-4" aria-hidden="true" />
+                </button>
+              )}
+              <div className="min-w-0 space-y-1">
+                <CardTitle className="text-base font-semibold">Log Kecurangan</CardTitle>
+                <CardDescription className="text-xs">
+                  Deteksi aktivitas terlarang secara realtime
+                </CardDescription>
+              </div>
             </div>
             <Button
               asChild
@@ -859,7 +1177,9 @@ export default function DashboardCharts({
           <CardContent className="flex-1 flex flex-col px-5 min-h-0">
             <div
               ref={evidenceListRef}
-              className="max-h-[300px] overflow-y-auto scrollbar-thin space-y-2 pr-1"
+              className={`${
+                isEvidenceDocked ? 'flex-1 max-h-[420px] lg:max-h-[520px]' : 'max-h-[300px]'
+              } overflow-y-auto scrollbar-thin space-y-2 pr-1`}
             >
               {isEvidenceLoading ? (
                 Array.from({ length: 4 }).map((_, idx) => (
@@ -896,18 +1216,43 @@ export default function DashboardCharts({
             </div>
           </CardContent>
         </Card>
+  );
 
-        {/* Right: Distribusi Jadwal per Hari (Pipeline Progress) */}
+  const jadwalDistCardNode = (
         <Card
+          key="jadwal-dist"
+          ref={jadwalDistCardRef}
           aria-busy={loading || undefined}
-          className="flex flex-col bg-transparent border border-border shadow-none py-5 gap-4"
+          {...bottomDropProps('jadwal-dist')}
+          className={`flex flex-col bg-transparent border shadow-none py-5 gap-4 transition-colors ${
+            draggingCard === 'jadwal-dist'
+              ? 'opacity-60 border-foreground/40'
+              : dropTarget === 'bottom-jadwal-dist'
+                ? 'border-foreground/50 bg-accent/20'
+                : 'border-border'
+          }`}
         >
           <CardHeader className="flex flex-row items-start justify-between gap-2 px-5">
-            <div className="min-w-0 space-y-1">
-              <CardTitle className="text-base font-semibold">Distribusi Jadwal</CardTitle>
-              <CardDescription className="text-xs">
-                Proporsi kelas praktikum per hari dalam seminggu
-              </CardDescription>
+            <div className="flex items-start gap-2 min-w-0">
+              {isEditingLayout && (
+                <button
+                  type="button"
+                  draggable
+                  onDragStart={(e) => startCardDrag(e, 'jadwal-dist', jadwalDistCardRef.current)}
+                  onDragEnd={endCardDrag}
+                  title="Geser posisi kartu Distribusi Jadwal"
+                  aria-label="Geser posisi kartu Distribusi Jadwal"
+                  className="mt-0.5 inline-flex size-6 shrink-0 cursor-grab items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground active:cursor-grabbing focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <GripVertical className="size-4" aria-hidden="true" />
+                </button>
+              )}
+              <div className="min-w-0 space-y-1">
+                <CardTitle className="text-base font-semibold">Distribusi Jadwal</CardTitle>
+                <CardDescription className="text-xs">
+                  Proporsi kelas praktikum per hari dalam seminggu
+                </CardDescription>
+              </div>
             </div>
             <Button
               asChild
@@ -1008,6 +1353,42 @@ export default function DashboardCharts({
             )}
           </CardContent>
         </Card>
+  );
+
+  const bottomCardMap: Record<BottomCardId, React.ReactNode> = {
+    asprak: asprakCardNode,
+    evidence: evidenceCardNode,
+    'jadwal-dist': jadwalDistCardNode,
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Row 2: Matriks Jadwal (Full-width or Proportional 2-Column with Log Kecurangan) */}
+      {isEvidenceDocked ? (
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-12 items-stretch">
+          {layout.evidencePlacement === 'left' ? (
+            <>
+              <div className="lg:col-span-4 xl:col-span-3 min-w-0">{evidenceCardNode}</div>
+              <div className="lg:col-span-8 xl:col-span-9 min-w-0">{jadwalCardNode}</div>
+            </>
+          ) : (
+            <>
+              <div className="lg:col-span-8 xl:col-span-9 min-w-0">{jadwalCardNode}</div>
+              <div className="lg:col-span-4 xl:col-span-3 min-w-0">{evidenceCardNode}</div>
+            </>
+          )}
+        </div>
+      ) : (
+        jadwalCardNode
+      )}
+
+      {/* Row 3: Analytics & Realtime Cards */}
+      <div
+        className={`grid grid-cols-1 gap-4 ${
+          visibleBottomCards.length === 2 ? 'lg:grid-cols-2' : 'lg:grid-cols-3'
+        }`}
+      >
+        {visibleBottomCards.map((id) => bottomCardMap[id])}
       </div>
     </div>
   );

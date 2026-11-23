@@ -1,11 +1,11 @@
 'use client';
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
-import { Users, BookOpen, AlertTriangle, Activity, Calendar } from 'lucide-react';
+import { Users, BookOpen, AlertTriangle, Activity, Calendar, LayoutGrid } from 'lucide-react';
 
 import { StatCard } from '@/components/ui/StatCard';
 import { Button } from '@/components/ui/button';
@@ -65,6 +65,7 @@ export default function DashboardClient({
   const initMonitoring = useMonitoringStore((state) => state.init);
   const setInitialLabStatus = useMonitoringStore((state) => state.setInitialLabStatus);
   const didInitMonitoringRef = useRef(false);
+  const [isEditingLayout, setIsEditingLayout] = useState(false);
 
   useEffect(() => {
     if (didInitMonitoringRef.current) return;
@@ -113,6 +114,18 @@ export default function DashboardClient({
         </div>
 
         <div className="flex flex-wrap items-center gap-2.5">
+          <Button
+            type="button"
+            variant={isEditingLayout ? 'secondary' : 'outline'}
+            size="icon"
+            aria-pressed={isEditingLayout}
+            aria-label="Mode penyesuaian layout"
+            title="Mode penyesuaian layout"
+            onClick={() => setIsEditingLayout((prev) => !prev)}
+            className="min-h-11 min-w-11 sm:min-h-9 sm:min-w-9 sm:size-9 bg-transparent border-border hover:bg-accent/50"
+          >
+            <LayoutGrid className="size-4" aria-hidden="true" />
+          </Button>
           <Button
             asChild
             variant="outline"
@@ -244,6 +257,7 @@ export default function DashboardClient({
         activeModul={activeModul}
         userRole={userRole}
         evidenceRealtime={evidenceRealtime}
+        isEditingLayout={isEditingLayout}
       />
     </div>
   );
