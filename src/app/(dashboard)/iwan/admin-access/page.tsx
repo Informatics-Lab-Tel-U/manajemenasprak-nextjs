@@ -44,7 +44,6 @@ const TABLE_EDGE_PADDING =
 interface AdminToken {
   id: string;
   pair_code: string;
-  auth_token: string | null;
   label: string;
   scope_all: boolean;
   allowed_room_ids: string[];

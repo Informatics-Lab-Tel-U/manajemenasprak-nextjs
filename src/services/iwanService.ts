@@ -33,7 +33,6 @@ export interface IwanDevice {
 export interface IwanAdminToken {
   id: string;
   pair_code: string;
-  auth_token: string;
   label: string;
   scope_all: boolean;
   allowed_room_ids: string[];
