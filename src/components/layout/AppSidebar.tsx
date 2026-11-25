@@ -9,6 +9,7 @@ import {
   BookOpen,
   Calendar,
   ChevronRight,
+  DoorOpen,
   FileSpreadsheet,
   FileText,
   Fingerprint,
@@ -16,13 +17,15 @@ import {
   GraduationCap,
   HelpCircle,
   Home,
+  KeyRound,
+  Laptop,
   LayoutGrid,
   Logs,
   Monitor,
   PlusCircle,
   Settings,
   Shield,
-  Tv,
+  ShieldAlert,
   UserCog,
   Users,
 } from 'lucide-react';
@@ -154,19 +157,18 @@ const ALL_NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
+    label: 'IWAN',
+    items: [
+      { label: 'Ruangan & Sesi', href: '/iwan/rooms', icon: DoorOpen },
+      { label: 'Pemetaan PC', href: '/iwan/devices', icon: Laptop },
+      { label: 'Log Kecurangan', href: '/iwan/evidence', icon: ShieldAlert },
+      { label: 'Akses Admin', href: '/iwan/admin-access', icon: KeyRound },
+    ],
+  },
+  {
     label: 'Sistem',
     items: [
       { label: 'Monitoring Lab', href: '/monitoring', icon: Monitor },
-      {
-        label: 'IWAN Monitoring',
-        icon: Tv,
-        items: [
-          { label: 'Ruangan & Sesi', href: '/iwan/rooms' },
-          { label: 'Pemetaan PC', href: '/iwan/devices' },
-          { label: 'Log Kecurangan', href: '/iwan/evidence' },
-          { label: 'Akses Admin', href: '/iwan/admin-access' },
-        ],
-      },
       { label: 'Manajemen Akun', href: '/manajemen-akun', icon: UserCog },
       { label: 'Audit Logs', href: '/audit-logs', icon: Logs },
       { label: 'Pengaturan', href: '/pengaturan', icon: Settings },
