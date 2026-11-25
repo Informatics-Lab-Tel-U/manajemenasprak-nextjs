@@ -181,8 +181,11 @@ export async function deleteTag(id: string) {
 }
 
 export async function deleteBlogPost(id: string) {
+  const user = await requireAuth();
+  const authHeader = user.token ? `Bearer ${user.token}` : undefined;
+
   try {
-    await blogService.deleteBlogPost(id);
+    await blogService.deleteBlogPost(id, authHeader);
     revalidatePath('/manage-post');
   } catch (error: any) {
     throw new Error(error.message);
