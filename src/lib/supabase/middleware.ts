@@ -184,6 +184,29 @@ export async function updateSession(request: NextRequest) {
     if (!token || authRejected) {
       return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
     }
+    if (pengguna) {
+      const apiRole = pengguna.role as Role | undefined;
+      const apiStatus = (pengguna.status || 'ACTIVE') as 'PENDING' | 'ACTIVE' | 'REJECTED';
+      if (!apiRole || pengguna.deleted_at || apiStatus !== 'ACTIVE') {
+        return NextResponse.json(
+          { ok: false, error: 'Forbidden: Account is not active' },
+          { status: 403 }
+        );
+      }
+
+      const { data: apiAalData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+      const effectiveUser = session?.user ?? (await supabase.auth.getUser()).data.user;
+      if (
+        (apiAalData?.currentLevel === 'aal1' && apiAalData?.nextLevel === 'aal2') ||
+        (isMfaRequiredForUser(effectiveUser, apiRole) && apiAalData?.currentLevel !== 'aal2')
+      ) {
+        return NextResponse.json(
+          { ok: false, error: 'Forbidden: Two-Factor Authentication (AAL2) required' },
+          { status: 403 }
+        );
+      }
+    }
+
     const upstream = await proxyIwanRequest(
       request,
       token,

@@ -34,6 +34,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import { Plus, RefreshCw, Copy, Trash2, Check, Laptop, Pencil, KeyRound } from 'lucide-react';
 
@@ -69,9 +70,12 @@ interface UnlockCodeRecord {
   expires_at: string;
   consumed_at: string | null;
   consumed_mac?: string | null;
+  failed_attempts?: number;
+  locked_at?: string | null;
 }
 
 export default function IwanAdminAccessPage() {
+  const [activeTab, setActiveTab] = React.useState<'tokens' | 'unlock-codes'>('tokens');
   const [tokens, setTokens] = React.useState<AdminToken[]>([]);
   const [rooms, setRooms] = React.useState<RoomOption[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
@@ -83,7 +87,11 @@ export default function IwanAdminAccessPage() {
   const [selectedRoomIds, setSelectedRoomIds] = React.useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
-  const [generatedCodeResult, setGeneratedCodeResult] = React.useState<{ code: string; label: string } | null>(null);
+  const [generatedCodeResult, setGeneratedCodeResult] = React.useState<{
+    code: string;
+    label: string;
+    kind: 'token' | 'unlock';
+  } | null>(null);
   const [editingToken, setEditingToken] = React.useState<AdminToken | null>(null);
   const [editLabel, setEditLabel] = React.useState('');
   const [editScopeAll, setEditScopeAll] = React.useState(false);
@@ -94,6 +102,7 @@ export default function IwanAdminAccessPage() {
   const [canManageUnlockCodes, setCanManageUnlockCodes] = React.useState(false);
   const [unlockCodes, setUnlockCodes] = React.useState<UnlockCodeRecord[]>([]);
   const [isCreatingUnlockCode, setIsCreatingUnlockCode] = React.useState(false);
+  const [nowMs, setNowMs] = React.useState<number>(0);
 
   const loadData = React.useCallback(async (signal?: AbortSignal) => {
     try {
@@ -105,6 +114,7 @@ export default function IwanAdminAccessPage() {
       if (!signal?.aborted) {
         setTokens(tokenData);
         setRooms(roomData);
+        setNowMs(Date.now());
         if (unlockRes && unlockRes.ok) {
           const json = await unlockRes.json().catch(() => null);
           if (json?.ok && Array.isArray(json.data)) {
@@ -127,6 +137,12 @@ export default function IwanAdminAccessPage() {
 
   useIwanPolling(loadData, 0, 'Gagal memuat token admin');
 
+  React.useEffect(() => {
+    if (!canManageUnlockCodes) return;
+    const timer = window.setInterval(() => setNowMs(Date.now()), 30_000);
+    return () => window.clearInterval(timer);
+  }, [canManageUnlockCodes]);
+
   async function handleCreateToken(e: React.FormEvent) {
     e.preventDefault();
     if (!newLabel.trim()) return toast.error('Label konsol admin wajib diisi');
@@ -143,7 +159,7 @@ export default function IwanAdminAccessPage() {
       const json = await res.json();
       if (json.ok && json.data) {
         setIsCreateOpen(false);
-        setGeneratedCodeResult({ code: json.data.pair_code, label: json.data.label });
+        setGeneratedCodeResult({ code: json.data.pair_code, label: json.data.label, kind: 'token' });
         setNewLabel('');
         setScopeAll(false);
         setSelectedRoomIds([]);
@@ -227,7 +243,7 @@ export default function IwanAdminAccessPage() {
       if (json.ok && json.data) {
         const label = reissuingToken.label;
         setReissuingToken(null);
-        setGeneratedCodeResult({ code: json.data.pair_code, label });
+        setGeneratedCodeResult({ code: json.data.pair_code, label, kind: 'token' });
         await fetchData();
       } else {
         toast.error(json.error || 'Gagal menerbitkan ulang kode');
@@ -258,11 +274,12 @@ export default function IwanAdminAccessPage() {
       if (json.ok && json.data) {
         setGeneratedCodeResult({
           code: json.data.code,
-          label: 'Buka Pengaturan Squid & Server (OTP 1× Pakai)',
+          label: 'Berlaku 10 menit, 1 kali pakai',
+          kind: 'unlock',
         });
         await fetchData();
       } else {
-        toast.error(json.error || 'Gagal membuat kode akses pengaturan');
+        toast.error(json.error || 'Gagal membuat kode OTP pengaturan');
       }
     } catch {
       toast.error('Terjadi kesalahan');
@@ -273,78 +290,229 @@ export default function IwanAdminAccessPage() {
 
   const roomMap = new Map<string, string>();
   rooms.forEach((r) => roomMap.set(r.id, r.name));
+  const activeUnlockCount = unlockCodes.filter(
+    (uc) => !uc.consumed_at && !uc.locked_at && new Date(uc.expires_at).getTime() > nowMs,
+  ).length;
+
+  const tokensTable = (
+    <div className="overflow-hidden rounded-md border">
+      <Table className={`2xl:text-base ${TABLE_EDGE_PADDING}`}>
+        <TableHeader className="bg-muted">
+          <TableRow>
+            <TableHead>Label Konsol</TableHead>
+            <TableHead>Kode Aktivasi</TableHead>
+            <TableHead>Scope Ruangan</TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead>Perangkat Terikat</TableHead>
+            <TableHead>Terakhir Digunakan</TableHead>
+            <TableHead className="text-right">Aksi</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {tokens.length === 0 ? (
+            <TableRow>
+              <TableCell colSpan={7} className="h-32 text-center text-muted-foreground">
+                {isLoading ? 'Memuat token admin...' : 'Belum ada kode aktivasi admin.'}
+              </TableCell>
+            </TableRow>
+          ) : (
+            tokens.map((tok) => {
+              const scopeDisplay = tok.scope_all
+                ? 'Semua Ruangan'
+                : tok.allowed_room_ids.map((id) => roomMap.get(id) ?? 'Ruangan').join(', ') || '-';
+
+              return (
+                <TableRow key={tok.id}>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <Laptop className="h-4 w-4 text-muted-foreground shrink-0" />
+                      <span className="font-medium">{tok.label}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant="outline" className="gap-1.5 px-1.5">
+                      {tok.pair_code}
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleCopy(tok.pair_code)}
+                        className="h-4 w-4 p-0 text-muted-foreground hover:text-foreground"
+                        aria-label={`Salin kode ${tok.pair_code}`}
+                      >
+                        {copiedCode === tok.pair_code
+                          ? <Check className="h-3.5 w-3.5 text-emerald-500" />
+                          : <Copy className="h-3.5 w-3.5" />}
+                      </Button>
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant="outline" className="px-1.5 text-muted-foreground">{scopeDisplay}</Badge>
+                  </TableCell>
+                  <TableCell>
+                    {(() => {
+                      const status = tok.status ?? (tok.is_paired ? 'active' : 'pending');
+                      if (status === 'active') {
+                        return (
+                          <Badge variant="outline" className="gap-1.5 px-1.5 text-muted-foreground">
+                            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />Terhubung
+                          </Badge>
+                        );
+                      }
+                      if (status === 'revoked') {
+                        return (
+                          <Badge variant="outline" className="gap-1.5 px-1.5 text-muted-foreground">
+                            <span className="h-1.5 w-1.5 rounded-full bg-destructive" />Dicabut
+                          </Badge>
+                        );
+                      }
+                      return (
+                        <Badge variant="outline" className="gap-1.5 px-1.5 text-muted-foreground">
+                          <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />Menunggu Aktivasi
+                        </Badge>
+                      );
+                    })()}
+                  </TableCell>
+                  <TableCell className="text-sm text-muted-foreground">
+                    {tok.bound_mac ? (
+                      <span className="font-mono text-xs">{tok.bound_mac}</span>
+                    ) : (
+                      <span className="text-xs">-</span>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-sm text-muted-foreground">
+                    {tok.last_used_at
+                      ? new Date(tok.last_used_at).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })
+                      : 'Belum pernah'}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex justify-end gap-1">
+                      <Button
+                        variant="outline"
+                        size="icon-sm"
+                        className="border-muted-foreground/40 dark:border-muted-foreground/40"
+                        onClick={() => openEditDialog(tok)}
+                        aria-label="Edit akses admin"
+                        title="Edit akses admin"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="icon-sm"
+                        className="border-muted-foreground/40 dark:border-muted-foreground/40"
+                        onClick={() => setReissuingToken(tok)}
+                        aria-label="Terbitkan ulang kode"
+                        title="Terbitkan ulang kode"
+                      >
+                        <RefreshCw className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="icon-sm"
+                        className="border-muted-foreground/40 text-destructive hover:bg-destructive/10 hover:text-destructive dark:border-muted-foreground/40 dark:hover:bg-destructive/20"
+                        onClick={() => setDeletingToken(tok)}
+                        aria-label="Cabut akses"
+                        title="Cabut akses"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              );
+            })
+          )}
+        </TableBody>
+      </Table>
+    </div>
+  );
 
   return (
     <div className="container mx-auto max-w-[2000px] 2xl:px-8 space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-        <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-foreground">Akses Admin</h1>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={fetchData}>
-            <RefreshCw className="h-4 w-4 mr-1.5" />
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-foreground">Akses Admin</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            {canManageUnlockCodes
+              ? 'Kelola akses konsol admin dan OTP pengaturan Squid.'
+              : 'Kelola kode aktivasi konsol IWAN Admin.'}
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="outline" onClick={fetchData}>
+            <RefreshCw />
             Segarkan
           </Button>
-          <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-            <DialogTrigger asChild>
-              <Button size="sm">
-                <Plus className="h-4 w-4 mr-1.5" />
-                Generate Kode Admin
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-md">
-              <DialogHeader>
-                <DialogTitle>Buat Kode Pairing IWAN Admin</DialogTitle>
-              </DialogHeader>
-              <form onSubmit={handleCreateToken} className="space-y-4 py-2">
-                <div className="space-y-1.5">
-                  <Label htmlFor="admin-label">Label Laptop / Aslab</Label>
-                  <Input
-                    id="admin-label"
-                    placeholder="Contoh: Laptop Aslab Shift 1"
-                    value={newLabel}
-                    onChange={(e) => setNewLabel(e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Scope Ruangan</Label>
-                  <div className="flex items-center gap-2">
-                    <Checkbox
-                      id="scope-all"
-                      checked={scopeAll}
-                      onCheckedChange={(checked) => setScopeAll(Boolean(checked))}
+          {canManageUnlockCodes && activeTab === 'unlock-codes' ? (
+            <Button onClick={handleCreateUnlockCode} disabled={isCreatingUnlockCode}>
+              <KeyRound />
+              {isCreatingUnlockCode ? 'Membuat Kode...' : 'Buat Kode OTP'}
+            </Button>
+          ) : (
+            <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+              <DialogTrigger asChild>
+                <Button>
+                  <Plus />
+                  Generate Kode Admin
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-md">
+                <DialogHeader>
+                  <DialogTitle>Buat Kode Pairing IWAN Admin</DialogTitle>
+                </DialogHeader>
+                <form onSubmit={handleCreateToken} className="space-y-4 py-2">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="admin-label">Label Laptop / Aslab</Label>
+                    <Input
+                      id="admin-label"
+                      placeholder="Contoh: Laptop Aslab Shift 1"
+                      value={newLabel}
+                      onChange={(e) => setNewLabel(e.target.value)}
+                      required
                     />
-                    <label htmlFor="scope-all" className="text-sm cursor-pointer">Akses Semua Ruangan</label>
                   </div>
-                  {!scopeAll && (
-                    <div className="border rounded-md p-3 space-y-2 bg-muted/30 max-h-40 overflow-y-auto">
-                      {rooms.map((r) => {
-                        const checked = selectedRoomIds.includes(r.id);
-                        return (
-                          <div key={r.id} className="flex items-center gap-2">
-                            <Checkbox
-                              id={`room-${r.id}`}
-                              checked={checked}
-                              onCheckedChange={(c) =>
-                                setSelectedRoomIds(c
-                                  ? [...selectedRoomIds, r.id]
-                                  : selectedRoomIds.filter((id) => id !== r.id))
-                              }
-                            />
-                            <label htmlFor={`room-${r.id}`} className="text-sm cursor-pointer">{r.name}</label>
-                          </div>
-                        );
-                      })}
+                  <div className="space-y-2">
+                    <Label>Scope Ruangan</Label>
+                    <div className="flex items-center gap-2">
+                      <Checkbox
+                        id="scope-all"
+                        checked={scopeAll}
+                        onCheckedChange={(checked) => setScopeAll(Boolean(checked))}
+                      />
+                      <label htmlFor="scope-all" className="text-sm cursor-pointer">Akses Semua Ruangan</label>
                     </div>
-                  )}
-                </div>
-                <DialogFooter className="pt-2">
-                  <Button type="button" variant="outline" onClick={() => setIsCreateOpen(false)}>Batal</Button>
-                  <Button type="submit" disabled={isSubmitting}>Generate Kode</Button>
-                </DialogFooter>
-              </form>
-            </DialogContent>
-          </Dialog>
+                    {!scopeAll && (
+                      <div className="border rounded-md p-3 space-y-2 bg-muted/30 max-h-40 overflow-y-auto">
+                        {rooms.map((r) => {
+                          const checked = selectedRoomIds.includes(r.id);
+                          return (
+                            <div key={r.id} className="flex items-center gap-2">
+                              <Checkbox
+                                id={`room-${r.id}`}
+                                checked={checked}
+                                onCheckedChange={(c) =>
+                                  setSelectedRoomIds(c
+                                    ? [...selectedRoomIds, r.id]
+                                    : selectedRoomIds.filter((id) => id !== r.id))
+                                }
+                              />
+                              <label htmlFor={`room-${r.id}`} className="text-sm cursor-pointer">{r.name}</label>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                  <DialogFooter className="pt-2">
+                    <Button type="button" variant="outline" onClick={() => setIsCreateOpen(false)}>Batal</Button>
+                    <Button type="submit" disabled={isSubmitting}>Generate Kode</Button>
+                  </DialogFooter>
+                </form>
+              </DialogContent>
+            </Dialog>
+          )}
         </div>
       </div>
 
@@ -352,7 +520,11 @@ export default function IwanAdminAccessPage() {
       <Dialog open={Boolean(generatedCodeResult)} onOpenChange={(open) => !open && setGeneratedCodeResult(null)}>
         <DialogContent className="max-w-md text-center">
           <DialogHeader>
-            <DialogTitle>Kode Pairing Admin Berhasil Dibuat</DialogTitle>
+            <DialogTitle>
+              {generatedCodeResult?.kind === 'unlock'
+                ? 'Kode OTP Pengaturan Dibuat'
+                : 'Kode Pairing Admin Berhasil Dibuat'}
+            </DialogTitle>
           </DialogHeader>
           {generatedCodeResult && (
             <div className="py-4">
@@ -363,8 +535,8 @@ export default function IwanAdminAccessPage() {
                 <div className="font-mono text-5xl font-black tracking-[0.25em] text-foreground select-all">
                   {generatedCodeResult.code}
                 </div>
-                <Button variant="outline" size="sm" className="mt-4" onClick={() => handleCopy(generatedCodeResult.code)}>
-                  <Copy className="h-4 w-4 mr-1.5" />Salin Kode
+                <Button variant="outline" className="mt-4" onClick={() => handleCopy(generatedCodeResult.code)}>
+                  <Copy />Salin Kode
                 </Button>
               </div>
             </div>
@@ -375,239 +547,125 @@ export default function IwanAdminAccessPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Table */}
-      <div className="overflow-hidden rounded-md border">
-        <Table className={`2xl:text-base ${TABLE_EDGE_PADDING}`}>
-          <TableHeader className="bg-muted">
-            <TableRow>
-              <TableHead>Label Konsol</TableHead>
-              <TableHead>Kode Aktivasi</TableHead>
-              <TableHead>Scope Ruangan</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Perangkat Terikat</TableHead>
-              <TableHead>Terakhir Digunakan</TableHead>
-              <TableHead className="text-right">Aksi</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {tokens.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={7} className="h-32 text-center text-muted-foreground">
-                  {isLoading ? 'Memuat token admin...' : 'Belum ada kode aktivasi admin.'}
-                </TableCell>
-              </TableRow>
-            ) : (
-              tokens.map((tok) => {
-                const scopeDisplay = tok.scope_all
-                  ? 'Semua Ruangan'
-                  : tok.allowed_room_ids.map((id) => roomMap.get(id) ?? 'Ruangan').join(', ') || '-';
+      {canManageUnlockCodes ? (
+        <Tabs
+          value={activeTab}
+          onValueChange={(value) => setActiveTab(value as 'tokens' | 'unlock-codes')}
+          className="space-y-4"
+        >
+          <TabsList className="inline-flex w-full sm:w-auto">
+            <TabsTrigger value="tokens" className="gap-2 flex-1 sm:flex-initial">
+              <span>Konsol Admin</span>
+              <Badge variant="secondary" className="rounded-full px-1.5 py-0 text-[11px] font-semibold tabular-nums">
+                {tokens.length}
+              </Badge>
+            </TabsTrigger>
+            <TabsTrigger value="unlock-codes" className="gap-2 flex-1 sm:flex-initial">
+              <span>OTP Pengaturan</span>
+              <Badge
+                variant={activeUnlockCount > 0 ? 'default' : 'secondary'}
+                className="rounded-full px-1.5 py-0 text-[11px] font-semibold tabular-nums"
+              >
+                {unlockCodes.length}
+              </Badge>
+            </TabsTrigger>
+          </TabsList>
 
-                return (
-                  <TableRow key={tok.id}>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Laptop className="h-4 w-4 text-muted-foreground shrink-0" />
-                        <span className="font-medium">{tok.label}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className="gap-1.5 px-1.5">
-                        {tok.pair_code}
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleCopy(tok.pair_code)}
-                          className="h-4 w-4 p-0 text-muted-foreground hover:text-foreground"
-                          aria-label={`Salin kode ${tok.pair_code}`}
-                        >
-                          {copiedCode === tok.pair_code
-                            ? <Check className="h-3.5 w-3.5 text-emerald-500" />
-                            : <Copy className="h-3.5 w-3.5" />}
-                        </Button>
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className="px-1.5 text-muted-foreground">{scopeDisplay}</Badge>
-                    </TableCell>
-                    <TableCell>
-                      {(() => {
-                        const status = tok.status ?? (tok.is_paired ? 'active' : 'pending');
-                        if (status === 'active') {
-                          return (
-                            <Badge variant="outline" className="gap-1.5 px-1.5 text-muted-foreground">
-                              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />Terhubung
-                            </Badge>
-                          );
-                        }
-                        if (status === 'revoked') {
-                          return (
-                            <Badge variant="outline" className="gap-1.5 px-1.5 text-muted-foreground">
-                              <span className="h-1.5 w-1.5 rounded-full bg-destructive" />Dicabut
-                            </Badge>
-                          );
-                        }
-                        return (
-                          <Badge variant="outline" className="gap-1.5 px-1.5 text-muted-foreground">
-                            <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />Menunggu Aktivasi
-                          </Badge>
-                        );
-                      })()}
-                    </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {tok.bound_mac ? (
-                        <span className="font-mono text-xs">{tok.bound_mac}</span>
-                      ) : (
-                        <span className="text-xs">-</span>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {tok.last_used_at
-                        ? new Date(tok.last_used_at).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })
-                        : 'Belum pernah'}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-1">
-                        <Button
-                          variant="outline"
-                          size="icon-sm"
-                          className="border-muted-foreground/40 dark:border-muted-foreground/40"
-                          onClick={() => openEditDialog(tok)}
-                          aria-label="Edit akses admin"
-                          title="Edit akses admin"
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="icon-sm"
-                          className="border-muted-foreground/40 dark:border-muted-foreground/40"
-                          onClick={() => setReissuingToken(tok)}
-                          aria-label="Terbitkan ulang kode"
-                          title="Terbitkan ulang kode"
-                        >
-                          <RefreshCw className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="icon-sm"
-                          className="border-muted-foreground/40 text-destructive hover:bg-destructive/10 hover:text-destructive dark:border-muted-foreground/40 dark:hover:bg-destructive/20"
-                          onClick={() => setDeletingToken(tok)}
-                          aria-label="Cabut akses"
-                          title="Cabut akses"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                );
-              })
-            )}
-          </TableBody>
-        </Table>
-      </div>
+          <TabsContent value="tokens" className="mt-0 space-y-4">
+            {tokensTable}
+          </TabsContent>
 
-      {canManageUnlockCodes && (
-        <section className="space-y-4 pt-2">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-              <h2 className="text-lg font-semibold tracking-tight">
-                Kode Buka Kunci Pengaturan IWAN Administrator
-              </h2>
-              <p className="text-sm text-muted-foreground mt-0.5">
-                One-time code 6 digit (berlaku 10 menit, 1× pakai) untuk mengizinkan perubahan URL backend &amp; konfigurasi Squid.
-              </p>
-            </div>
-            <Button onClick={handleCreateUnlockCode} disabled={isCreatingUnlockCode}>
-              <KeyRound className="h-4 w-4 mr-1.5" />
-              {isCreatingUnlockCode ? 'Membuat Kode...' : 'Buat Kode Pengaturan'}
-            </Button>
-          </div>
-
-          <div className="overflow-hidden rounded-md border">
-            <Table className={`2xl:text-base ${TABLE_EDGE_PADDING}`}>
-              <TableHeader className="bg-muted">
-                <TableRow>
-                  <TableHead>Kode OTP</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Kedaluwarsa</TableHead>
-                  <TableHead>Dipakai Oleh</TableHead>
-                  <TableHead className="text-right">Aksi</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {unlockCodes.length === 0 ? (
+          <TabsContent value="unlock-codes" className="mt-0 space-y-4">
+            <div className="overflow-hidden rounded-md border">
+              <Table className={`2xl:text-base ${TABLE_EDGE_PADDING}`}>
+                <TableHeader className="bg-muted">
                   <TableRow>
-                    <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
-                      Belum ada kode buka kunci pengaturan yang dibuat.
-                    </TableCell>
+                    <TableHead>Kode OTP</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Kedaluwarsa</TableHead>
+                    <TableHead>Dipakai Oleh</TableHead>
+                    <TableHead className="text-right">Aksi</TableHead>
                   </TableRow>
-                ) : (
-                  unlockCodes.map((uc) => {
-                    const consumed = Boolean(uc.consumed_at);
-                    const expired = !consumed && new Date(uc.expires_at).getTime() <= Date.now();
-                    return (
-                      <TableRow key={uc.id}>
-                        <TableCell>
-                          <span className="font-mono font-bold tracking-widest text-sm text-foreground">
-                            {consumed || expired ? '••••••' : uc.code}
-                          </span>
-                        </TableCell>
-                        <TableCell>
-                          {consumed ? (
-                            <Badge variant="outline">Sudah Dipakai</Badge>
-                          ) : expired ? (
-                            <Badge variant="secondary">Kedaluwarsa</Badge>
-                          ) : (
-                            <Badge variant="default" className="bg-emerald-600 hover:bg-emerald-600">
-                              Aktif
-                            </Badge>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-sm text-muted-foreground">
-                          {new Date(uc.expires_at).toLocaleString('id-ID', {
-                            dateStyle: 'medium',
-                            timeStyle: 'short',
-                          })}
-                        </TableCell>
-                        <TableCell className="text-sm text-muted-foreground">
-                          {uc.consumed_mac ? (
-                            <span className="font-mono text-xs">{uc.consumed_mac}</span>
-                          ) : uc.consumed_at ? (
-                            new Date(uc.consumed_at).toLocaleString('id-ID', {
+                </TableHeader>
+                <TableBody>
+                  {unlockCodes.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
+                        Belum ada kode OTP. Klik Buat Kode OTP untuk membuat kode baru.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    unlockCodes.map((uc) => {
+                      const locked = Boolean(uc.locked_at);
+                      const consumed = !locked && Boolean(uc.consumed_at);
+                      const expired = !locked && !consumed && new Date(uc.expires_at).getTime() <= nowMs;
+                      const hidden = locked || consumed || expired;
+                      return (
+                        <TableRow key={uc.id}>
+                          <TableCell>
+                            <span className="font-mono font-bold tracking-widest text-sm text-foreground tabular-nums">
+                              {hidden ? '••••••' : uc.code}
+                            </span>
+                          </TableCell>
+                          <TableCell>
+                            {locked ? (
+                              <Badge variant="destructive">Diblokir</Badge>
+                            ) : consumed ? (
+                              <Badge variant="outline">Sudah Dipakai</Badge>
+                            ) : expired ? (
+                              <Badge variant="secondary">Kedaluwarsa</Badge>
+                            ) : (
+                              <Badge variant="default" className="bg-emerald-600 hover:bg-emerald-600">
+                                Aktif
+                              </Badge>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-sm text-muted-foreground tabular-nums">
+                            {new Date(uc.expires_at).toLocaleString('id-ID', {
                               dateStyle: 'medium',
                               timeStyle: 'short',
-                            })
-                          ) : (
-                            <span className="text-xs">-</span>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {!consumed && !expired && (
-                            <Button
-                              variant="outline"
-                              size="icon-sm"
-                              onClick={() => handleCopy(uc.code)}
-                              aria-label="Salin kode OTP"
-                              title="Salin kode OTP"
-                            >
-                              {copiedCode === uc.code ? (
-                                <Check className="h-4 w-4 text-emerald-500" />
-                              ) : (
-                                <Copy className="h-4 w-4" />
-                              )}
-                            </Button>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })
-                )}
-              </TableBody>
-            </Table>
-          </div>
-        </section>
+                            })}
+                          </TableCell>
+                          <TableCell className="text-sm text-muted-foreground">
+                            {uc.consumed_mac ? (
+                              <span className="font-mono text-xs">{uc.consumed_mac}</span>
+                            ) : uc.consumed_at ? (
+                              new Date(uc.consumed_at).toLocaleString('id-ID', {
+                                dateStyle: 'medium',
+                                timeStyle: 'short',
+                              })
+                            ) : (
+                              <span className="text-xs">-</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {!hidden && (
+                              <Button
+                                variant="outline"
+                                size="icon-sm"
+                                onClick={() => handleCopy(uc.code)}
+                                aria-label="Salin kode OTP"
+                                title="Salin kode OTP"
+                              >
+                                {copiedCode === uc.code ? (
+                                  <Check className="h-4 w-4 text-emerald-500" />
+                                ) : (
+                                  <Copy className="h-4 w-4" />
+                                )}
+                              </Button>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </TabsContent>
+        </Tabs>
+      ) : (
+        tokensTable
       )}
 
       {/* Edit Dialog */}

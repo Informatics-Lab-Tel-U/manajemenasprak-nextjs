@@ -6,7 +6,7 @@ import unusedImports from 'eslint-plugin-unused-imports'; // tambah ini
 const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
-  globalIgnores(['.next/**', 'out/**', 'build/**', 'next-env.d.ts']),
+  globalIgnores(['.next/**', '.open-next/**', 'out/**', 'build/**', 'next-env.d.ts']),
   {
     plugins: {
       'unused-imports': unusedImports, // tambah ini
