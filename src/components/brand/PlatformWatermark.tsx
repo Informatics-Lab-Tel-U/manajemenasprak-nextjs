@@ -18,7 +18,7 @@ export function PlatformWatermark({
     <div
       className={cn(
         fullWidth ? 'flex w-full items-center' : 'inline-flex items-center',
-        'opacity-80 transition-opacity hover:opacity-100 select-none',
+        'opacity-90 select-none',
         className
       )}
     >
