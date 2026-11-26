@@ -1,6 +1,7 @@
 import { Instagram } from 'lucide-react';
 import { GradientWave } from '@/components/ui/gradient-wave';
 import { ManasLogo } from '@/components/brand/ManasLogo';
+import { PlatformWatermark } from '@/components/brand/PlatformWatermark';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 
@@ -54,7 +55,7 @@ export function AuthBrandingPanel() {
 
           <Separator className="bg-border/50" />
 
-          <CardFooter className="pt-4 pb-4 px-6">
+          <CardFooter className="flex items-center justify-between gap-4 pt-4 pb-4 px-6">
             <a
               href="https://instagram.com/informaticslab_telu"
               target="_blank"
@@ -64,6 +65,7 @@ export function AuthBrandingPanel() {
               <Instagram className="size-3.5" />
               <span>@informaticslab_telu</span>
             </a>
+            <PlatformWatermark heightClass="h-4" />
           </CardFooter>
         </Card>
       </div>
