@@ -35,7 +35,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
-import { Plus, RefreshCw, Copy, Trash2, Check, Laptop, Pencil } from 'lucide-react';
+import { Plus, RefreshCw, Copy, Trash2, Check, Laptop, Pencil, KeyRound } from 'lucide-react';
 
 // Lebih lega dari px-2 default di sisi tepi tabel, supaya kolom pertama dan terakhir tidak menempel ke border.
 const TABLE_EDGE_PADDING =
@@ -61,6 +61,16 @@ interface RoomOption {
   name: string;
 }
 
+interface UnlockCodeRecord {
+  id: string;
+  code: string;
+  label: string | null;
+  created_at: string;
+  expires_at: string;
+  consumed_at: string | null;
+  consumed_mac?: string | null;
+}
+
 export default function IwanAdminAccessPage() {
   const [tokens, setTokens] = React.useState<AdminToken[]>([]);
   const [rooms, setRooms] = React.useState<RoomOption[]>([]);
@@ -81,15 +91,27 @@ export default function IwanAdminAccessPage() {
   const [deletingToken, setDeletingToken] = React.useState<AdminToken | null>(null);
   const [reissuingToken, setReissuingToken] = React.useState<AdminToken | null>(null);
 
+  const [canManageUnlockCodes, setCanManageUnlockCodes] = React.useState(false);
+  const [unlockCodes, setUnlockCodes] = React.useState<UnlockCodeRecord[]>([]);
+  const [isCreatingUnlockCode, setIsCreatingUnlockCode] = React.useState(false);
+
   const loadData = React.useCallback(async (signal?: AbortSignal) => {
     try {
-      const [tokenData, roomData] = await Promise.all([
+      const [tokenData, roomData, unlockRes] = await Promise.all([
         fetchIwanData<AdminToken[]>('/api/iwan/admin-tokens', signal),
         fetchIwanData<RoomOption[]>('/api/iwan/rooms?view=options', signal),
+        fetch('/api/iwan/admin-unlock-codes', { signal, cache: 'no-store' }).catch(() => null),
       ]);
       if (!signal?.aborted) {
         setTokens(tokenData);
         setRooms(roomData);
+        if (unlockRes && unlockRes.ok) {
+          const json = await unlockRes.json().catch(() => null);
+          if (json?.ok && Array.isArray(json.data)) {
+            setCanManageUnlockCodes(true);
+            setUnlockCodes(json.data);
+          }
+        }
       }
     } finally {
       if (!signal?.aborted) setIsLoading(false);
@@ -220,8 +242,33 @@ export default function IwanAdminAccessPage() {
   function handleCopy(code: string) {
     navigator.clipboard.writeText(code);
     setCopiedCode(code);
-    toast.success('Kode pairing admin disalin');
+    toast.success('Kode disalin');
     setTimeout(() => setCopiedCode(null), 2000);
+  }
+
+  async function handleCreateUnlockCode() {
+    setIsCreatingUnlockCode(true);
+    try {
+      const res = await fetch('/api/iwan/admin-unlock-codes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+      const json = await res.json();
+      if (json.ok && json.data) {
+        setGeneratedCodeResult({
+          code: json.data.code,
+          label: 'Buka Pengaturan Squid & Server (OTP 1× Pakai)',
+        });
+        await fetchData();
+      } else {
+        toast.error(json.error || 'Gagal membuat kode akses pengaturan');
+      }
+    } catch {
+      toast.error('Terjadi kesalahan');
+    } finally {
+      setIsCreatingUnlockCode(false);
+    }
   }
 
   const roomMap = new Map<string, string>();
@@ -460,6 +507,108 @@ export default function IwanAdminAccessPage() {
           </TableBody>
         </Table>
       </div>
+
+      {canManageUnlockCodes && (
+        <section className="space-y-4 pt-2">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <h2 className="text-lg font-semibold tracking-tight">
+                Kode Buka Kunci Pengaturan IWAN Administrator
+              </h2>
+              <p className="text-sm text-muted-foreground mt-0.5">
+                One-time code 6 digit (berlaku 10 menit, 1× pakai) untuk mengizinkan perubahan URL backend &amp; konfigurasi Squid.
+              </p>
+            </div>
+            <Button onClick={handleCreateUnlockCode} disabled={isCreatingUnlockCode}>
+              <KeyRound className="h-4 w-4 mr-1.5" />
+              {isCreatingUnlockCode ? 'Membuat Kode...' : 'Buat Kode Pengaturan'}
+            </Button>
+          </div>
+
+          <div className="overflow-hidden rounded-md border">
+            <Table className={`2xl:text-base ${TABLE_EDGE_PADDING}`}>
+              <TableHeader className="bg-muted">
+                <TableRow>
+                  <TableHead>Kode OTP</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Kedaluwarsa</TableHead>
+                  <TableHead>Dipakai Oleh</TableHead>
+                  <TableHead className="text-right">Aksi</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {unlockCodes.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
+                      Belum ada kode buka kunci pengaturan yang dibuat.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  unlockCodes.map((uc) => {
+                    const consumed = Boolean(uc.consumed_at);
+                    const expired = !consumed && new Date(uc.expires_at).getTime() <= Date.now();
+                    return (
+                      <TableRow key={uc.id}>
+                        <TableCell>
+                          <span className="font-mono font-bold tracking-widest text-sm text-foreground">
+                            {consumed || expired ? '••••••' : uc.code}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          {consumed ? (
+                            <Badge variant="outline">Sudah Dipakai</Badge>
+                          ) : expired ? (
+                            <Badge variant="secondary">Kedaluwarsa</Badge>
+                          ) : (
+                            <Badge variant="default" className="bg-emerald-600 hover:bg-emerald-600">
+                              Aktif
+                            </Badge>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {new Date(uc.expires_at).toLocaleString('id-ID', {
+                            dateStyle: 'medium',
+                            timeStyle: 'short',
+                          })}
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {uc.consumed_mac ? (
+                            <span className="font-mono text-xs">{uc.consumed_mac}</span>
+                          ) : uc.consumed_at ? (
+                            new Date(uc.consumed_at).toLocaleString('id-ID', {
+                              dateStyle: 'medium',
+                              timeStyle: 'short',
+                            })
+                          ) : (
+                            <span className="text-xs">-</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {!consumed && !expired && (
+                            <Button
+                              variant="outline"
+                              size="icon-sm"
+                              onClick={() => handleCopy(uc.code)}
+                              aria-label="Salin kode OTP"
+                              title="Salin kode OTP"
+                            >
+                              {copiedCode === uc.code ? (
+                                <Check className="h-4 w-4 text-emerald-500" />
+                              ) : (
+                                <Copy className="h-4 w-4" />
+                              )}
+                            </Button>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </section>
+      )}
 
       {/* Edit Dialog */}
       <Dialog open={Boolean(editingToken)} onOpenChange={(open) => !open && setEditingToken(null)}>
