@@ -313,7 +313,7 @@ export default function IwanAdminAccessPage() {
                 <p className="text-xs font-semibold text-muted-foreground mb-2">
                   {generatedCodeResult.label}
                 </p>
-                <div className="font-mono text-5xl font-black tracking-[0.25em] text-primary select-all">
+                <div className="font-mono text-5xl font-black tracking-[0.25em] text-foreground select-all">
                   {generatedCodeResult.code}
                 </div>
                 <Button variant="outline" size="sm" className="mt-4" onClick={() => handleCopy(generatedCodeResult.code)}>
