@@ -327,7 +327,7 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
 
       <SidebarFooter>
         <AccountSwitcher nama={user.nama} email={user.email} role={user.role} />
-        <div className="mt-1 flex justify-center border-t border-sidebar-border/50 pt-2 group-data-[collapsible=icon]:hidden">
+        <div className="mt-1 flex justify-start border-t border-sidebar-border/50 px-2 pt-2 group-data-[collapsible=icon]:hidden">
           <PlatformWatermark heightClass="h-7" />
         </div>
       </SidebarFooter>
