@@ -2,7 +2,6 @@
 
 import * as React from 'react';
 import { ManasLogo } from '@/components/brand/ManasLogo';
-import { PlatformWatermark } from '@/components/brand/PlatformWatermark';
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
 import {
@@ -325,10 +324,7 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
         ))}
       </SidebarContent>
 
-      <SidebarFooter className="gap-0">
-        <div className="mb-0 flex justify-start border-b border-sidebar-border/50 px-2 pb-1.5 group-data-[collapsible=icon]:hidden">
-          <PlatformWatermark heightClass="h-7" />
-        </div>
+      <SidebarFooter>
         <AccountSwitcher nama={user.nama} email={user.email} role={user.role} />
       </SidebarFooter>
 

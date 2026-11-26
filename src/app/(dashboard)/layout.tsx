@@ -2,6 +2,7 @@ import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/s
 import { AppSidebar } from '@/components/layout/AppSidebar';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { GlobalTermSelector } from '@/components/GlobalTermSelector';
+import { PlatformWatermark } from '@/components/brand/PlatformWatermark';
 
 import { Suspense } from 'react';
 import { requireAuth } from '@/lib/auth';
@@ -33,6 +34,7 @@ export default async function DashboardLayout({
           <h1 className="text-base sm:text-lg font-semibold truncate flex-1">
             Manajemen Asisten Praktikum
           </h1>
+          <PlatformWatermark heightClass="h-6" className="hidden sm:inline-flex shrink-0 mr-1" />
           <GlobalTermSelector 
             availableTerms={availableTerms} 
             disabled={authUser.pengguna.role === 'ASPRAK_KOOR'}
