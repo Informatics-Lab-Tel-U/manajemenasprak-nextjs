@@ -325,8 +325,8 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
         ))}
       </SidebarContent>
 
-      <SidebarFooter>
-        <div className="mb-1 flex justify-start border-b border-sidebar-border/50 px-2 pb-2 group-data-[collapsible=icon]:hidden">
+      <SidebarFooter className="gap-0">
+        <div className="flex justify-start px-2 group-data-[collapsible=icon]:hidden">
           <PlatformWatermark heightClass="h-7" />
         </div>
         <AccountSwitcher nama={user.nama} email={user.email} role={user.role} />
