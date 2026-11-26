@@ -3,17 +3,22 @@ import { cn } from '@/lib/utils';
 interface PlatformWatermarkProps {
   className?: string;
   heightClass?: string;
+  fullWidth?: boolean;
 }
 
 /** Theme-aware horizontal wordmark indicating part of Informatics Platform. */
 export function PlatformWatermark({
   className,
   heightClass = 'h-4',
+  fullWidth = false,
 }: PlatformWatermarkProps) {
+  const sizeClass = fullWidth ? 'w-full h-auto' : cn(heightClass, 'w-auto');
+
   return (
     <div
       className={cn(
-        'inline-flex items-center opacity-80 transition-opacity hover:opacity-100 select-none',
+        fullWidth ? 'flex w-full items-center' : 'inline-flex items-center',
+        'opacity-80 transition-opacity hover:opacity-100 select-none',
         className
       )}
     >
@@ -23,7 +28,7 @@ export function PlatformWatermark({
         loading="lazy"
         decoding="async"
         draggable={false}
-        className={cn(heightClass, 'w-auto dark:hidden')}
+        className={cn(sizeClass, 'dark:hidden')}
       />
       <img
         src="/brand/iflab-platform-light.svg"
@@ -31,7 +36,7 @@ export function PlatformWatermark({
         loading="lazy"
         decoding="async"
         draggable={false}
-        className={cn(heightClass, 'hidden w-auto dark:block')}
+        className={cn(sizeClass, 'hidden dark:block')}
       />
     </div>
   );
