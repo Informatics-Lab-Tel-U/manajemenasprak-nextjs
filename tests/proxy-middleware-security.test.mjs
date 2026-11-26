@@ -8,6 +8,10 @@ import * as iwanRoute from "../src/app/api/iwan/[...path]/route.ts";
 import * as utilRoute from "../src/app/api/util/[...path]/route.ts";
 import * as praktikanRoute from "../src/app/api/praktikan/route.ts";
 import * as praktikanKelasRoute from "../src/app/api/praktikan/kelas/route.ts";
+import * as jagaRoute from "../src/app/api/jaga/route.ts";
+import * as plottingRoute from "../src/app/api/plotting/route.ts";
+import * as clearTermRoute from "../src/app/api/clear-term/route.ts";
+import * as adminUsersIdRoute from "../src/app/api/admin/users/[id]/route.ts";
 
 process.env.NEXT_PUBLIC_SUPABASE_URL = "https://supabase.test";
 process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = "test-anon-key";
@@ -59,6 +63,10 @@ test("sanitizeProxyPath locks prefixes and rejects traversal, encoding evasion, 
     "/api/iwan/%2e%2e/admin/users",
     "/api/iwan/%252e%252e/admin/users",
     "/api/iwan/..%2fadmin",
+    "/api/iwan/rooms%252fadmin",
+    "/api/iwan/rooms%25252fadmin",
+    "/api/iwan/rooms%255cadmin",
+    "/api/iwan/rooms?foo=1",
     "/api/iwan/\\admin",
     "/api/iwan/%5cadmin",
     "/api/iwan/rooms\x00admin",
@@ -156,6 +164,10 @@ test("forwardToHono rejects traversal, encoding evasion, backslash, control char
     "/api/iwan/../admin/users",
     "/api/iwan/%2e%2e/admin/users",
     "/api/iwan/%252e%252e/admin/users",
+    "/api/iwan/rooms%252fadmin",
+    "/api/iwan/rooms%25252fadmin",
+    "/api/iwan/rooms?foo=1",
+    "/api/iwan/rooms%3Ffoo=1",
     "/api/iwan/\\admin",
     "/api/iwan/rooms\x00",
     "/api/iwan/rooms@evil.com",
@@ -167,6 +179,57 @@ test("forwardToHono rejects traversal, encoding evasion, backslash, control char
   }
 
   assert.equal(fetchMock.mock.callCount(), 0);
+});
+
+test("dynamic id routes reject query-delimiter injection (? / %3F) and encoded slashes while clear-term forwards explicit customSearch", async (t) => {
+  const seenUrls = [];
+  t.mock.method(globalThis, "fetch", async (input) => {
+    const urlStr = typeof input === "string" ? input : input.url || input.href;
+    seenUrls.push(urlStr);
+    return Response.json({ ok: true });
+  });
+
+  const badJagaReq = new NextRequest("https://manas.test/api/jaga?id=123%3Foverride%3D1", {
+    method: "DELETE",
+    headers: { authorization: `Bearer ${makeJwt()}` },
+  });
+  const badJagaRes = await jagaRoute.DELETE(badJagaReq);
+  assert.equal(badJagaRes.status, 400);
+
+  const badPlottingReq = new NextRequest("https://manas.test/api/plotting?id=123%3Foverride%3D1", {
+    method: "DELETE",
+    headers: { authorization: `Bearer ${makeJwt()}` },
+  });
+  const badPlottingRes = await plottingRoute.DELETE(badPlottingReq);
+  assert.equal(badPlottingRes.status, 400);
+
+  const badUserReq = new NextRequest("https://manas.test/api/admin/users/bad", {
+    method: "DELETE",
+    headers: { authorization: `Bearer ${makeJwt()}` },
+  });
+  const badUserRes = await adminUsersIdRoute.DELETE(badUserReq, {
+    params: Promise.resolve({ id: "123?override=1" }),
+  });
+  assert.equal(badUserRes.status, 400);
+
+  const badEncodedUserRes = await adminUsersIdRoute.DELETE(badUserReq, {
+    params: Promise.resolve({ id: "123%252fadmin" }),
+  });
+  assert.equal(badEncodedUserRes.status, 400);
+  assert.equal(seenUrls.length, 0);
+
+  const clearTermReq = new NextRequest("https://manas.test/api/clear-term", {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${makeJwt()}`,
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({ term: "2526-1" }),
+  });
+  const clearTermRes = await clearTermRoute.POST(clearTermReq);
+  assert.equal(clearTermRes.status, 200);
+  assert.equal(seenUrls.length, 1);
+  assert.equal(seenUrls[0], "https://backend.test/api/system/clear-term?term=2526-1");
 });
 
 test("forwardToHono strips spoofed trust headers, locks target origin/prefix, rejects 3xx redirects, and streams body with duplex: half", async (t) => {

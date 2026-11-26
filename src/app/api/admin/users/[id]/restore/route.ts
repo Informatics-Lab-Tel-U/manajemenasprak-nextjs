@@ -1,5 +1,5 @@
-import { NextRequest } from 'next/server';
-import { forwardToHono } from '@/lib/apiProxy';
+import { NextRequest, NextResponse } from 'next/server';
+import { ProxyValidationError, forwardToHono, sanitizePathSegment } from '@/lib/apiProxy';
 
 export const fetchCache = 'force-no-store';
 
@@ -8,5 +8,11 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  return forwardToHono(request, `/api/admin/users/${id}/restore`);
+  try {
+    const safeId = sanitizePathSegment(id);
+    return forwardToHono(request, `/api/admin/users/${encodeURIComponent(safeId)}/restore`);
+  } catch (err) {
+    const message = err instanceof ProxyValidationError ? err.message : 'Invalid user ID';
+    return NextResponse.json({ ok: false, error: message }, { status: 400 });
+  }
 }

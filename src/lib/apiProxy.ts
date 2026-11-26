@@ -24,6 +24,7 @@ export class ProxyValidationError extends Error {
 export interface ForwardProxyOptions {
   allowedPrefix?: string;
   allowPraktikanApiKey?: boolean;
+  customSearch?: string;
 }
 
 export interface BuildForwardHeadersOptions {
@@ -67,6 +68,9 @@ function assertSafePathVariant(variant: string): void {
   if (CONTROL_CHARS_RE.test(variant)) {
     throw new ProxyValidationError('Control characters are not allowed in proxy path');
   }
+  if (ENCODED_SLASH_RE.test(variant)) {
+    throw new ProxyValidationError('Encoded path separators are not allowed');
+  }
   if (variant.includes('\\')) {
     throw new ProxyValidationError('Backslashes are not allowed in proxy path');
   }
@@ -99,9 +103,6 @@ export function sanitizeProxyPath(prefix: string, rawPath: string): string {
   }
   if (rawPath.trim() !== rawPath || rawPath.trim().length === 0) {
     throw new ProxyValidationError('Proxy path cannot contain leading or trailing whitespace');
-  }
-  if (ENCODED_SLASH_RE.test(rawPath)) {
-    throw new ProxyValidationError('Encoded path separators are not allowed');
   }
 
   const normPrefix = prefix === '/' ? '/' : `/${prefix.replace(/^\/+|\/+$/g, '')}`;
@@ -138,6 +139,29 @@ export function sanitizeProxyPath(prefix: string, rawPath: string): string {
   }
 
   return candidate;
+}
+
+/**
+ * Validates a single dynamic route parameter (`id`) so query delimiters (`?`, `#`),
+ * path separators (`/`, `\`, `%2f`, `%5c`), and traversal segments are rejected cleanly.
+ */
+export function sanitizePathSegment(rawSegment: string): string {
+  if (typeof rawSegment !== 'string' || rawSegment.length === 0) {
+    throw new ProxyValidationError('Path segment is required');
+  }
+  if (rawSegment.trim() !== rawSegment || rawSegment.trim().length === 0) {
+    throw new ProxyValidationError('Path segment cannot contain leading or trailing whitespace');
+  }
+
+  const variants = collectDecodedVariants(rawSegment);
+  for (const variant of variants) {
+    assertSafePathVariant(variant);
+    if (variant.includes('/')) {
+      throw new ProxyValidationError('Path separators are not allowed inside a route segment');
+    }
+  }
+
+  return rawSegment;
 }
 
 /**
@@ -181,9 +205,6 @@ export async function forwardToHono(
 ) {
   try {
     const rawTarget = customPath || request.nextUrl.pathname;
-    const qIdx = rawTarget.indexOf('?');
-    const rawPathWithoutSearch = qIdx === -1 ? rawTarget : rawTarget.slice(0, qIdx);
-    const customSearch = qIdx === -1 ? '' : rawTarget.slice(qIdx + 1);
 
     const expectedPrefix =
       options?.allowedPrefix ??
@@ -195,7 +216,7 @@ export async function forwardToHono(
 
     let safePath: string;
     try {
-      safePath = sanitizeProxyPath(expectedPrefix, rawPathWithoutSearch);
+      safePath = sanitizeProxyPath(expectedPrefix, rawTarget);
     } catch (err) {
       const message = err instanceof ProxyValidationError ? err.message : 'Invalid proxy path';
       return NextResponse.json({ ok: false, error: message }, { status: 400 });
@@ -227,8 +248,11 @@ export async function forwardToHono(
       targetUrl.searchParams.set(key, value);
     });
 
-    if (customSearch) {
-      new URLSearchParams(customSearch).forEach((value, key) => {
+    if (options?.customSearch) {
+      const searchStr = options.customSearch.startsWith('?')
+        ? options.customSearch.slice(1)
+        : options.customSearch;
+      new URLSearchParams(searchStr).forEach((value, key) => {
         targetUrl.searchParams.set(key, value);
       });
     }
