@@ -1,10 +1,27 @@
+import { ProxyValidationError, sanitizeProxyPath } from '@/lib/apiProxy';
+
+function extractRawPathname(rawUrl: string): string {
+  const withoutOrigin = rawUrl.replace(/^[a-zA-Z][a-zA-Z0-9+.-]*:\/\/[^/?#]*/, '');
+  const endIdx = withoutOrigin.search(/[?#]/);
+  return endIdx === -1 ? withoutOrigin : withoutOrigin.slice(0, endIdx);
+}
+
 export async function proxyIwanRequest(
   request: Request,
   accessToken: string,
   backendUrl: string,
 ): Promise<Response> {
-  const source = new URL(request.url);
-  if (!source.pathname.startsWith('/api/iwan/')) {
+  const rawPathname = extractRawPathname(request.url);
+  let source: URL;
+  try {
+    source = new URL(request.url);
+  } catch {
+    return Response.json({ ok: false, error: 'Bad Request' }, { status: 400 });
+  }
+
+  const rawTargetsIwan = rawPathname.startsWith('/api/iwan/');
+  const parsedTargetsIwan = source.pathname.startsWith('/api/iwan/');
+  if (!rawTargetsIwan && !parsedTargetsIwan) {
     return Response.json({ ok: false, error: 'Not found' }, { status: 404 });
   }
 
@@ -28,9 +45,40 @@ export async function proxyIwanRequest(
     );
   };
 
+  let safePath: string;
+  try {
+    if (rawTargetsIwan) {
+      sanitizeProxyPath('/api/iwan', rawPathname);
+    }
+    safePath = sanitizeProxyPath('/api/iwan', source.pathname);
+  } catch (err) {
+    return failure('IWAN_INVALID_PATH', 400, 'Path IWAN tidak valid', {
+      reason: err instanceof ProxyValidationError ? err.message : 'Invalid path',
+    });
+  }
+
+  let backendBase: URL;
+  try {
+    backendBase = new URL(backendUrl);
+  } catch {
+    return failure('IWAN_PROXY_FAILURE', 500, 'Konfigurasi backend IWAN tidak valid', {});
+  }
+  if (
+    (backendBase.protocol !== 'https:' && backendBase.protocol !== 'http:') ||
+    backendBase.username ||
+    backendBase.password
+  ) {
+    return failure('IWAN_PROXY_FAILURE', 500, 'Konfigurasi backend IWAN tidak valid', {});
+  }
+
+  const targetUrl = new URL(safePath + source.search, backendBase.origin);
+  if (targetUrl.origin !== backendBase.origin || !targetUrl.pathname.startsWith('/api/iwan/')) {
+    return failure('IWAN_INVALID_PATH', 400, 'Path IWAN tidak valid', {});
+  }
+
   try {
     const hasBody = request.method !== 'GET' && request.method !== 'HEAD';
-    const upstream = await fetch(new URL(source.pathname + source.search, backendUrl), {
+    const upstream = await fetch(targetUrl, {
       method: request.method,
       headers,
       body: hasBody ? request.body : undefined,
@@ -51,7 +99,7 @@ export async function proxyIwanRequest(
       responseHeaders.set('X-Iwan-Error-Source', 'upstream');
       console.error('[IWAN proxy]', {
         event: 'iwan_upstream_error', rayId, method: request.method,
-        path: source.pathname, upstreamStatus: upstream.status,
+        path: safePath, upstreamStatus: upstream.status,
         upstreamRayId: upstream.headers.get('cf-ray'), elapsedWallMs: Date.now() - startedAt,
       });
     }

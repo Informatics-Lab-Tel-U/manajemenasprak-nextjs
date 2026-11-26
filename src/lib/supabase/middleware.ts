@@ -37,9 +37,34 @@ async function getMaintenanceStatus(backendUrl?: string): Promise<boolean> {
   return false;
 }
 
+const SPOOFABLE_REQUEST_HEADERS = [
+  'x-auth-user',
+  'x-service-role-key',
+  'x-api-key',
+  'x-intern-user-role',
+  'x-intern-user-id',
+  'x-intern-user-email',
+  'x-http-method-override',
+  'x-method-override',
+  'x-original-method',
+  'x-middleware-subrequest',
+] as const;
+
 export async function updateSession(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+  const isIwanApi = pathname.startsWith('/api/iwan/');
+  const isPraktikanGet =
+    (pathname === '/api/praktikan' || pathname.startsWith('/api/praktikan/')) &&
+    request.method === 'GET';
+
   const requestHeaders = new Headers(request.headers);
-  requestHeaders.delete('x-auth-user');
+  for (const header of SPOOFABLE_REQUEST_HEADERS) {
+    requestHeaders.delete(header);
+  }
+  if (!isPraktikanGet) {
+    requestHeaders.delete('x-praktikan-api-key');
+    requestHeaders.delete('x-external-api-key');
+  }
 
   const supabaseResponse = NextResponse.next({
     request: {
@@ -47,15 +72,11 @@ export async function updateSession(request: NextRequest) {
     },
   });
 
-  const { pathname } = request.nextUrl;
-  const isIwanApi = pathname.startsWith('/api/iwan/');
-
   if (
     request.method === 'OPTIONS' ||
     (pathname === '/api/monitoring/heartbeat' && request.method === 'POST') ||
     (pathname === '/api/monitoring/status' && request.method === 'GET') ||
-    ((pathname === '/api/praktikan' || pathname.startsWith('/api/praktikan/')) &&
-      request.method === 'GET')
+    isPraktikanGet
   ) {
     return supabaseResponse;
   }
