@@ -55,7 +55,6 @@ import {
   ChevronRight,
   ExternalLink,
   Eye,
-  RefreshCw,
   Search,
   Settings2,
   Trash2,
@@ -136,6 +135,8 @@ function IwanEvidenceContent() {
   const [selectedIds, setSelectedIds] = React.useState<Set<string>>(() => new Set());
   const [isBulkDeleteOpen, setIsBulkDeleteOpen] = React.useState(false);
   const [isBulkDeleting, setIsBulkDeleting] = React.useState(false);
+  const [isRoomDeleteOpen, setIsRoomDeleteOpen] = React.useState(false);
+  const [isRoomDeleting, setIsRoomDeleting] = React.useState(false);
 
   const [forbiddenPatterns, setForbiddenPatterns] = React.useState<string[]>(
     DEFAULT_FORBIDDEN_PATTERNS,
@@ -268,6 +269,49 @@ function IwanEvidenceContent() {
     }
   }
 
+  const selectedRoomName = React.useMemo(() => {
+    if (selectedRoomFilter === 'ALL') return '';
+    return (
+      rooms.find((r) => r.id === selectedRoomFilter)?.name ||
+      logs.find((l) => l.roomId === selectedRoomFilter)?.roomName ||
+      'Ruangan Terpilih'
+    );
+  }, [selectedRoomFilter, rooms, logs]);
+
+  async function handleConfirmRoomBulkDelete() {
+    if (selectedRoomFilter === 'ALL') {
+      setIsRoomDeleteOpen(false);
+      return;
+    }
+
+    setIsRoomDeleting(true);
+    try {
+      const res = await fetch('/api/iwan/evidence/bulk-delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ roomId: selectedRoomFilter }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json?.ok) {
+        toast.error(json?.error || `Gagal menghapus log kecurangan di ruangan ${selectedRoomName}`);
+        return;
+      }
+
+      const deletedCount = typeof json.deletedCount === 'number' ? json.deletedCount : 0;
+      setLogs((prev) => prev.filter((item) => item.roomId !== selectedRoomFilter));
+      setSelectedIds(new Set());
+      if (selectedEvidence?.roomId === selectedRoomFilter) {
+        setSelectedEvidence(null);
+      }
+      setIsRoomDeleteOpen(false);
+      toast.success(`${deletedCount} log kecurangan di ruangan ${selectedRoomName} dihapus`);
+    } catch {
+      toast.error(`Terjadi kesalahan saat menghapus log ruangan ${selectedRoomName}`);
+    } finally {
+      setIsRoomDeleting(false);
+    }
+  }
+
   function handleAddPreset(presetVal: string) {
     const currentLines = draftPatternsText
       .split(/\r?\n/)
@@ -346,9 +390,6 @@ function IwanEvidenceContent() {
     return true;
   });
 
-  const affectedRoomCount = new Set(filteredLogs.map((l) => l.roomId)).size;
-  const affectedDeviceCount = new Set(filteredLogs.map((l) => l.deviceId)).size;
-
   const totalPages = Math.max(1, Math.ceil(filteredLogs.length / pageSize));
   const safeCurrentPage = Math.min(currentPage, totalPages);
   const paginatedLogs = filteredLogs.slice(
@@ -403,15 +444,10 @@ function IwanEvidenceContent() {
             <Settings2 data-icon="inline-start" />
             Kata Kunci ({forbiddenPatterns.length})
           </Button>
-
-          <Button variant="outline" size="sm" onClick={fetchData} disabled={isLoading}>
-            <RefreshCw data-icon="inline-start" />
-            Segarkan
-          </Button>
         </div>
       </div>
 
-      {/* Filter Bar & Inline Summary */}
+      {/* Filter Bar */}
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center">
         <div className="relative w-full sm:max-w-sm">
           <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -428,22 +464,11 @@ function IwanEvidenceContent() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2 sm:ml-auto">
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <Badge
-              variant={filteredLogs.length > 0 ? 'destructive' : 'outline'}
-              className="tabular-nums"
-            >
-              {filteredLogs.length} insiden
-            </Badge>
-            <Badge variant="outline" className="text-muted-foreground tabular-nums">
-              {affectedDeviceCount} PC · {affectedRoomCount} ruangan
-            </Badge>
-          </div>
-
           <Select
             value={selectedRoomFilter}
             onValueChange={(value) => {
               setSelectedRoomFilter(value);
+              setSelectedIds(new Set());
               setCurrentPage(1);
             }}
           >
@@ -459,6 +484,20 @@ function IwanEvidenceContent() {
               ))}
             </SelectContent>
           </Select>
+
+          {selectedRoomFilter !== 'ALL' && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setIsRoomDeleteOpen(true)}
+              disabled={isLoading || isRoomDeleting || !logs.some((l) => l.roomId === selectedRoomFilter)}
+              className="border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
+            >
+              <Trash2 className="mr-1.5 h-4 w-4" />
+              Hapus Log Ruangan
+            </Button>
+          )}
         </div>
       </div>
 
@@ -929,6 +968,35 @@ function IwanEvidenceContent() {
               variant="destructive"
             >
               {isBulkDeleting ? 'Menghapus...' : `Hapus ${activeSelectedCount} Item`}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* AlertDialog Konfirmasi Hapus Log per Ruangan */}
+      <AlertDialog
+        open={isRoomDeleteOpen}
+        onOpenChange={(open) => {
+          if (!isRoomDeleting) setIsRoomDeleteOpen(open);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Hapus Semua Log Ruangan {selectedRoomName}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Seluruh catatan log kecurangan beserta file screenshot di ruangan{' '}
+              <strong>{selectedRoomName}</strong> akan dihapus permanen dan tidak dapat
+              dikembalikan.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isRoomDeleting}>Batal</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={isRoomDeleting}
+              onClick={handleConfirmRoomBulkDelete}
+              variant="destructive"
+            >
+              {isRoomDeleting ? 'Menghapus...' : 'Hapus Log Ruangan'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
